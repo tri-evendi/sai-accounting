@@ -258,6 +258,17 @@ export default async function OperatorConformancePage() {
                 })}
               >
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin)" }}>
+                  {/* Siapa yang menyapu: sejak sakelar `runner:` satu tabel
+                      punya dua kemungkinan pelaksana, dan log rinciannya ada di
+                      container yang berbeda. */}
+                  <p style={{ ...MUTED, margin: 0 }}>
+                    {latest.details?.runner
+                      ? t("operator.conformance.runnerLine", {
+                          runner: latest.details.runner.runner === "go" ? "Go" : "Node",
+                          service: latest.details.runner.service,
+                        })
+                      : t("operator.conformance.runnerUnknown")}
+                  </p>
                   {/* DI ATAS daftar temuan dengan sengaja: pertanyaan pertama
                       orang yang membuka halaman ini "buku mana", dan daftar
                       temuan menjawab "apa" — yang tidak berguna sebelum yang

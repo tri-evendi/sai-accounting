@@ -125,7 +125,9 @@ describe("kontrak: max_attempts yang disengaja", () => {
 
   it("integrasi luar diberi percobaan lebih banyak", () => {
     // Layanan pihak lain memang kadang mati sebentar.
-    expect(JOB_KINDS["integration.efaktur"].maxAttempts).toBeGreaterThanOrEqual(5);
+    for (const kind of ["integration.efaktur_submit", "integration.efaktur_poll", "integration.efaktur_cancel"] as const) {
+      expect(JOB_KINDS[kind].maxAttempts, kind).toBeGreaterThanOrEqual(5);
+    }
   });
 });
 

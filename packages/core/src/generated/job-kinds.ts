@@ -26,9 +26,12 @@ export const JOB_STATUSES: readonly JobStatus[] = [
 export type JobKind =
   | "company.provision"
   | "document.generate"
+  | "efaktur.record"
   | "import.process"
   | "integration.bank_feed"
-  | "integration.efaktur"
+  | "integration.efaktur_cancel"
+  | "integration.efaktur_poll"
+  | "integration.efaktur_submit"
   | "ledger.dunning"
   | "ledger.recurring"
   | "mail.batch"
@@ -59,9 +62,12 @@ export interface JobKindSpec {
 export const JOB_KINDS: Readonly<Record<JobKind, JobKindSpec>> = {
   "company.provision": { lane: "interactive", maxAttempts: 1, writesLedger: false },
   "document.generate": { lane: "interactive", maxAttempts: 3, writesLedger: false },
+  "efaktur.record": { lane: "interactive", maxAttempts: 5, writesLedger: false },
   "import.process": { lane: "bulk", maxAttempts: 1, writesLedger: false },
   "integration.bank_feed": { lane: "integration", maxAttempts: 5, writesLedger: false },
-  "integration.efaktur": { lane: "integration", maxAttempts: 5, writesLedger: false },
+  "integration.efaktur_cancel": { lane: "integration", maxAttempts: 5, writesLedger: false },
+  "integration.efaktur_poll": { lane: "integration", maxAttempts: 5, writesLedger: false },
+  "integration.efaktur_submit": { lane: "integration", maxAttempts: 5, writesLedger: false },
   "ledger.dunning": { lane: "ledger", maxAttempts: 3, writesLedger: true },
   "ledger.recurring": { lane: "ledger", maxAttempts: 3, writesLedger: true },
   "mail.batch": { lane: "bulk", maxAttempts: 3, writesLedger: false },
@@ -94,8 +100,8 @@ export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
 /** `kind` milik setiap jalur — klausa `WHERE kind IN (…)` pekerjanya. */
 export const KINDS_BY_LANE: Readonly<Record<JobLane, readonly JobKind[]>> = {
   bulk: ["import.process", "mail.batch", "report.package"],
-  integration: ["integration.bank_feed", "integration.efaktur"],
-  interactive: ["company.provision", "document.generate", "report.export", "report.export_go"],
+  integration: ["integration.bank_feed", "integration.efaktur_cancel", "integration.efaktur_poll", "integration.efaktur_submit"],
+  interactive: ["company.provision", "document.generate", "efaktur.record", "report.export", "report.export_go"],
   ledger: ["ledger.dunning", "ledger.recurring"],
   schedule: ["schedule.tick"],
   schema: ["schema.migrate"],
@@ -123,6 +129,20 @@ export interface ScheduleSpec {
 export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
   "ledger.recurring": { grain: "hour", perCompany: true, publisher: "go" },
   "tenant.backup": { grain: "day", perCompany: false, publisher: "go" },
+};
+
+/** Pelaksana kind yang sedang beralih bahasa — tepat SATU. */
+export type KindRunner = "node" | "go";
+
+export type RunnerSwitchedKind =
+  | "tenant.conformance";
+
+/**
+ * Kind ber-`runner:` beserta pelaksananya HARI INI. Sisi yang bukan
+ * pelaksana melewati pekerjaannya (keluar 0 / selesai tanpa bekerja).
+ */
+export const KIND_RUNNERS: Readonly<Record<RunnerSwitchedKind, KindRunner>> = {
+  "tenant.conformance": "node",
 };
 
 export const isJobKind = (v: string): v is JobKind =>

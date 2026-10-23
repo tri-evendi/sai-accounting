@@ -253,6 +253,9 @@ const PEMBUKA_MENTAH: Record<string, string> = {
   "src/lib/company-provisioning.ts": "penyediaan — instanceServerUrl(instans sasaran)",
   "apps/operator/src/lib/operator/writes.ts": "jangkar retensi — companyServerConnection",
   "apps/operator/src/lib/operator/backups.ts": "versi skema per buku — companyServerConnection",
+  /* Konsol `/efaktur` (docs/EFAKTUR.md): keadaan sambungan PJAP per buku,
+     tanpa rahasia — pola koneksi pendek yang sama dengan `backups.ts`. */
+  "apps/operator/src/lib/operator/efaktur-connections.ts": "sambungan e-Faktur per buku — companyServerConnection",
   /* Hibah peran aplikasi (hak minimum, Okt 2026): dibuka di server yang SAMA
      yang baru saja membuat/memulihkan buku itu, lalu `appRoleForNewBook`. */
   "scripts/create-company.ts": "hibah peran aplikasi — server yang membuat buku (CONTROL di `migrate`)",

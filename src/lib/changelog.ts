@@ -73,8 +73,28 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.19.0",
+    tanggal: "2026-10-23",
+    ringkas: "Faktur pajak keluaran bisa diekspor sebagai XML Coretax, dan ekspor laporan stok kini disiapkan di latar.",
+    butir: [
+      {
+        jenis: "baru",
+        teks: "Halaman e-Faktur kini menyiapkan berkas XML untuk diimpor ke Coretax DJP, lengkap dengan daftar faktur yang datanya belum lengkap.",
+      },
+      {
+        jenis: "baru",
+        teks: "Data pelanggan kini menyimpan NIK, NITKU, dan jenis pemungut PPN; data perusahaan menyimpan NITKU.",
+      },
+      {
+        jenis: "ubah",
+        teks: "Ekspor Excel Nilai Persediaan, Riwayat Stok, dan Riwayat Hitung Ulang Stok disiapkan di latar.",
+      },
+    ],
+  },
+  {
     versi: "0.18.1",
     tanggal: "2026-10-23",
+    sha: "e17a56c",
     ringkas: "Perubahan pengaturan situs, logo, pengumuman, dan teks halaman depan dari konsol kini tampil dalam 5 detik.",
     butir: [
       {

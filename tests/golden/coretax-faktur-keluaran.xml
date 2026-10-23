@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TaxInvoiceBulk xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="TaxInvoice.xsd">
+	<TIN>0012345678901000</TIN>
+	<ListOfTaxInvoice>
+		<TaxInvoice>
+			<TaxInvoiceDate>2026-10-05</TaxInvoiceDate>
+			<TaxInvoiceOpt>Normal</TaxInvoiceOpt>
+			<TrxCode>04</TrxCode>
+			<AddInfo/>
+			<CustomDoc/>
+			<CustomDocMonthYear/>
+			<RefDesc>SI.2026.10.00001</RefDesc>
+			<FacilityStamp/>
+			<SellerIDTKU>0012345678901000000000</SellerIDTKU>
+			<BuyerTin>0098765432109000</BuyerTin>
+			<BuyerDocument>TIN</BuyerDocument>
+			<BuyerCountry>IDN</BuyerCountry>
+			<BuyerDocumentNumber>-</BuyerDocumentNumber>
+			<BuyerName>PT Pembeli Contoh</BuyerName>
+			<BuyerAdress>Jl. Contoh No. 1, Jakarta</BuyerAdress>
+			<BuyerEmail>pajak@pembeli.test</BuyerEmail>
+			<BuyerIDTKU>0098765432109000000000</BuyerIDTKU>
+			<ListOfGoodService>
+				<GoodService>
+					<Opt>A</Opt>
+					<Code>000000</Code>
+					<Name>Lada Hitam</Name>
+					<Unit>UM.0003</Unit>
+					<Price>120000</Price>
+					<Qty>100</Qty>
+					<TotalDiscount>0</TotalDiscount>
+					<TaxBase>12000000</TaxBase>
+					<OtherTaxBase>11000000</OtherTaxBase>
+					<VATRate>12</VATRate>
+					<VAT>1320000</VAT>
+					<STLGRate>0</STLGRate>
+					<STLG>0</STLG>
+				</GoodService>
+			</ListOfGoodService>
+		</TaxInvoice>
+		<TaxInvoice>
+			<TaxInvoiceDate>2026-10-20</TaxInvoiceDate>
+			<TaxInvoiceOpt>Normal</TaxInvoiceOpt>
+			<TrxCode>01</TrxCode>
+			<AddInfo/>
+			<CustomDoc/>
+			<CustomDocMonthYear/>
+			<RefDesc>SI.2026.10.00002</RefDesc>
+			<FacilityStamp/>
+			<SellerIDTKU>0012345678901000000000</SellerIDTKU>
+			<BuyerTin>0000000000000000</BuyerTin>
+			<BuyerDocument>National ID</BuyerDocument>
+			<BuyerCountry>IDN</BuyerCountry>
+			<BuyerDocumentNumber>3174061502560010</BuyerDocumentNumber>
+			<BuyerName>Toko Rempah &amp; Sahabat</BuyerName>
+			<BuyerAdress>Jl. Pasar &lt;Baru&gt; 7</BuyerAdress>
+			<BuyerEmail/>
+			<BuyerIDTKU>000000</BuyerIDTKU>
+			<ListOfGoodService>
+				<GoodService>
+					<Opt>A</Opt>
+					<Code>000000</Code>
+					<Name>Pala Bubuk</Name>
+					<Unit>UM.0004</Unit>
+					<Price>4000.5</Price>
+					<Qty>500</Qty>
+					<TotalDiscount>0</TotalDiscount>
+					<TaxBase>2000250</TaxBase>
+					<OtherTaxBase>2000250</OtherTaxBase>
+					<VATRate>12</VATRate>
+					<VAT>240030</VAT>
+					<STLGRate>0</STLGRate>
+					<STLG>0</STLG>
+				</GoodService>
+				<GoodService>
+					<Opt>A</Opt>
+					<Code>000000</Code>
+					<Name>Kayu Manis</Name>
+					<Unit>UM.0037</Unit>
+					<Price>333333</Price>
+					<Qty>1.5</Qty>
+					<TotalDiscount>0</TotalDiscount>
+					<TaxBase>499999.5</TaxBase>
+					<OtherTaxBase>499999.5</OtherTaxBase>
+					<VATRate>12</VATRate>
+					<VAT>59999.94</VAT>
+					<STLGRate>0</STLGRate>
+					<STLG>0</STLG>
+				</GoodService>
+			</ListOfGoodService>
+		</TaxInvoice>
+		<TaxInvoice>
+			<TaxInvoiceDate>2026-10-05</TaxInvoiceDate>
+			<TaxInvoiceOpt>Normal</TaxInvoiceOpt>
+			<TrxCode>02</TrxCode>
+			<AddInfo/>
+			<CustomDoc/>
+			<CustomDocMonthYear/>
+			<RefDesc>SI.2026.10.00003</RefDesc>
+			<FacilityStamp/>
+			<SellerIDTKU>0012345678901000000000</SellerIDTKU>
+			<BuyerTin>0098765432109000</BuyerTin>
+			<BuyerDocument>TIN</BuyerDocument>
+			<BuyerCountry>IDN</BuyerCountry>
+			<BuyerDocumentNumber>-</BuyerDocumentNumber>
+			<BuyerName>Dinas Contoh</BuyerName>
+			<BuyerAdress>Jl. Contoh No. 1, Jakarta</BuyerAdress>
+			<BuyerEmail>pajak@pembeli.test</BuyerEmail>
+			<BuyerIDTKU>0098765432109000000123</BuyerIDTKU>
+			<ListOfGoodService>
+				<GoodService>
+					<Opt>A</Opt>
+					<Code>000000</Code>
+					<Name>Lada Hitam</Name>
+					<Unit>UM.0003</Unit>
+					<Price>120000</Price>
+					<Qty>100</Qty>
+					<TotalDiscount>0</TotalDiscount>
+					<TaxBase>12000000</TaxBase>
+					<OtherTaxBase>11000000</OtherTaxBase>
+					<VATRate>12</VATRate>
+					<VAT>1320000</VAT>
+					<STLGRate>0</STLGRate>
+					<STLG>0</STLG>
+				</GoodService>
+			</ListOfGoodService>
+		</TaxInvoice>
+	</ListOfTaxInvoice>
+</TaxInvoiceBulk>

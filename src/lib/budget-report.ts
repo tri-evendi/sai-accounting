@@ -35,8 +35,14 @@ type Client = typeof prisma;
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
-/** The [start, end] instants of a month, or of the whole year when month is absent. */
-function periodRange(year: number, month?: number): { start: Date; end: Date } {
+/**
+ * The [start, end] instants of a month, or of the whole year when month is absent.
+ *
+ * Diekspor untuk penerbit Go (`goExportPayloadShape`, tahap 1d): pelari Go
+ * menerima instan ini APA ADANYA, bukan menghitung "awal bulan" sendiri —
+ * alasan yang sama dengan `asOfInstant` (kepala `report-export-go.ts`).
+ */
+export function budgetPeriodRange(year: number, month?: number): { start: Date; end: Date } {
   if (month !== undefined) return periodBounds(year, month);
   return {
     start: businessDate(year, 0, 1),
@@ -56,7 +62,7 @@ export async function getActualsByCode(
   month: number | undefined,
   client: Client = prisma
 ): Promise<Map<string, number>> {
-  const { start, end } = periodRange(year, month);
+  const { start, end } = budgetPeriodRange(year, month);
   const is = await getIncomeStatement(start, end, client);
   const map = new Map<string, number>();
   for (const line of [...is.revenue, ...is.expense]) map.set(line.code, line.amount);
@@ -152,7 +158,7 @@ export async function getSalesTargetRealization(
   });
   const totalTarget = round2(targets.reduce((s, t) => s + Number(t.amount), 0));
 
-  const { start, end } = periodRange(year, month);
+  const { start, end } = budgetPeriodRange(year, month);
   const is = await getIncomeStatement(start, end, client);
   const revenueAccounts = await client.account.findMany({
     where: { type: "revenue" },

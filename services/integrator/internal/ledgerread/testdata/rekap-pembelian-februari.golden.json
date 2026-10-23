@@ -1,0 +1,26 @@
+{
+  "kind": "purchases-by-supplier",
+  "from": "2026-01-31T17:00:00Z",
+  "to": "2026-02-28T16:59:59.999Z",
+  "rows": [
+    {
+      "partyId": 2,
+      "partyName": "Pemasok Dua",
+      "docCount": 1,
+      "grossBase": "1.00",
+      "returnCount": 0,
+      "returnBase": "0.00",
+      "netBase": "1.00",
+      "unratedCount": 0,
+      "halfCentTie": false
+    }
+  ],
+  "totals": {
+    "docCount": 1,
+    "grossBase": "1.00",
+    "returnCount": 0,
+    "returnBase": "0.00",
+    "netBase": "1.00",
+    "unratedCount": 0
+  }
+}

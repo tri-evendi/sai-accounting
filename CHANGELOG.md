@@ -20,7 +20,22 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.18.1 — 2026-10-23 — belum digelar
+## 0.19.0 — 2026-10-23 — belum digelar
+
+Faktur pajak keluaran bisa diekspor sebagai XML Coretax, dan ekspor laporan stok kini disiapkan di latar.
+
+### Baru
+
+- Halaman e-Faktur kini menyiapkan berkas XML untuk diimpor ke Coretax DJP, lengkap dengan daftar faktur yang datanya belum lengkap.
+- Data pelanggan kini menyimpan NIK, NITKU, dan jenis pemungut PPN; data perusahaan menyimpan NITKU.
+
+### Berubah
+
+- Ekspor Excel Nilai Persediaan, Riwayat Stok, dan Riwayat Hitung Ulang Stok disiapkan di latar.
+
+---
+
+## 0.18.1 — 2026-10-23 (e17a56c)
 
 Perubahan pengaturan situs, logo, pengumuman, dan teks halaman depan dari konsol kini tampil dalam 5 detik.
 

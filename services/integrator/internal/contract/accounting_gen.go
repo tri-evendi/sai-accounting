@@ -317,3 +317,27 @@ var AgingBuckets = []AgingBucketSpec{
 	{Key: AgingBucketB6190, MaxDays: 90, Bounded: true},
 	{Key: AgingBucketB90Plus},
 }
+
+// ── Pagar materialitas akun penampung (#444/#445) ─────────────────────────
+// Dibaca `internal/conformance` (sapuan kesesuaian jalur `tenant`) dan, di
+// sisi TS, `src/lib/materiality.ts`.
+
+// MaterialityCatchAllThreshold: pangsa minimum terhadap total beban yang
+// disebut material (0..1, eksklusif) — BAWAAN; satu putaran boleh menimpanya.
+const MaterialityCatchAllThreshold = 0.05
+
+// MaterialityCatchAllExpenseType: tipe band "Beban Lain-lain" (temuan `band`).
+const MaterialityCatchAllExpenseType = AccountTypeOtherExpense
+
+// MaterialityCatchAllTypeLabel: label band itu — DARI `accountTypeLabel` di
+// `src/lib/accounting.ts`, bukan dari YAML: label tipe akun punya satu sumber,
+// dan kalimat temuan Go wajib sama dengan kalimat Node.
+const MaterialityCatchAllTypeLabel = "Beban Lain-lain"
+
+// MaterialityCatchAllNamePattern: pola nama penampung, SUDAH diterjemahkan ke
+// RE2 (`\s` → kelas spasi RegExp JS yang persis, dibaca dari mesin JS saat
+// bangkitan). Dicocokkan TANPA `(?i)` terhadap nama yang huruf ASCII-nya
+// diturunkan — lipatan huruf bendera `i` JS tanpa `u`. Sumbernya:
+//
+//	(lain[-\s]?lain|lainnya|serba[-\s]?serbi|\bdll\b|\bdsb\b|miscellaneous|\bmisc\b|\bsundry\b|\bother\b|\bothers\b)
+const MaterialityCatchAllNamePattern = `(lain[-\x{0009}-\x{000D}\x{0020}\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}-\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]?lain|lainnya|serba[-\x{0009}-\x{000D}\x{0020}\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}-\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]?serbi|\bdll\b|\bdsb\b|miscellaneous|\bmisc\b|\bsundry\b|\bother\b|\bothers\b)`

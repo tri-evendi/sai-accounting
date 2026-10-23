@@ -24,7 +24,7 @@ export function SellerIdentityForm({
   initial,
   identityIncomplete,
 }: {
-  initial: { npwp: string | null; taxName: string | null; taxAddress: string | null };
+  initial: { npwp: string | null; taxName: string | null; taxAddress: string | null; nitku: string | null };
   /**
    * NPWP penjual belum terisi — halaman ini TIDAK merender tombol unduh pada
    * keadaan itu (lihat `page.tsx`), jadi menyimpan identitas adalah satu-satunya
@@ -39,6 +39,7 @@ export function SellerIdentityForm({
   const [npwp, setNpwp] = useState(initial.npwp ?? "");
   const [taxName, setTaxName] = useState(initial.taxName ?? "");
   const [taxAddress, setTaxAddress] = useState(initial.taxAddress ?? "");
+  const [nitku, setNitku] = useState(initial.nitku ?? "");
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -47,7 +48,7 @@ export function SellerIdentityForm({
       const res = await apiFetch("/api/company-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ npwp, taxName, taxAddress }),
+        body: JSON.stringify({ npwp, taxName, taxAddress, nitku }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -86,6 +87,16 @@ export function SellerIdentityForm({
           value={taxName}
           onChange={(e) => setTaxName(e.target.value)}
           maxLength={150}
+        />
+      </Col>
+      <Col xs={24} sm={12}>
+        <Input
+          id="nitku"
+          label={t("tax.nitkuField")}
+          value={nitku}
+          onChange={(e) => setNitku(e.target.value)}
+          maxLength={22}
+          inputMode="numeric"
         />
       </Col>
       <Col span={24}>

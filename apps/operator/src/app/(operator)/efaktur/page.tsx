@@ -17,6 +17,11 @@ import { platformEfaktur } from "@sai/platform/billing/platform-efaktur";
 import { getT } from "@sai/platform/i18n/server";
 import { requireOperatorPage } from "@op/lib/operator/guard";
 import { operatorCan } from "@op/lib/operator/roles";
+import { efakturConnectionsForOperator, type EfakturConnectionRow } from "@op/lib/operator/efaktur-connections";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { EmptyState } from "@sai/ui/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +48,58 @@ export default async function OperatorEfakturPage({
   } catch (error) {
     console.error("[operator-efaktur] pratinjau gagal:", error);
   }
+
+  /* Sambungan PJAP per PT (docs/EFAKTUR.md) — e-Faktur PELANGGAN, berbeda
+     dari ekspor tagihan platform di atasnya. Hanya keadaan, tanpa rahasia. */
+  const koneksi = await efakturConnectionsForOperator();
+  const kolomKoneksi: SaiColumns<EfakturConnectionRow> = [
+    { key: "label", dataIndex: "label", title: t("operator.efaktur.colCompany") },
+    {
+      key: "provider",
+      dataIndex: "ringkasan",
+      title: t("operator.efaktur.colProvider"),
+      render: (_raw, r) =>
+        r.ringkasan === null ? (
+          <Badge variant="warning">{t("operator.efaktur.unreadable")}</Badge>
+        ) : r.ringkasan.penyedia ? (
+          <Badge variant="outline">{r.ringkasan.penyedia}</Badge>
+        ) : (
+          <span style={CONSOLE_MUTED}>{t("operator.efaktur.providerNone")}</span>
+        ),
+    },
+    {
+      key: "mode",
+      dataIndex: "ringkasan",
+      title: t("operator.efaktur.colMode"),
+      render: (_raw, r) =>
+        r.ringkasan?.penyedia ? (r.ringkasan.produksi ? t("operator.efaktur.production") : t("operator.efaktur.sandbox")) : "—",
+    },
+    {
+      key: "credential",
+      dataIndex: "ringkasan",
+      title: t("operator.efaktur.colCredential"),
+      render: (_raw, r) =>
+        r.ringkasan?.penyedia
+          ? r.ringkasan.adaKredensial
+            ? t("operator.efaktur.credentialStored")
+            : t("operator.efaktur.credentialMissing")
+          : "—",
+    },
+    {
+      key: "submissions",
+      dataIndex: "ringkasan",
+      title: t("operator.efaktur.colSubmissions"),
+      render: (_raw, r) => {
+        const st = r.ringkasan?.status ?? {};
+        const isi = Object.entries(st);
+        return isi.length === 0 ? (
+          "—"
+        ) : (
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{isi.map(([k, n]) => `${k} ${n}`).join(" · ")}</span>
+        );
+      },
+    },
+  ];
 
   const qs = new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) }).toString();
   const sellerMissing = !process.env.PLATFORM_SELLER_NPWP?.trim();
@@ -98,6 +155,19 @@ export default async function OperatorEfakturPage({
             )}
           </ConsolePanel>
         )}
+
+        <ConsolePanel title={t("operator.efaktur.pjapTitle")} footnote={t("operator.efaktur.pjapDescription")}>
+          {koneksi === null ? (
+            <p style={{ ...CONSOLE_MUTED, margin: 0 }}>{t("operator.efaktur.pjapUnavailable")}</p>
+          ) : (
+            <StaticTable
+              columns={kolomKoneksi}
+              rows={koneksi}
+              rowKey={(r) => r.label}
+              empty={<EmptyState title={t("operator.efaktur.pjapEmpty")} />}
+            />
+          )}
+        </ConsolePanel>
       </div>
     </div>
   );

@@ -137,6 +137,12 @@ export const PERMISSION_ROLES = {
   "report.export": FULL,
   "budget.manage": FULL,
   "tax.read": FULL,
+  // e-Faktur lewat PJAP (docs/EFAKTUR.md). Mengirim = menerbitkan faktur pajak
+  // atas nama PT di DJP, dan membatalkannya — tindakan hukum, jadi akses penuh
+  // sebagai BAWAAN; pemilik bisa memberikannya ke Manajer Keuangan lewat
+  // /permissions. Mengatur sambungan = memegang kredensial PJAP milik PT.
+  "tax.submit": FULL,
+  "tax.manage": FULL,
 
   // ── Permukaan akuntansi (berlapis Mode Akuntan di halaman) ──────────
   // account.read lebih longgar dan itu disengaja: form kas milik Manajer Keuangan butuh

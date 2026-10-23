@@ -106,7 +106,10 @@ export async function bolehAmbilHasil(
     case "schedule.tick":
     case "ledger.recurring":
     case "ledger.dunning":
-    case "integration.efaktur":
+    case "integration.efaktur_submit":
+    case "integration.efaktur_poll":
+    case "integration.efaktur_cancel":
+    case "efaktur.record":
     case "integration.bank_feed":
       return false;
   }

@@ -658,6 +658,76 @@ UPDATE jobs SET status = 'dead', finished_at = now(), updated_at = now(),
  WHERE kind = 'schedule.tick' AND status = 'queued';
 ```
 
+### Pelaksana kesesuaian data — switching the conformance sweep between Node and Go (Oct 2026)
+
+The weekly data-conformance sweep (11 read-only checks per book, trail row in
+`conformance_runs`) has two implementations: `scripts/check-data-conformance.ts`
+(role `conformance` in `svc-worker`) and `internal/conformance` (lane `tenant`
+in `svc-integrator`). One contract value picks the runner:
+
+```yaml
+# contract/kinds.yaml
+  tenant.conformance:
+    runner: node   # node | go
+```
+
+| `runner` | Who sweeps | What the other side does |
+|---|---|---|
+| `node` (default, today) | the `conformance` role in `svc-worker`, as since #374 | Go claims any stray `tenant.conformance` job and completes it **without sweeping** — log: `[tenant] pelaksana … adalah node … TANPA menyapu` |
+| `go` | the `tenant` lane in `svc-integrator` | the same weekly Node step publishes one `tenant.conformance` job (dedupe `tenant.conformance:<YYYY-MM-DDTHH>` UTC, `--ambang-penampung` passed through as text) and exits 0 — log: `pelaksana \`tenant.conformance\` adalah GO … dilewati` |
+
+The trigger (weekly loop + one sweep at container start) does not move; only
+the executor does. Health and console read the same table either way; each
+row's `details.runner` / `details.service` names who wrote it, and the console
+`/conformance` shows it. `CONFORMANCE_CONCURRENCY` is passed to both services.
+
+**Precondition — parity on production books (read-only, no trail written):**
+
+```bash
+# Build the Go tool once on the runner/dev box, copy it into the migrator container:
+cd services/integrator && CGO_ENABLED=0 go build -o /tmp/parity ./cmd/parity && cd -
+docker cp /tmp/parity sai-svc-worker:/tmp/parity
+docker compose exec svc-worker bun run parity:conformance -- \
+  --include-inactive --ambang-penampung 5,0.5 --go-bin /tmp/parity
+# expect: "<n> buku × 2 ambang: <2n> setara · 0 berselisih · 0 gagal"
+```
+
+Exit code non-zero on a single difference or unreadable book. A book on an
+extra instance whose `COMPANY_<KEY>_DATABASE_URL_TEMPLATE` is not set in that
+container fails on both sides by design — set it or exclude it with
+`--company`.
+
+**Switch to Go:**
+
+1. In a PR: `runner: go` on `tenant.conformance`, `bun run contract:gen`,
+   commit the generated files. Release as usual (swap **both** `svc-worker`
+   and `svc-integrator`).
+2. The next Node loop (container start counts) publishes the job:
+   ```bash
+   docker compose logs --since 10m svc-worker | grep ' conformance *|'      # … adalah GO … Pekerjaan #… diterbitkan
+   docker compose logs --since 30m svc-integrator | grep '\[kesesuaian\]'  # per-book report, "… di N perusahaan."
+   ```
+3. Console `/conformance`: newest run says *Disapu oleh Go (svc-integrator)*;
+   `/api/health` → `conformance` keeps its verdict (`ok`/`findings`/`late`).
+   If `svc-integrator` is down, the queued job shows up in `/scheduler` lane
+   `tenant` queue age, and `conformance` turns `late` after 9 days.
+
+**Switch back to Node (rollback)** — no data repair:
+
+- *Fast:* `SAI_TAG=sha-<previous> docker compose up -d --no-deps svc-worker svc-integrator`.
+- *Durable:* revert the contract line, `bun run contract:gen`, release.
+
+A job queued just before the switch back is completed by Go **without
+sweeping** (the new image says `node`), so there is never a second run. An
+image older than this change has no claimer for `tenant.conformance`; close a
+leftover row by hand:
+
+```sql
+UPDATE jobs SET status = 'dead', finished_at = now(), updated_at = now(),
+       last_error = 'pelaksana dikembalikan ke Node'
+ WHERE kind = 'tenant.conformance' AND status = 'queued';
+```
+
 ### Env allowlist, non-root containers, least-privilege roles (Oct 2026)
 
 Three hardening changes ship together; the first two take effect with the

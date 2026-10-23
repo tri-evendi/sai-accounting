@@ -1,0 +1,54 @@
+{
+  "year": 2025,
+  "month": 0,
+  "from": "2024-12-31T17:00:00Z",
+  "to": "2025-12-31T16:59:59.999Z",
+  "rows": [
+    {
+      "code": "4101",
+      "name": "Penjualan",
+      "category": "revenue",
+      "budget": "90000000.00",
+      "actual": "100000000.50",
+      "variance": "10000000.50",
+      "variancePct": 11.11,
+      "status": "over"
+    },
+    {
+      "code": "5101",
+      "name": "Harga Pokok Penjualan",
+      "category": "expense",
+      "budget": "60000000.00",
+      "actual": "60000000.00",
+      "variance": "0.00",
+      "variancePct": 0,
+      "status": "on_target"
+    },
+    {
+      "code": "6101",
+      "name": "Beban Gaji",
+      "category": "expense",
+      "budget": "25000000.00",
+      "actual": "20000000.00",
+      "variance": "-5000000.00",
+      "variancePct": -20,
+      "status": "under"
+    }
+  ],
+  "totals": {
+    "budget": "175000000.00",
+    "actual": "180000000.50",
+    "variance": "5000000.50",
+    "variancePct": 2.86,
+    "alertCount": 2
+  },
+  "hasBudgets": true,
+  "salesTarget": {
+    "totalTarget": "0.00",
+    "actualSales": "100000000.50",
+    "variance": "100000000.50",
+    "targetCount": 0,
+    "hasTargets": false
+  },
+  "unknownTypes": []
+}

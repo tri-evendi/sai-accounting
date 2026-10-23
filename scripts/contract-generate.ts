@@ -99,6 +99,9 @@ import {
   TRIAL_BALANCE_WIDTHS,
   sheetPrintedLine,
   AGING_WIDTHS,
+  BUDGET_WIDTHS,
+  CASH_BANK_WIDTHS,
+  PARTY_RECAP_WIDTHS,
 } from "../src/lib/report-export";
 import { REPORT_ENGINES } from "../src/lib/report-engine";
 import { REPORTS } from "../src/lib/report-catalog";
@@ -122,6 +125,22 @@ import {
   costCenterDisplayName,
 } from "../src/lib/cost-centers";
 import { COMPARISON_MODES } from "../src/lib/statement-compare";
+import { accountTypeLabel } from "../src/lib/accounting";
+import {
+  BUDGET_COLUMNS,
+  BUDGET_HEADERS,
+  BUDGET_MONTH_NAMES_ID,
+  CASH_BANK_COLUMNS,
+  CASH_BANK_HEADERS,
+  PARTY_RECAP_COLUMNS,
+  PARTY_RECAP_HEADERS,
+  RECAP_TOTAL_LABEL,
+  VARIANCE_STATUS_TEXT,
+  budgetAlertNote,
+  budgetPeriodLabel,
+  unratedNote,
+} from "../src/lib/statement-layout";
+import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "../src/lib/budget";
 /* Laporan stok (tahap 1d, `go-parity`) — `stock_layout_gen.go`. */
 import { OPNAME_ADJUSTMENT_NOTE, STOCK_MOVEMENT_TYPES } from "@sai/core/constants";
 import {
@@ -221,12 +240,16 @@ interface Schedule {
   per_company: boolean;
   publisher: (typeof SCHEDULE_PUBLISHERS)[number];
 }
+/** Pelaksana kind yang sedang BERALIH bahasa — tepat satu, tidak pernah dua. */
+const KIND_RUNNERS = ["node", "go"] as const;
 interface Kind {
   lane: string;
   max_attempts: number;
   description: string;
   writes_ledger?: boolean;
   schedule?: Schedule;
+  /** Sakelar peralihan pelaksana (lihat `tenant.conformance` di YAML). */
+  runner?: (typeof KIND_RUNNERS)[number];
 }
 /** Setiap angka yang dibaca DUA bahasa. Semuanya bilangan bulat ≥ 1. */
 interface Numbers {
@@ -248,6 +271,17 @@ interface Results {
   owner_uid: number;
   owner_gid: number;
 }
+/**
+ * Kosakata e-Faktur yang dibaca DUA bahasa (docs/EFAKTUR.md): Node menulis
+ * `efaktur_submissions.status`, Go membacanya untuk memutuskan apakah masih
+ * perlu menanyai PJAP, dan Go MELAPORKAN `outcomes` lewat `efaktur.record`.
+ */
+interface Efaktur {
+  submission_statuses: string[];
+  outcomes: string[];
+  providers: string[];
+  poll_max_rounds: number;
+}
 interface Kontrak {
   version: number;
   statuses: string[];
@@ -255,6 +289,7 @@ interface Kontrak {
   kinds: Record<string, Kind>;
   numbers: Numbers;
   results: Results;
+  efaktur: Efaktur;
 }
 
 const KUNCI_ANGKA: (keyof Numbers)[] = [
@@ -315,6 +350,28 @@ function baca(): Kontrak {
             `(kini: ${String(j?.publisher)}) — tepat SATU penerbit, tidak pernah dua`
         );
       }
+    }
+  }
+
+  /* Sakelar pelaksana: nilai asing ditolak DI SINI, alasan yang sama dengan
+     `publisher` — sisi yang tidak mengenali nilainya akan mengira dirinya
+     bukan pelaksana, dan sapuannya berhenti tanpa satu galat. Tidak boleh
+     bersama `schedule:` (dua sakelar untuk satu kind = dua jawaban atas
+     "siapa yang memicunya"), dan tidak pernah di jalur `ledger`: pelaksana
+     penulis buku adalah Node, selamanya (I-2). */
+  for (const [nama, kind] of Object.entries(k.kinds ?? {})) {
+    if (kind.runner === undefined) continue;
+    if (!(KIND_RUNNERS as readonly string[]).includes(kind.runner)) {
+      salah.push(
+        `kind \`${nama}\`: runner harus salah satu dari ${KIND_RUNNERS.join("/")} ` +
+          `(kini: ${String(kind.runner)}) — tepat SATU pelaksana, tidak pernah dua`
+      );
+    }
+    if (kind.schedule !== undefined) {
+      salah.push(`kind \`${nama}\`: \`runner\` dan \`schedule:\` bersamaan — satu kind, satu sakelar`);
+    }
+    if (kind.lane === "ledger" || kind.writes_ledger) {
+      salah.push(`kind \`${nama}\`: \`runner\` pada penulis buku — pelaksananya Node, selamanya (I-2)`);
     }
   }
 
@@ -385,6 +442,32 @@ function baca(): Kontrak {
     }
   }
 
+  /* e-Faktur: `outcomes` WAJIB himpunan bagian `submission_statuses` — hasil
+     yang dilaporkan Go tapi tak dikenal kolom status adalah baris yang ditolak
+     CHECK di buku PT, dan pekerjaan `efaktur.record` yang mati karenanya. */
+  const e = k.efaktur;
+  const ejaan = /^[a-z][a-z_]*$/;
+  if (!e || !Array.isArray(e.submission_statuses) || e.submission_statuses.length === 0) {
+    salah.push("`efaktur.submission_statuses` kosong");
+  } else {
+    for (const v of e.submission_statuses) {
+      if (!ejaan.test(v)) salah.push(`efaktur.submission_statuses: \`${v}\` bukan snake_case`);
+    }
+    if (!Array.isArray(e.outcomes) || e.outcomes.length === 0) salah.push("`efaktur.outcomes` kosong");
+    for (const v of e.outcomes ?? []) {
+      if (!e.submission_statuses.includes(v)) {
+        salah.push(`efaktur.outcomes: \`${v}\` tidak ada di submission_statuses`);
+      }
+    }
+    if (!Array.isArray(e.providers) || e.providers.length === 0) salah.push("`efaktur.providers` kosong");
+    for (const v of e.providers ?? []) {
+      if (!ejaan.test(v)) salah.push(`efaktur.providers: \`${v}\` bukan snake_case`);
+    }
+    if (!Number.isInteger(e.poll_max_rounds) || e.poll_max_rounds < 1) {
+      salah.push(`efaktur.poll_max_rounds harus bilangan bulat ≥ 1 (kini: ${String(e.poll_max_rounds)})`);
+    }
+  }
+
   if (salah.length > 0) {
     console.error("✗ contract/kinds.yaml tidak sah:");
     for (const s of salah) console.error(`  • ${s}`);
@@ -440,6 +523,9 @@ function bangkitkan(k: Kontrak): string {
       return `  ${lane}: [${milik.map((m) => `"${m}"`).join(", ")}],`;
     })
     .join("\n");
+
+  const beralih = kinds.filter((kk) => k.kinds[kk]!.runner !== undefined);
+  const barisPelaksana = beralih.map((nama) => `  "${nama}": "${k.kinds[nama]!.runner}",`).join("\n");
 
   return `/**
  * ${JANGAN_SUNTING(k.version, "bun run contract:gen")}
@@ -502,6 +588,19 @@ export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
 ${barisJadwal}
 };
 
+/** Pelaksana kind yang sedang beralih bahasa — tepat SATU. */
+export type KindRunner = ${KIND_RUNNERS.map((g) => `"${g}"`).join(" | ")};
+
+${beralih.length > 0 ? union("RunnerSwitchedKind", beralih) : "export type RunnerSwitchedKind = never;"}
+
+/**
+ * Kind ber-\`runner:\` beserta pelaksananya HARI INI. Sisi yang bukan
+ * pelaksana melewati pekerjaannya (keluar 0 / selesai tanpa bekerja).
+ */
+export const KIND_RUNNERS: Readonly<Record<RunnerSwitchedKind, KindRunner>> = {
+${barisPelaksana}
+};
+
 export const isJobKind = (v: string): v is JobKind =>
   Object.prototype.hasOwnProperty.call(JOB_KINDS, v);
 
@@ -560,6 +659,30 @@ export const LANE_LOCK_IDLE_SESSION_MS = ${n.lane_lock_idle_session_ms};
  */
 export const RESULT_OWNER_UID = ${k.results.owner_uid};
 export const RESULT_OWNER_GID = ${k.results.owner_gid};
+
+// ── e-Faktur (docs/EFAKTUR.md) ─────────────────────────────────────────────
+
+${union("EfakturSubmissionStatus", k.efaktur.submission_statuses)}
+
+/** Nilai \`efaktur_submissions.status\` — sama dengan CHECK di migration 0004. */
+export const EFAKTUR_SUBMISSION_STATUSES = [
+${k.efaktur.submission_statuses.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly EfakturSubmissionStatus[];
+
+/** Hasil yang boleh DILAPORKAN jalur \`integration\` Go lewat \`efaktur.record\`. */
+export const EFAKTUR_OUTCOMES = [
+${k.efaktur.outcomes.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly EfakturSubmissionStatus[];
+
+${union("EfakturProvider", k.efaktur.providers)}
+
+/** Nilai \`company_settings.efaktur_provider\` — dibaca Go untuk memilih penyedia. */
+export const EFAKTUR_PROVIDERS = [
+${k.efaktur.providers.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly EfakturProvider[];
+
+/** Batas putaran \`integration.efaktur_poll\` sebelum orang diminta memeriksa Coretax. */
+export const EFAKTUR_POLL_MAX_ROUNDS = ${k.efaktur.poll_max_rounds};
 `;
 }
 
@@ -645,6 +768,16 @@ function bangkitkanGo(k: Kontrak): string {
           `Publisher: Publisher${pengenalGo(j.publisher)}},`,
       };
     })
+  );
+  const beralihGo = kinds.filter((kk) => k.kinds[kk]!.runner !== undefined);
+  const petaPelaksana = ratakan(
+    beralihGo.map((nama) => ({
+      kiri: `Kind${pengenalGo(nama)}:`,
+      kanan: `Runner${pengenalGo(k.kinds[nama]!.runner!)},`,
+    }))
+  );
+  const konstPelaksana = ratakan(
+    KIND_RUNNERS.map((g) => ({ kiri: `Runner${pengenalGo(g)}`, kanan: `KindRunner = "${g}"` }))
   );
   const konstGrain = ratakan(
     SCHEDULE_GRAINS.map((g) => ({ kiri: `Grain${pengenalGo(g)}`, kanan: `ScheduleGrain = "${g}"` }))
@@ -765,6 +898,21 @@ var ScheduledKinds = map[JobKind]ScheduleSpec{
 ${petaJadwal}
 }
 
+// KindRunner: bahasa yang MELAKSANAKAN kind yang sedang beralih — tepat satu.
+type KindRunner string
+
+const (
+${konstPelaksana}
+)
+
+// KindRunners: kind ber-\`runner:\` beserta pelaksananya hari ini. Pelari Go
+// yang menerima pekerjaan kind ini sementara pelaksananya BUKAN Go
+// menyelesaikannya tanpa bekerja — dua pelaksana untuk satu putaran adalah
+// persis yang sakelar ini cegah. Padanan TS \`KIND_RUNNERS\`.
+var KindRunners = map[JobKind]KindRunner{
+${petaPelaksana}
+}
+
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.
 func IsJobKind(v string) bool {
 \t_, ada := JobKinds[JobKind(v)]
@@ -822,6 +970,31 @@ const (
 \tResultOwnerUID = ${k.results.owner_uid}
 \tResultOwnerGID = ${k.results.owner_gid}
 )
+
+// EfakturStatus adalah nilai \`efaktur_submissions.status\` di buku PT —
+// ditulis Node, DIBACA Go (docs/EFAKTUR.md).
+type EfakturStatus string
+
+const (
+${ratakan(k.efaktur.submission_statuses.map((s) => ({ kiri: `EfakturStatus${pengenalGo(s)}`, kanan: `EfakturStatus = "${s}"` })))}
+)
+
+// EfakturOutcomes: hasil yang boleh dilaporkan jalur \`integration\` lewat
+// \`efaktur.record\` — himpunan bagian EfakturStatus, dijamin generator.
+var EfakturOutcomes = map[EfakturStatus]bool{
+${ratakan(k.efaktur.outcomes.map((s) => ({ kiri: `EfakturStatus${pengenalGo(s)}:`, kanan: "true," })))}
+}
+
+// EfakturProvider adalah nilai \`company_settings.efaktur_provider\` — dipilih
+// pengguna (Node), dipetakan ke implementasi oleh \`internal/efaktur\` (Go).
+type EfakturProvider string
+
+const (
+${ratakan(k.efaktur.providers.map((s) => ({ kiri: `EfakturProvider${pengenalGo(s)}`, kanan: `EfakturProvider = "${s}"` })))}
+)
+
+// EfakturPollMaxRounds: batas putaran \`integration.efaktur_poll\`.
+const EfakturPollMaxRounds = ${k.efaktur.poll_max_rounds}
 `;
 }
 
@@ -856,6 +1029,11 @@ interface KontrakAkuntansi {
   invoice_statuses: string[];
   contract_statuses: string[];
   aging: { buckets: { key: string; max_days?: number }[] };
+  materiality: {
+    catch_all_threshold: number;
+    catch_all_expense_type: string;
+    catch_all_name_pattern: string;
+  };
 }
 
 /** Kode mata uang ISO 4217: tiga huruf besar. */
@@ -866,6 +1044,80 @@ const SISI = ["debit", "credit"] as const;
 
 /** Nilai enum-like mengikuti docs/DATABASE.md: `snake_case` huruf kecil. */
 const SNAKE = /^[a-z][a-z0-9_]*$/;
+
+/**
+ * Pola nama penampung (#444) — subset yang artinya SAMA di RegExp JS (tanpa
+ * `u`, dengan `i`) dan RE2 Go setelah `polaPenampungGo`.
+ *
+ *   • huruf besar ASCII DITOLAK: Go menurunkan huruf ASCII NAMANYA lalu
+ *     mencocokkan tanpa `(?i)`. `(?i)` RE2 melipat Unicode (`k` ≈ U+212A
+ *     Kelvin, `s` ≈ U+017F) sementara `i` JS tanpa `u` hanya melipat ASCII;
+ *     pola huruf kecil + nama yang diturunkan ASCII-nya = lipatan JS persis.
+ *   • escape hanya `\s` `\b` `\d` `\w` (makna ASCII di kedua mesin, kecuali
+ *     `\s` yang DITERJEMAHKAN) dan tanda baca yang diloloskan.
+ *   • `.` tanpa escape DITOLAK: JS mengecualikan empat pemisah baris, RE2 satu.
+ *   • `(?`, lookaround, backreference, `\u`, `\p` DITOLAK.
+ *
+ * Pulang `null` bila sah, atau kalimat sebabnya.
+ */
+function periksaPolaPenampung(pola: unknown): string | null {
+  if (typeof pola !== "string" || pola.length === 0) return "wajib string tak kosong";
+  if (/[A-Z]/.test(pola.replace(/\\./g, ""))) {
+    return "memuat huruf besar ASCII — tulis huruf kecil (pencocokannya tanpa membedakan huruf ASCII)";
+  }
+  for (let i = 0; i < pola.length; i++) {
+    const c = pola[i]!;
+    if (c === "\\") {
+      const e = pola[i + 1] ?? "";
+      if (!/^[sbdw.()[\]{}|?*+\\\-/^$]$/.test(e)) return `escape \`\\${e}\` di luar subset lintas bahasa`;
+      i++;
+      continue;
+    }
+    if (c === ".") return "`.` tanpa escape — maknanya berbeda di JS dan RE2 (pemisah baris)";
+    if (c === "(" && pola[i + 1] === "?") return "`(?` (grup khusus/lookaround) di luar subset lintas bahasa";
+  }
+  try {
+    new RegExp(pola, "i");
+  } catch (e) {
+    return `bukan regex sah: ${String(e)}`;
+  }
+  return null;
+}
+
+/** Kelas `\s` RegExp JS, DIBACA dari mesin JS-nya sendiri — bukan diketik. */
+function kelasSpasiJsGo(): string {
+  const titik: number[] = [];
+  for (let c = 0; c <= 0xffff; c++) if (/\s/.test(String.fromCharCode(c))) titik.push(c);
+  const rentang: string[] = [];
+  const hex = (n: number) => `\\x{${n.toString(16).toUpperCase().padStart(4, "0")}}`;
+  for (let i = 0; i < titik.length; ) {
+    let j = i;
+    while (j + 1 < titik.length && titik[j + 1] === titik[j]! + 1) j++;
+    rentang.push(i === j ? hex(titik[i]!) : `${hex(titik[i]!)}-${hex(titik[j]!)}`);
+    i = j + 1;
+  }
+  return rentang.join("");
+}
+
+/** Pola kontrak → pola RE2 Go: `\s` menjadi kelas spasi JS yang persis. */
+function polaPenampungGo(pola: string): string {
+  const spasi = kelasSpasiJsGo();
+  let hasil = "";
+  let diKelas = false;
+  for (let i = 0; i < pola.length; i++) {
+    const c = pola[i]!;
+    if (c === "\\") {
+      const e = pola[i + 1]!;
+      hasil += e === "s" ? (diKelas ? spasi : `[${spasi}]`) : `\\${e}`;
+      i++;
+      continue;
+    }
+    if (c === "[") diKelas = true;
+    else if (c === "]") diKelas = false;
+    hasil += c;
+  }
+  return hasil;
+}
 
 function bacaAkuntansi(): KontrakAkuntansi {
   const k = load(readFileSync(SUMBER_AKUNTANSI, "utf8")) as KontrakAkuntansi;
@@ -1051,6 +1303,32 @@ function bacaAkuntansi(): KontrakAkuntansi {
     });
   }
 
+  /* ── Pagar materialitas (#444/#445). Ambang 0..1 EKSKLUSIF; tipe band wajib
+     tipe kontrak berkategori `expense`; pola nama wajib di subset yang SAMA
+     artinya di RegExp JS (tanpa `u`, bendera `i`) dan RE2 Go — lihat
+     `polaPenampungGo`. */
+  const mat = k.materiality;
+  if (!mat || typeof mat !== "object") {
+    salah.push("`materiality` kosong");
+  } else {
+    const t = mat.catch_all_threshold;
+    if (typeof t !== "number" || !Number.isFinite(t) || t <= 0 || t >= 1) {
+      salah.push(`materiality.catch_all_threshold harus angka 0..1 eksklusif (kini: ${String(t)})`);
+    }
+    const band = mat.catch_all_expense_type;
+    if (!(tipe ?? []).includes(band)) {
+      salah.push(`materiality.catch_all_expense_type ${JSON.stringify(band)} bukan tipe akun kontrak`);
+    } else if (k.account_type_categories?.[band] !== "expense") {
+      salah.push(
+        `materiality.catch_all_expense_type \`${band}\` berkategori ` +
+          `\`${String(k.account_type_categories?.[band])}\`, bukan \`expense\` — ` +
+          "band penampung BEBAN yang bukan beban tidak pernah ikut total bebannya"
+      );
+    }
+    const galatPola = periksaPolaPenampung(mat.catch_all_name_pattern);
+    if (galatPola) salah.push(`materiality.catch_all_name_pattern: ${galatPola}`);
+  }
+
   if (salah.length > 0) {
     console.error("✗ contract/accounting.yaml tidak sah:");
     for (const s of salah) console.error(`  • ${s}`);
@@ -1201,6 +1479,20 @@ ${k.aging.buckets.map((b) => `  "${b.key}",`).join("\n")}
 export const AGING_BUCKET_MAX_DAYS: Readonly<Record<AgingBucket, number | null>> = {
 ${k.aging.buckets.map((b) => `  ${b.key}: ${b.max_days ?? "null"},`).join("\n")}
 };
+
+// ── Pagar materialitas akun penampung (#444/#445) — dibaca \`materiality.ts\` dan Go
+
+/** Pangsa minimum terhadap total beban yang disebut material (0..1, eksklusif). */
+export const MATERIALITY_CATCH_ALL_THRESHOLD = ${k.materiality.catch_all_threshold};
+
+/** Tipe band "Beban Lain-lain" — temuan \`band\`. */
+export const MATERIALITY_CATCH_ALL_EXPENSE_TYPE = "${k.materiality.catch_all_expense_type}" satisfies AccountType;
+
+/**
+ * Nama yang menyatakan dirinya penampung — SUMBER pola, dipakai dengan bendera
+ * \`i\` (tanpa \`u\`). Go menerima terjemahannya (\`\\s\` → kelas spasi JS).
+ */
+export const MATERIALITY_CATCH_ALL_NAME_PATTERN = ${JSON.stringify(k.materiality.catch_all_name_pattern)};
 `;
 }
 
@@ -1423,6 +1715,30 @@ type AgingBucketSpec struct {
 var AgingBuckets = []AgingBucketSpec{
 ${k.aging.buckets.map((b) => b.max_days === undefined ? `\t{Key: AgingBucket${pengenalGo(b.key)}},` : `\t{Key: AgingBucket${pengenalGo(b.key)}, MaxDays: ${b.max_days}, Bounded: true},`).join("\n")}
 }
+
+// ── Pagar materialitas akun penampung (#444/#445) ─────────────────────────
+// Dibaca \`internal/conformance\` (sapuan kesesuaian jalur \`tenant\`) dan, di
+// sisi TS, \`src/lib/materiality.ts\`.
+
+// MaterialityCatchAllThreshold: pangsa minimum terhadap total beban yang
+// disebut material (0..1, eksklusif) — BAWAAN; satu putaran boleh menimpanya.
+const MaterialityCatchAllThreshold = ${k.materiality.catch_all_threshold}
+
+// MaterialityCatchAllExpenseType: tipe band "Beban Lain-lain" (temuan \`band\`).
+const MaterialityCatchAllExpenseType = AccountType${pengenalGo(k.materiality.catch_all_expense_type)}
+
+// MaterialityCatchAllTypeLabel: label band itu — DARI \`accountTypeLabel\` di
+// \`src/lib/accounting.ts\`, bukan dari YAML: label tipe akun punya satu sumber,
+// dan kalimat temuan Go wajib sama dengan kalimat Node.
+const MaterialityCatchAllTypeLabel = ${JSON.stringify(accountTypeLabel(k.materiality.catch_all_expense_type))}
+
+// MaterialityCatchAllNamePattern: pola nama penampung, SUDAH diterjemahkan ke
+// RE2 (\`\\s\` → kelas spasi RegExp JS yang persis, dibaca dari mesin JS saat
+// bangkitan). Dicocokkan TANPA \`(?i)\` terhadap nama yang huruf ASCII-nya
+// diturunkan — lipatan huruf bendera \`i\` JS tanpa \`u\`. Sumbernya:
+//
+//	${k.materiality.catch_all_name_pattern}
+const MaterialityCatchAllNamePattern = \`${polaPenampungGo(k.materiality.catch_all_name_pattern)}\`
 `;
 }
 
@@ -2206,6 +2522,176 @@ ${kolomOpname}
 `;
 }
 
+/* Rekap per Pihak, Kas & Bank, Realisasi vs Anggaran (tahap 1d, `go-parity`,
+   23 Okt 2026): berkas TERSENDIRI dengan alasan yang sama dengan
+   `aging_layout_gen.go` — laporan yang dipindah paralel tidak menyunting satu
+   fungsi pembangkit yang sama. */
+const TUJUAN_TATA_LETAK_REKAP_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "recap_layout_gen.go"
+);
+
+function bangkitkanTataLetakRekapGo(): string {
+  const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
+\`src/lib/report-catalog.ts\`, dan \`src/lib/budget.ts\` — JANGAN DISUNTING TANGAN.
+
+Jalankan \`bun run contract:gen\` setelah mengubah salah satunya, dan commit
+hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+berkas ini basi (penjaga \`tests/contract-jobs.test.ts\`).
+
+Pembacanya \`internal/ledgerread\` (kosakata & ambang variansi anggaran) dan
+\`internal/document\` (lembar sebar Penjualan per Pelanggan, Pembelian per
+Pemasok, Laporan Kas & Bank, Realisasi vs Anggaran). Isi lembarnya wajib sama
+dengan \`buildPartyRecapSheet\` / \`buildCashBankSheet\` / \`buildBudgetSheet\` —
+dibuktikan \`bun run parity:<laporan>-xlsx\`.`
+    .split("\n")
+    .map((b) => `// ${b}`.trimEnd())
+    .join("\n");
+  const q = (v: string) => JSON.stringify(v);
+
+  /* Kolom katalog WAJIB = daftar kolom penentu tata letak, berurutan: Go
+     menyaring kolom tampil (`resolveColumns` → `selectColumns`) dari satu
+     daftar ini, dan urutan katalog = urutan lembar. */
+  const kolomKatalog = (
+    id: string,
+    tataLetak: readonly string[],
+    judul: Record<string, string>,
+    lebar: Record<string, number>
+  ) => {
+    const def = REPORTS.find((r) => r.id === id);
+    const spesifikasi = def?.columns ?? [];
+    const ids = spesifikasi.map((c) => c.id);
+    if (ids.join(",") !== tataLetak.join(",")) {
+      throw new Error(`kolom katalog ${id} (${ids.join(",")}) ≠ tata letak (${tataLetak.join(",")})`);
+    }
+    return spesifikasi
+      .map(
+        (c) =>
+          `\t{ID: ${q(c.id)}, Header: ${q(judul[c.id]!)}, Width: ${lebar[c.id]}, ` +
+          `Fixed: ${c.fixed === true}, DefaultOn: ${c.defaultOn !== false}},`
+      )
+      .join("\n");
+  };
+  /* Realisasi vs Anggaran tanpa pilihan kolom (katalognya tanpa `columns`):
+     semua kolom, selalu. Bila katalog kelak menyalakannya, generator ini
+     MENOLAK — lembar Go belum menyaring kolomnya. */
+  const anggaran = REPORTS.find((r) => r.id === "budget-realization");
+  if ((anggaran?.columns ?? []).length > 0) {
+    throw new Error("budget-realization kini berpilihan kolom — lembar Go (document/budget.go) belum menyaringnya");
+  }
+  const kolomAnggaran = BUDGET_COLUMNS.map(
+    (c) => `\t{Header: ${q(BUDGET_HEADERS[c])}, Width: ${BUDGET_WIDTHS[c]}},`
+  ).join("\n");
+
+  const PENANDA_BULAN = BUDGET_MONTH_NAMES_ID[0];
+  const bulanan = budgetPeriodLabel(987654321, 1);
+  if (!bulanan.includes(PENANDA_BULAN) || !bulanan.includes("987654321")) {
+    throw new Error(`pola Go: label bulan ${bulanan}`);
+  }
+  const polaBulan = bulanan.replace(/%/g, "%%").replace(PENANDA_BULAN, "%s").replace("987654321", "%d");
+  if (polaBulan.indexOf("%s") > polaBulan.indexOf("%d")) {
+    throw new Error(`pola Go: nama bulan harus mendahului tahun (${bulanan})`);
+  }
+
+  const konst = ratakan([
+    { kiri: "SalesByCustomerSheetName", kanan: `= ${q(SHEET_NAMES["sales-by-customer"])}` },
+    { kiri: "SalesByCustomerTitle", kanan: `= ${q(STATEMENT_TITLES["sales-by-customer"])}` },
+    { kiri: "SalesByCustomerNoParty", kanan: `= ${q(PARTY_RECAP_NO_PARTY["sales-by-customer"])}` },
+    { kiri: "PurchasesBySupplierSheetName", kanan: `= ${q(SHEET_NAMES["purchases-by-supplier"])}` },
+    { kiri: "PurchasesBySupplierTitle", kanan: `= ${q(STATEMENT_TITLES["purchases-by-supplier"])}` },
+    { kiri: "PurchasesBySupplierNoParty", kanan: `= ${q(PARTY_RECAP_NO_PARTY["purchases-by-supplier"])}` },
+    { kiri: "PartyRecapEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.documents)}` },
+    { kiri: "PartyRecapUnratedNoteFormat", kanan: `= ${q(polaGoBulat(unratedNote))}` },
+    { kiri: "RecapTotalLabel", kanan: `= ${q(RECAP_TOTAL_LABEL)}` },
+    { kiri: "CashBankSheetName", kanan: `= ${q(SHEET_NAMES["cash-bank"])}` },
+    { kiri: "CashBankTitle", kanan: `= ${q(STATEMENT_TITLES["cash-bank"])}` },
+    { kiri: "CashBankEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.cashBank)}` },
+    { kiri: "BudgetSheetName", kanan: `= ${q(SHEET_NAMES["budget-realization"])}` },
+    { kiri: "BudgetTitle", kanan: `= ${q(STATEMENT_TITLES["budget-realization"])}` },
+    { kiri: "BudgetEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.budget)}` },
+    { kiri: "BudgetSalesTargetLabel", kanan: `= ${q(EXPORT_TOTALS.salesTarget)}` },
+    { kiri: "BudgetPeriodSalesLabel", kanan: `= ${q(EXPORT_TOTALS.periodSales)}` },
+    { kiri: "BudgetAlertNoteFormat", kanan: `= ${q(polaGoBulat(budgetAlertNote))}` },
+    { kiri: "BudgetWholeYearFormat", kanan: `= ${q(polaGoBulat((n) => budgetPeriodLabel(n, undefined)))}` },
+    { kiri: "BudgetMonthFormat", kanan: `= ${q(polaBulan)}` },
+    /* `DEFAULT_VARIANCE_THRESHOLD_PCT` (budget.ts): pita ±% "sesuai anggaran". */
+    { kiri: "BudgetVarianceThresholdPct", kanan: `= ${DEFAULT_VARIANCE_THRESHOLD_PCT}` },
+  ]);
+
+  const status = Object.entries(VARIANCE_STATUS_TEXT);
+  const konstStatus = ratakan(
+    status.map(([k]) => ({ kiri: `BudgetVariance${pengenalGo(k)}`, kanan: `BudgetVarianceStatus = ${q(k)}` }))
+  );
+  const labelStatus = ratakan(
+    status.map(([k, v]) => ({ kiri: `BudgetVariance${pengenalGo(k)}:`, kanan: `${q(v)},` }))
+  );
+
+  return `${kepala}
+
+package contract
+
+// CatalogColumn adalah satu kolom lembar yang BERPILIHAN kolom (\`?cols=\`):
+// id katalog, judul, lebar, dan aturan pilihnya (\`resolveColumns\`).
+type CatalogColumn struct {
+\tID        string
+\tHeader    string
+\tWidth     float64
+\tFixed     bool
+\tDefaultOn bool
+}
+
+// Kalimat cetak Rekap per Pihak, Kas & Bank, dan Realisasi vs Anggaran. Pola
+// ber-%d / %s disusun fmt.Sprintf; nilainya dibangkitkan dengan memanggil
+// fungsi TS-nya.
+const (
+${konst}
+)
+
+// SalesByCustomerColumns: kolom Penjualan per Pelanggan, urutan katalog.
+var SalesByCustomerColumns = []CatalogColumn{
+${kolomKatalog("sales-by-customer", PARTY_RECAP_COLUMNS, PARTY_RECAP_HEADERS["sales-by-customer"], PARTY_RECAP_WIDTHS)}
+}
+
+// PurchasesBySupplierColumns: kolom Pembelian per Pemasok, urutan katalog.
+var PurchasesBySupplierColumns = []CatalogColumn{
+${kolomKatalog("purchases-by-supplier", PARTY_RECAP_COLUMNS, PARTY_RECAP_HEADERS["purchases-by-supplier"], PARTY_RECAP_WIDTHS)}
+}
+
+// CashBankColumns: kolom Laporan Kas & Bank, urutan katalog.
+var CashBankColumns = []CatalogColumn{
+${kolomKatalog("cash-bank", CASH_BANK_COLUMNS, CASH_BANK_HEADERS, CASH_BANK_WIDTHS)}
+}
+
+// BudgetColumns: judul (BUDGET_HEADERS) dan lebar (BUDGET_WIDTHS) kolom
+// Realisasi vs Anggaran — tanpa pilihan kolom.
+var BudgetColumns = []ReportColumn{
+${kolomAnggaran}
+}
+
+// BudgetMonthNamesID: nama bulan cetak (BUDGET_MONTH_NAMES_ID), Januari dulu.
+var BudgetMonthNamesID = [12]string{
+${BUDGET_MONTH_NAMES_ID.map((m) => `\t${q(m)},`).join("\n")}
+}
+
+// BudgetVarianceStatus: arah selisih realisasi terhadap anggaran
+// (\`VarianceStatus\`, budget.ts) — dihitung saat dibaca, tidak disimpan.
+type BudgetVarianceStatus string
+
+const (
+${konstStatus}
+)
+
+// BudgetVarianceStatusLabels: kata cetak tiap arah (VARIANCE_STATUS_TEXT).
+var BudgetVarianceStatusLabels = map[BudgetVarianceStatus]string{
+${labelStatus}
+}
+`;
+}
+
 const kontrak = baca();
 const kontrakAkuntansi = bacaAkuntansi();
 const kontrakInstans = bacaInstans();
@@ -2218,6 +2704,7 @@ const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_UMUR_GO, isi: bangkitkanTataLetakUmurGo(kontrakAkuntansi) },
+  { jalur: TUJUAN_TATA_LETAK_REKAP_GO, isi: bangkitkanTataLetakRekapGo() },
   { jalur: TUJUAN_TATA_LETAK_STOK_GO, isi: bangkitkanTataLetakStokGo() },
   { jalur: TUJUAN_INSTANS_TS, isi: bangkitkanInstans(kontrakInstans) },
   { jalur: TUJUAN_INSTANS_GO, isi: bangkitkanInstansGo(kontrakInstans) },

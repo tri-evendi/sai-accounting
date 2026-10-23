@@ -16,7 +16,7 @@ jumlah tenant.** Keempatnya hari ini berurutan dan terikat *wall-clock*:
 |---|---|---|
 | Migration | ✅ *bounded concurrency* (tahap 1b) — masih di gerbang pemblokir | gerbangnya yang jadi pembatas, bukan jumlah langkahnya; §6 |
 | Cadangan | ✅ satu objek `pg_dump -Fc` **per basis data** (tahap 1b) | satu objek per tenant per hari — ongkos penyimpanan tumbuh linear, dan itu memang ongkos yang benar |
-| Kesesuaian data | ✅ *bounded concurrency* + jejak per basis data (§6) — masih peran `conformance` di `svc-worker` | jendela mingguan menjadi pembatas bila konkurensinya tak lagi cukup |
+| Kesesuaian data | ✅ *bounded concurrency* + jejak per basis data (§6); ✅ kembaran Go di jalur `tenant` (23 Okt 2026), dipilih sakelar `runner:` — bawaan masih peran `conformance` di `svc-worker` | jendela mingguan menjadi pembatas bila konkurensinya tak lagi cukup; `runner: go` menunggu `parity:conformance` lulus di produksi |
 | Penjadwal | delapan langkah berurutan, tiap jam | satu putaran tidak muat dalam satu jam |
 
 Yang hilang dulu bukan hanya waktu, tapi satu kemampuan: **`pg_dumpall` berarti
@@ -190,7 +190,7 @@ satu commit, beberapa `command`.
 | `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna; penyediaan PT baru (`company.provision`, Node, Okt 2026) | berapa pun | sisi Node: kredensial PEMILIK `PROVISION_DATABASE_URL` (06 §3.10) | pooler | tahap 1c |
 | `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | 🔶 kerangka Go (`internal/bulklane`): pagar memori per pekerjaan di kontrak, **nol kind** — tidak dijalankan sampai kind pertama (di bawah) |
 | `schedule` | **Go** | denyut penerbitan tiap jam — hanya MENERBITKAN | **satu** | — | pooler (pagar: **langsung**) | ✅ `svc-integrator` (Okt 2026) — penerbit per kind dipilih kontrak (`schedule.publisher`); **bawaan masih Node** (peran `scheduler`, `svc-worker`) |
-| `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
+| `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node atau Go — sakelar `runner:`)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
 | `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate` (`db:migrate:release`): *bounded concurrency*, buku yang gagal tidak menahan rilis — §6 |
 | `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler (pagar: **langsung**) | ✅ peran `ledger` di `svc-worker` |
 
@@ -363,9 +363,9 @@ menahan sebagiannya.
 | Jalur | Bahasa | Keadaan |
 |---|---|---|
 | `tenant` — cadangan | **Go** | ✅ `svc-integrator` (jalur `tenant`), tahap 1b — [02 §5](./02-LAYANAN-INFRA.md) |
-| `tenant` — kesesuaian data | TypeScript | **tertahan** — 2 dari 11 pemeriksaannya menghitung materialitas; pemicunya sama dengan 1d (§9) |
+| `tenant` — kesesuaian data | TypeScript **+ Go** | ✅ **implementasi Go 23 Okt 2026** (`internal/conformance`, jalur `tenant` di `svc-integrator`) — kesebelas pemeriksaan termasuk dua pagar materialitas (`akun-penampung`, `beban-tanpa-sifat`), ambangnya DIBANGKITKAN dari `contract/accounting.yaml` (§3.5). Pelaksana dipilih `runner:` di `contract/kinds.yaml`, **bawaan `node`**; beralih ke `go` setelah `bun run parity:conformance` lulus di produksi (PRODUCTION.md §Pelaksana kesesuaian data). Jejak `conformance_runs` ditulis Go sendiri — pengecualian kedua daftar-izin tulisan Go, alasannya di `tests/services-go.test.ts` |
 | `schema` — migration | TypeScript | **tertahan** — Prisma pemilik pembukuan skema; §6 menahan asinkronisitasnya sampai *expand/contract* berlaku |
-| Integrasi luar (e-faktur, feed bank) | **Go** | belum dibangun — HTTP+XML, SFTP; tidak menyentuh pembukuan |
+| Integrasi luar (e-faktur, feed bank) | **Go** | e-Faktur: ✅ jalur `integration` dibangun Okt 2026 (`internal/integrationlane`, `svc-integrator`) — mengirim XML Coretax yang DIBANGUN TS, penyedia `mock` + kerangka `pjap` (menunggu pilihan PJAP); hasilnya kembali lewat `efaktur.record` yang diklaim Node, jadi e-Faktur tidak menambah satu tabel pun ke daftar-izin tulisan Go — [EFAKTUR.md](../EFAKTUR.md). Feed bank: belum dibangun (SFTP) |
 | `schedule` — penerbitan | **Go** | ✅ dibangun Okt 2026 (`internal/schedulelane`, `svc-integrator`) — hanya menerbitkan baris `jobs`. Penerbit per kind dipilih kontrak (`schedule.publisher`); **bawaannya tetap Node** (peran `scheduler`) sampai peralihannya dilakukan — §3.2 |
 | `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah. **Tahap 1d dimulai 22 Okt 2026**: Neraca Saldo punya implementasi Go (`internal/ledgerread`), paritas produksi lulus hari yang sama, dan ia kini `go` — lembar sebarnya dihasilkan jalur `interactive` Go di `svc-integrator` (`report.export_go`), jalur berkas TS-nya dicabut, layar dan PDF-nya tetap TS (§9) |
 | Pekerjaan yang MENULIS buku besar | **tetap Node** | ✅ jalur `ledger`, dan pintu posting satu-satunya alasan keberadaannya |
@@ -444,7 +444,7 @@ Yang tinggal di sini: kontrak yang **belum** ada, beserta pemakai pertamanya.
 | Kontrak | Dibangkitkan jadi | Pemakai pertamanya |
 |---|---|---|
 | `contract/jobs.sql` → `sqlc` | kueri Go bertipe atas tabel `jobs` | belum ada. SQL antrean Go hari ini ditulis tangan dengan parameter terikat, dan bentuknya dijaga `tests/services-go.test.ts` — `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
-| `contract/accounting.yaml` — sisanya | ambang materialitas, **saldo normal per tipe akun** | laporan Go yang membacanya: materialitas bersama kesesuaian data. (Kategori, sisi laporan, band Laba Rugi, jenis jurnal penutup, mata uang, dan status dokumen SUDAH masuk — lihat di bawah) |
+| `contract/accounting.yaml` — sisanya | **saldo normal per tipe akun** | laporan Go yang membacanya. (Kategori, sisi laporan, band Laba Rugi, jenis jurnal penutup, mata uang, status dokumen, dan — sejak 23 Okt 2026 — ambang materialitas SUDAH masuk; lihat di bawah) |
 | `internal/document/` | ✅ lahir 22 Okt 2026 — penulis XLSX pustaka baku + penyimpanan hasil; kalimat/kolom/format/rupa dibaca dari `internal/contract/report_layout_gen.go`, yang DIBANGKITKAN dari `statement-layout.ts` + `report-export.ts` (sumber tunggal layar, PDF, dan lembar sebar) | lembar sebar Neraca Saldo. Dokumen satuan (PDF) belum — menunggu keputusannya sendiri |
 
 ✅ **`contract/accounting.yaml` LAHIR 22 Okt 2026, dengan dua kunci saja**:
@@ -494,6 +494,28 @@ merah begitu Go tulisan tangan memakai salah satu kunci itu, supaya kuncinya
 dicoret dari pengecualian dan pembacanya ikut dijaga. Kolom
 `contracts.status` kini juga dijaga CHECK constraint (migration perusahaan
 0003) yang daftarnya wajib sama dengan kontrak.
+
+✅ **Ambang materialitas masuk 23 Okt 2026, BERSAMA pembaca Go-nya** — sapuan
+kesesuaian data Go (`internal/conformance`). Satu kunci, `materiality`, tiga
+nilai: `catch_all_threshold` (0,05 — ambang PRAKTIK #444, ditimpa per putaran
+lewat `--ambang-penampung`), `catch_all_expense_type` (`other_expense`, band
+temuan `band`), dan `catch_all_name_pattern` (pola nama penampung). TS
+me-re-ekspor bangkitannya — `DEFAULT_CATCH_ALL_THRESHOLD` di
+`src/lib/materiality.ts` dan `CATCH_ALL_EXPENSE_TYPE` di `src/lib/accounting.ts`
+tetap nama yang sama, impor lama tetap bekerja. Label band ("Beban Lain-lain")
+SENGAJA tidak di YAML: ia label tipe akun milik `accountTypeLabel`, dan sampai
+ke Go lewat bangkitan (`MaterialityCatchAllTypeLabel`). Generatornya menolak
+ambang di luar 0..1 eksklusif, band yang bukan tipe berkategori `expense`, dan
+pola di luar subset yang artinya SAMA di RegExp JS (bendera `i`, tanpa `u`) dan
+RE2: huruf besar ASCII (Go menurunkan huruf ASCII nama lalu mencocokkan tanpa
+`(?i)`, yang di RE2 melipat Unicode — `ſ`, `K` Kelvin), `.` tanpa escape, `(?`,
+dan escape selain `\s \b \d \w`. `\s` DITERJEMAHKAN ke kelas spasi JS yang
+dibaca dari mesin JS saat bangkitan (termasuk NBSP; `\s` RE2 ASCII saja).
+Kesetaraan aritmetikanya — jumlah float berurutan, `Math.round`, `toFixed`
+yang memilih n LEBIH BESAR pada seri (6,25% → "6.3"), urut stabil — dibuktikan
+fikstur bersama `internal/conformance/testdata/materiality_fixtures.json`
+(dibaca `tests/materiality-fixtures-shared.test.ts` dan `materiality_test.go`)
+dan, atas buku sungguhan, `bun run parity:conformance`.
 
 ## 4. Yang belum terbangun dari antrean
 
@@ -622,7 +644,7 @@ Menutup §1, dan inilah pekerjaan yang paling menentukan kesiapan pasar.
 |---|---|---|---|
 | Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ **keluar dari gerbang pemblokir 23 Okt 2026** — buku yang gagal tidak lagi menahan rilis; buku itu sendiri yang ditutup. Masih TypeScript, masih langkah rilis (bukan antrean). Rinciannya di bawah |
 | **Cadangan** | `tenant` | `pg_dumpall` → **`pg_dump` per basis data** + satu `pg_dumpall --globals-only`. Satu tenant bisa dipulihkan tanpa menyentuh yang lain | ✅ [02 §5](./02-LAYANAN-INFRA.md) · celah on-premise #5 tertutup |
-| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. Masih peran `conformance` di `svc-worker`, bukan jalur tersendiri: belum ada `kind` yang diterbitkan untuknya |
+| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. ✅ **23 Okt 2026**: kembaran Go di jalur `tenant` dengan batas & jejak yang sama; `tenant.conformance` diterbitkan langkah Node yang sama HANYA bila `runner: go` |
 | Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 | sebagian: dua langkah sudah MENERBITKAN (`recurring:publish`, `backup:publish`), tapi penerbitnya masih langkah di peran `scheduler` (`svc-worker`), bukan jalur `schedule` tersendiri |
 
 ✅ **Bukti kelengkapan cadangan sudah diperluas**: setiap basis data terdaftar
@@ -888,7 +910,7 @@ menjadi tahap baru — mereka melipat ke pemicu yang sudah ada:
 
 | Tertahan | Ditahan oleh | Pemicunya |
 |---|---|---|
-| Kesesuaian data (`tenant.conformance`) ke Go | §3.3 — "Go berhenti sebelum perhitungan akuntansi" | 2 dari 11 pemeriksaannya memanggil pagar materialitas (#444/#445): penilaian, bukan konstanta. Pemicunya SAMA dengan 1d |
+| ~~Kesesuaian data (`tenant.conformance`) ke Go~~ | ✅ **dibangun 23 Okt 2026** (keputusan pemilik) dengan syarat 1d: ambangnya dibangkitkan (§3.5), paritasnya dibuktikan `parity:conformance`. Tinggal peralihan `runner: go` setelah paritas produksi lulus | — |
 | Jalur `schema` lewat antrean | §6 — *expand/contract* "belum berlaku hari ini" | Migration di luar gerbang pemblokir berarti aplikasi melayani buku yang skemanya lebih tua daripada kodenya. §6 juga sudah mengukur harga menunggu: pada 17 perusahaan gerbang pemblokir masih murah |
 
 Yang §6 butuhkan dari jalur `schema` ada tiga, dan ketiganya kini ada **tanpa**
@@ -1410,6 +1432,81 @@ done
 
 Lulus keenamnya → `parityProven` di entri register ketiganya, lalu
 `go-parity` → `go` + `bun run contract:gen`.
+
+#### Gelombang A: Rekap per Pihak, Laporan Kas & Bank, Realisasi vs Anggaran (`go-parity`, 23 Okt 2026)
+
+Empat laporan berberkas berikutnya, satu cabang. Ketiga bentuknya berbeda, dan
+yang dipindah hanya yang belum dimiliki Go:
+
+| Laporan | Pembaca Go | Yang baru |
+|---|---|---|
+| Penjualan per Pelanggan · Pembelian per Pemasok | `ledgerread/party_recap.go` | pembaca DOKUMEN (faktur + item, retur penjualan, transaksi pemasok `purchase`, retur pembelian), nilai IDR lewat `toBase` Umur Piutang, rasional eksak → sen di titik `round2` TS; urut bersih ↓ lalu `localeCompare` nama |
+| Laporan Kas & Bank | `ledgerread/cash_bank.go` | TIDAK ada pembaca baru: TS sendiri membentuknya dari `getCashFlow`, dan Go dari pembaca Arus Kas (sudah `go`). Totalnya `netChange` arus kas — bukan selisih saldo — persis TS |
+| Realisasi vs Anggaran | `ledgerread/budget.go` | anggaran & target per (tahun, bulan), realisasi dari pembaca Laba Rugi Go (`BuildIncomeStatement`, jurnal penutup dikecualikan) di transaksi yang SAMA; persen selisih ditiru dalam float JS langkah demi langkah (sel ANGKA di berkas) |
+
+| Bagian | Di mana |
+|---|---|
+| Kalimat cetak yang sebelumnya sebaris (`"Total"`, `budgetAlertNote`, nama bulan, `VARIANCE_STATUS_TEXT`) pindah ke `statement-layout.ts` — bunyi TIDAK berubah — dan lebar kolom diekspor dari `report-export.ts` | `statement-layout.ts` · `report-export.ts` · `report-payload.ts` |
+| Kalimat, kolom katalog (`?cols=`), lebar, nama bulan, kosakata status, dan ambang variansi DIBANGKITKAN | `internal/contract/recap_layout_gen.go` (`contract:gen`, berkas tersendiri — laporan yang dipindah paralel tidak menyunting fungsi pembangkit yang sama) |
+| Penerbit Go mengenal `period_month`: `?year=&month=` diselesaikan `resolveBudgetPeriod`, batas Laba Rugi dikirim sebagai INSTAN `budgetPeriodRange` | `report-export-go.ts` · `budget-report.ts` |
+| Penghasil di pelari `interactive` — DITOLAK selama `go-parity`; muatan pembanding dan tahun/bulan di luar bentuk penerbit DITOLAK sebelum buku dibuka | `internal/interactivelane` (`rekapPihak`, `kasBank`, `anggaran`) |
+| Halaman mengirim `sumber` (`from`/`to`/`cols`; anggaran `year`/`month`) | `reports/{sales-by-customer,purchases-by-supplier,cash-bank}/page.tsx` · `budget/report/page.tsx` |
+| Klien buku diteruskan `buildReportPayload` ke keempat pembaca TS — skrip paritas menyerahkan transaksi READ ONLY | `report-payload.ts` |
+| Berkas emas lintas bahasa: rekap pihak dari dokumen fixture sendiri, anggaran dari jurnal `statement_books.json` + baris anggaran/target, Kas & Bank dari setiap kasus Arus Kas | `ledgerread/testdata/recap_books.json` → `go test -update` → `tests/recap-golden.test.ts` |
+| Paritas atas buku sungguhan, READ ONLY di kedua sisi, angka DAN isi berkas | `bun run parity:{sales-by-customer,purchases-by-supplier,cash-bank,budget-realization}[-xlsx]` |
+
+Paritas lokal (23 Okt 2026, Postgres 17 sekali pakai, 3 buku sintetis: buku
+dagang 610 jurnal + 704 faktur / 1.422 baris + 150 retur penjualan + 450
+transaksi pemasok + 90 retur pembelian + 191 anggaran + 36 target; buku valas;
+buku kosong — IDR/USD/SGD/EUR/JPY, valas ber-`base_amount`, berkurs tanpa base,
+TANPA kurs dan berkurs 0, mata uang kosong, dokumen & retur dibatalkan,
+`payment` di tengah pembelian, retur pembelian tanpa pemasok, faktur tanpa
+pelanggan, seri bersih dua pihak yang namanya beda huruf besar, dokumen dan
+jurnal tepat di `T17:00:00.000Z`/`T16:59:59.999Z` pada setiap batas,
+jurnal penutup 2025, akun tipe asing):
+
+| Skrip | Hasil |
+|---|---|
+| `parity:cash-bank` · `-xlsx` | 9/9 · 27/27 setara |
+| `parity:budget-realization` · `-xlsx` | 15/15 · 15/15 setara |
+| `parity:sales-by-customer` · `-xlsx` | 6/9 · 21/27 setara |
+| `parity:purchases-by-supplier` · `-xlsx` | 6/9 · 21/27 setara |
+
+**Setiap** selisih rekap pihak bertanda `[seri setengah sen — float TS]`: nilai
+eksak satu pihak jatuh TEPAT di setengah sen (mis. `1183104892,985`, dari
+`kuantitas 0,25 × harga …,50` atau kurs berpecahan `,25`), dan `Math.round` atas
+penjumlahan FLOAT TS membulatkannya ke bawah sementara Go — eksak, setengah ke
+atas seperti `round2` yang dimaksud — ke atas. Nol selisih tanpa tanda itu.
+Ini temuan tentang sisi TS (pola Umur Piutang, `aging-parity.ts`), dan gerbang
+TIDAK dilonggarkan: buku produksi yang punya seri akan berselisih di skrip ini
+sampai pemilik memutuskan sisi mana yang benar. Sebelum datanya dibuat
+realistis, total di atas ~10^13 rupiah juga berselisih satu sen — float TS
+kehilangan sen di skala itu (ulp ≈ 0,004); di bawah plafon kolom
+`Decimal(15,2)` tidak terjadi.
+
+Perintah paritas produksi (sesi utama, buku PRODUKSI, hanya baca; biner dan
+skrip dari checkout yang sama):
+
+```bash
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+for s in parity:sales-by-customer parity:sales-by-customer-xlsx \
+         parity:purchases-by-supplier parity:purchases-by-supplier-xlsx \
+         parity:cash-bank parity:cash-bank-xlsx \
+         parity:budget-realization parity:budget-realization-xlsx; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    -v $PWD/scripts:/app/scripts:ro -v $PWD/src:/app/src:ro -v $PWD/package.json:/app/package.json:ro \
+    -v $PWD/packages/core:/app/packages/core:ro -v $PWD/packages/billing:/app/packages/billing:ro \
+    -v $PWD/packages/platform:/app/packages/platform:ro -v $PWD/contract:/app/contract:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity
+done
+```
+
+Bawaan periodenya: rekap pihak & Kas & Bank sama dengan Laba Rugi (tahun
+berjalan s.d. hari ini, tahun lalu penuh, Juli–Juni), `-xlsx` juga × tiga
+pilihan kolom; anggaran lima (tahun berjalan, bulan berjalan, Januari, tahun
+lalu, Desember tahun lalu; `-- --budget-period 2026-0,2026-3`). Lulus
+kedelapannya → `parityProven` di entri register, lalu `go-parity` → `go` +
+`bun run contract:gen`.
 
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|

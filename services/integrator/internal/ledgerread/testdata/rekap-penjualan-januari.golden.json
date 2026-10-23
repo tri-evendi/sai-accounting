@@ -1,0 +1,81 @@
+{
+  "kind": "sales-by-customer",
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-01-31T16:59:59.999Z",
+  "rows": [
+    {
+      "partyId": 1,
+      "partyName": "PT Alfa",
+      "docCount": 2,
+      "grossBase": "16710000.00",
+      "returnCount": 1,
+      "returnBase": "111000.00",
+      "netBase": "16599000.00",
+      "unratedCount": 0,
+      "halfCentTie": false
+    },
+    {
+      "partyId": 2,
+      "partyName": "CV Beta",
+      "docCount": 2,
+      "grossBase": "6613944.91",
+      "returnCount": 1,
+      "returnBase": "1500000.00",
+      "netBase": "5113944.91",
+      "unratedCount": 0,
+      "halfCentTie": false
+    },
+    {
+      "partyId": null,
+      "partyName": null,
+      "docCount": 1,
+      "grossBase": "500000.00",
+      "returnCount": 0,
+      "returnBase": "0.00",
+      "netBase": "500000.00",
+      "unratedCount": 0,
+      "halfCentTie": false
+    },
+    {
+      "partyId": 5,
+      "partyName": "Delta",
+      "docCount": 1,
+      "grossBase": "500000.00",
+      "returnCount": 0,
+      "returnBase": "0.00",
+      "netBase": "500000.00",
+      "unratedCount": 0,
+      "halfCentTie": false
+    },
+    {
+      "partyId": 3,
+      "partyName": "Gamma Trading",
+      "docCount": 2,
+      "grossBase": "0.00",
+      "returnCount": 1,
+      "returnBase": "0.00",
+      "netBase": "0.00",
+      "unratedCount": 3,
+      "halfCentTie": false
+    },
+    {
+      "partyId": 4,
+      "partyName": "alfa kecil",
+      "docCount": 1,
+      "grossBase": "500000.00",
+      "returnCount": 1,
+      "returnBase": "600000.00",
+      "netBase": "-100000.00",
+      "unratedCount": 0,
+      "halfCentTie": false
+    }
+  ],
+  "totals": {
+    "docCount": 9,
+    "grossBase": "24823944.91",
+    "returnCount": 4,
+    "returnBase": "2211000.00",
+    "netBase": "22612944.91",
+    "unratedCount": 3
+  }
+}

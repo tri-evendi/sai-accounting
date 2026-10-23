@@ -25,10 +25,10 @@ func TestJalurScheduleSelaluIkutBulkHanyaBilaPunyaKind(t *testing.T) {
 	// `schedule` ikut walau Node masih penerbitnya: peralihan ke Go cukup satu
 	// baris kontrak, bukan perubahan compose. `bulk` tanpa kind = kode mati
 	// yang terlihat hidup, jadi tidak dijalankan.
-	if got := fmt.Sprint(namaJalur(daftarJalur(false))); got != "[tenant interactive-go schedule]" {
+	if got := fmt.Sprint(namaJalur(daftarJalur(false))); got != "[tenant interactive-go schedule integration]" {
 		t.Fatalf("jalur tanpa bulk: %s", got)
 	}
-	if got := fmt.Sprint(namaJalur(daftarJalur(true))); got != "[tenant interactive-go schedule bulk]" {
+	if got := fmt.Sprint(namaJalur(daftarJalur(true))); got != "[tenant interactive-go schedule integration bulk]" {
 		t.Fatalf("jalur dengan bulk: %s", got)
 	}
 	if bulklane.Enabled() {

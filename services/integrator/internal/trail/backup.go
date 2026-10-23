@@ -3,9 +3,10 @@
 // ══ SATU-SATUNYA TULISAN GO DI LUAR TABEL `jobs`, DAN KENAPA ═══════════════
 //
 // Aturan pohon Go: ia membaca buku, menulis tabel `jobs`, dan menghasilkan
-// berkas. `backup_runs` adalah pengecualian yang DISEBUT, bukan pelonggaran
-// yang kebetulan lolos — dan ia dijaga daftar-izin eksplisit di
-// `tests/services-go.test.ts`.
+// berkas. `backup_runs` dan — sejak 23 Okt 2026 — `conformance_runs`
+// (`conformance.go`) adalah pengecualian yang DISEBUT, bukan pelonggaran yang
+// kebetulan lolos — dan keduanya dijaga daftar-izin eksplisit di
+// `tests/services-go.test.ts`. Paket ini satu-satunya tempat tulisan itu.
 //
 // Sebabnya I-3: layanan tidak saling memanggil. `scripts/backup.sh` menitipkan
 // barisnya ke Node lewat `bun run record:backup`, dan jalur Go tidak punya

@@ -561,6 +561,12 @@ export interface ConformanceRunDetails {
    * disapu" adalah insiden sementara "putaran lama" bukan apa-apa.
    */
   perCompany: ConformanceCompanyRecord[];
+  /**
+   * Siapa yang menyapu — `node` (`svc-worker`) atau `go` (`svc-integrator`),
+   * sejak sakelar `runner:` di `contract/kinds.yaml` (23 Okt 2026). `null` =
+   * putaran yang dicatat sebelum medan ini ada.
+   */
+  runner: { runner: "node" | "go"; service: string } | null;
 }
 
 export interface OperatorConformanceRun {
@@ -608,10 +614,20 @@ function parseConformanceDetails(raw: string | null): ConformanceRunDetails | nu
           })
         : [];
 
+    const p = parsed as { runner?: unknown; service?: unknown };
+    const runner: ConformanceRunDetails["runner"] =
+      p.runner === "node" || p.runner === "go"
+        ? {
+            runner: p.runner,
+            service:
+              typeof p.service === "string" ? p.service : p.runner === "go" ? "svc-integrator" : "svc-worker",
+          }
+        : null;
     return {
       findings: list(parsed.findings),
       failures: list(parsed.failures),
       perCompany: bukuList(parsed.perCompany),
+      runner,
     };
   } catch {
     return null;

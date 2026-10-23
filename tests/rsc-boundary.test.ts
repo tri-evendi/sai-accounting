@@ -328,8 +328,15 @@ import { join } from "node:path";
  *     dirender layout pemasaran SELAMA `?preview=`; ia menambahkan token ke
  *     tautan `/`, `/pricing`, `/status`. Merender `null`; kunjungan biasa
  *     tidak memuatnya.
+ * 206 → 208 (23 Okt 2026, e-Faktur lewat PJAP — docs/EFAKTUR.md):
+ *   + `tax/efaktur/pjap-actions` — tombol kirim/kirim ulang/batalkan yang
+ *     mengantre lewat API lalu `router.refresh()`; pembatalan lewat
+ *     `ConfirmDialog`.
+ *   + `tax/efaktur/pjap-connection-form` — penyedia, client id, rahasia
+ *     (tulis-saja; tidak pernah dikirim balik). Halaman `/tax/efaktur` sendiri
+ *     tetap server, termasuk tabel status dan berkas XML.
  */
-const AMBANG_KLIEN = 206;
+const AMBANG_KLIEN = 208;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -464,6 +471,10 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/edit/supplier-edit-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/transaction-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/new/supplier-form.tsx",
+  /* e-Faktur lewat PJAP (docs/EFAKTUR.md): tombol kirim/batal dan formulir
+     sambungan — aksi yang mengantre, halaman tetap server component. */
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/tax/efaktur/pjap-actions.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/tax/efaktur/pjap-connection-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/tax/efaktur/seller-identity-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",

@@ -111,6 +111,8 @@ export interface KoneksiBasisData {
    * MELEMPAR: "belum pernah dimigrasikan" bukan "nol migration".
    */
   ringkasanMigrasi(): Promise<RingkasanMigrasi>;
+  /** Sambungan e-Faktur buku ini. Buku yang belum bermigrasi 0004 MELEMPAR. */
+  ringkasanEfaktur(): Promise<RingkasanEfaktur>;
   tutup(): Promise<void>;
 }
 
@@ -118,6 +120,19 @@ export interface RingkasanMigrasi {
   terapan: number;
   menggantung: number;
   terakhir: string | null;
+}
+
+/**
+ * Keadaan sambungan e-Faktur sebuah buku untuk konsol operator
+ * (docs/EFAKTUR.md). TANPA rahasia: yang dibaca hanya ADA-TIDAKNYA kredensial,
+ * tidak pernah isinya — operator tidak butuh kredensial PJAP milik PT.
+ */
+export interface RingkasanEfaktur {
+  penyedia: string | null;
+  produksi: boolean;
+  adaKredensial: boolean;
+  /** Jumlah kiriman per status. */
+  status: Record<string, number>;
 }
 
 // ── PostgreSQL ─────────────────────────────────────────────────────────────
@@ -377,6 +392,24 @@ class KoneksiPostgres implements KoneksiBasisData {
        FROM "_prisma_migrations"`
     );
     return r.rows[0] ?? { terapan: 0, menggantung: 0, terakhir: null };
+  }
+
+  async ringkasanEfaktur(): Promise<RingkasanEfaktur> {
+    const s = await this.c.query<{ penyedia: string | null; produksi: boolean; ada: boolean }>(
+      `SELECT efaktur_provider AS penyedia, efaktur_is_production AS produksi,
+              (efaktur_secret_ciphertext IS NOT NULL) AS ada
+         FROM company_settings ORDER BY id ASC LIMIT 1`
+    );
+    const k = await this.c.query<{ status: string; n: number }>(
+      `SELECT status, count(*)::int AS n FROM efaktur_submissions GROUP BY status`
+    );
+    const baris = s.rows[0];
+    return {
+      penyedia: baris?.penyedia ?? null,
+      produksi: baris?.produksi ?? false,
+      adaKredensial: baris?.ada ?? false,
+      status: Object.fromEntries(k.rows.map((r) => [r.status, r.n])),
+    };
   }
 
   async tutup(): Promise<void> {

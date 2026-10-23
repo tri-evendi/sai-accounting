@@ -164,6 +164,14 @@ func (r *Reader) Close() { r.pool.Close() }
 // DatabaseName adalah buku yang dibaca Reader ini.
 func (r *Reader) DatabaseName() string { return r.databaseName }
 
+// ReadOnly: `readOnly` untuk pembaca di luar paket ini — sapuan kesesuaian
+// data (`internal/conformance`) yang SQL-nya bukan laporan. Pintunya tetap
+// satu: setiap pembacaan buku dari pohon Go berjalan di transaksi READ ONLY,
+// jadi kueri yang suatu hari lolos dari penjaga teks tetap ditolak PostgreSQL.
+func (r *Reader) ReadOnly(ctx context.Context, fn func(pgx.Tx) error) error {
+	return r.readOnly(ctx, fn)
+}
+
 // readOnly menjalankan fn di dalam transaksi READ ONLY + REPEATABLE READ, dan
 // SELALU menggulungnya balik — tidak ada yang perlu di-commit dari pembacaan.
 func (r *Reader) readOnly(ctx context.Context, fn func(pgx.Tx) error) error {

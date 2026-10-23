@@ -1109,9 +1109,58 @@ Lulus keempatnya → `parityProven` di entri register yang sama, lalu `go-parity
 Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
 `bun run contract:gen` (`GoEngineReports`).
 
+#### Laporan keempat & kelima: Arus Kas dan Laporan Perubahan Ekuitas (`go-parity`, 23 Okt 2026)
+
+Pola Laba Rugi & Neraca, selangkah demi selangkah, dan BERHENTI di
+`go-parity`: berkas tetap TS sampai sesi utama menjalankan paritas atas buku
+produksi.
+
+| Bagian | Di mana |
+|---|---|
+| Arus Kas (metode langsung, per jurnal, kelompok dari tipe akun LAWAN), sen `int64`, SATU transaksi baca: saldo kas awal (`< from`, batas EKSKLUSIF baru `before` di `netsSQL`), akhir (`<= to`), dan baris periode yang dialirkan jurnal demi jurnal (`ORDER BY journal_id, id`) | `ledgerread/cash_flow.go` |
+| Laporan Perubahan Ekuitas — kedua ujung diturunkan dari `BuildBalanceSheet` (`from − 1 ms`, `to`), mutasi per akun `equity` di [from, to] TERMASUK jurnal penutup | `ledgerread/equity_statement.go` |
+| Akun kas, kelompok & urutannya, kelompok cadangan, pemetaan tipe akun lawan → kelompok — dari `contract/accounting.yaml` (`cash_flow`). `getCashFlow` TS membaca bangkitan yang sama (dulu peta tulisan tangan di `reports.ts`). `currencies.base` kini punya pembaca Go pertama (baris valas berkurs 1) dan dicoret dari pengecualian | `internal/contract/accounting_gen.go` · `packages/core/src/generated/accounting.ts` |
+| Lembar sebar Arus Kas (kalimat cetak, nama kelompok, anotasi rekonsiliasi, kolom & lebar DIBANGKITKAN dari `statement-layout.ts` / `report-export.ts`; `CASH_FLOW_CATEGORY_LABELS` pindah ke `statement-layout.ts` supaya generator tak menyeret Prisma) | `internal/document/cash_flow.go` · `report_layout_gen.go` |
+| Penghasil berkas di pelari `interactive` — DITOLAK selama `go-parity`; muatan Arus Kas yang membawa pembanding DITOLAK sebelum buku dibuka | `internal/interactivelane` |
+| Halaman Arus Kas mengirim `sumber` (`from`/`to`); muatan berperiode dari `goExportPayloadShape` (tanpa `compare` — halamannya tidak membacanya) | `reports/cash-flow/page.tsx` · `tests/report-engine.test.ts` |
+| Pembanding angka | `src/lib/cash-flow-parity.ts` · `src/lib/equity-statement-parity.ts` |
+| Paritas atas buku sungguhan, READ ONLY di KEDUA sisi; Go membuka buku lewat registry (instans sungguhan PT) | `bun run parity:cash-flow` · `parity:cash-flow-xlsx` · `parity:equity-changes` |
+| Berkas emas lintas bahasa atas buku fixture bersama (+ buku `buku-arus-kas`: pindah antarakun kas, satu akun masuk DAN keluar, akun netral, baris nol, valas ber-base & berkurs 1, tipe asing, batas hari WIB di kedua ujung, penutup, setoran + prive, akun ekuitas diam) | `statement_books.json` → `go test -update` → `tests/cash-flow-equity-golden.test.ts` (angka, instan penerbit, DAN isi lembar) |
+
+**Laporan Perubahan Ekuitas TIDAK punya berkas** — katalog tanpa `payloadKind`,
+layar saja. Entri `go-parity`-nya karena itu hanya tentang ANGKA, dan penjaga
+register kini menolak `go` untuk laporan tanpa berkas (sebelumnya penjaga
+menolak SEMUA entri tanpa berkas — padahal implementasi Go kedua yang
+disembunyikan dari register adalah kelas kegagalan yang register ini cegah).
+Membangun berkasnya keputusan produk tersendiri.
+
+Paritas lokal (23 Okt 2026, Postgres 17 sekali pakai, 2 buku: 3.068 jurnal
+berpecahan sen dengan valas ber-`base_*`, baris valas berkurs 1, pindah
+antarakun kas, tipe asing, baris nol, jurnal penutup 2025, jurnal tepat di
+`T17:00:00.000Z` dan `T16:59:59.999Z` pada setiap batas periode; buku kedua
+tanpa wizard dengan satu jurnal kas timpang satu sen): `parity:cash-flow`
+12/12 setara (6 periode, termasuk satu hari & periode yang belum berjalan
+penuh; buku timpang TIDAK terekonsiliasi di kedua sisi), `parity:cash-flow-xlsx`
+10/10, `parity:equity-changes` 12/12 — juga 3 × 6/6 dalam mode
+`pgbouncer=true`.
+
+Perintah paritas produksi (sesi utama, biner dari checkout yang sama):
+
+```bash
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+for s in parity:cash-flow parity:cash-flow-xlsx parity:equity-changes; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity \
+      --period "$(date +%Y)-01-01..$(date +%F),$(( $(date +%Y)-1 ))-01-01..$(( $(date +%Y)-1 ))-12-31,$(( $(date +%Y)-1 ))-07-01..$(date +%Y)-06-30"
+done
+```
+
+Lulus `parity:cash-flow` + `parity:cash-flow-xlsx` → `parityProven` di entri
+`cash-flow`, lalu `go-parity` → `go` (register + `bun run contract:gen`).
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus); Arus Kas & Laporan Perubahan Ekuitas `go-parity` (23 Okt 2026, menunggu paritas produksi) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Cadangan Go per instans ✅ lolos gerbang Go 23 Okt 2026; pemindahan pertama menunggu peran cadangan di server instansnya | — |

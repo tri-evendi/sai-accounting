@@ -1,0 +1,69 @@
+{
+  "from": "2025-11-30T17:00:00Z",
+  "to": "2025-12-31T16:59:59.999Z",
+  "groups": [
+    {
+      "category": "operating",
+      "lines": [
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "type": "revenue",
+          "inflow": "5000.05",
+          "outflow": "0.00",
+          "net": "5000.05"
+        }
+      ],
+      "inflow": "5000.05",
+      "outflow": "0.00",
+      "net": "5000.05"
+    },
+    {
+      "category": "investing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "financing",
+      "lines": [
+        {
+          "code": "3101",
+          "name": "Modal Disetor",
+          "type": "equity",
+          "inflow": "1000000.00",
+          "outflow": "0.00",
+          "net": "1000000.00"
+        }
+      ],
+      "inflow": "1000000.00",
+      "outflow": "0.00",
+      "net": "1000000.00"
+    },
+    {
+      "category": "uncategorised",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    }
+  ],
+  "totalInflow": "1005000.05",
+  "totalOutflow": "0.00",
+  "netChange": "1005000.05",
+  "openingCash": "0.00",
+  "closingCash": "1005000.05",
+  "cashAccounts": [
+    {
+      "code": "1101",
+      "name": "Kas Kecil",
+      "opening": "0.00",
+      "closing": "1005000.05",
+      "net": "1005000.05"
+    }
+  ],
+  "reconciled": true,
+  "suspectUnrated": 0,
+  "unknownTypes": []
+}

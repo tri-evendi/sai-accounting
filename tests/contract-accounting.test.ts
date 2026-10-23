@@ -124,6 +124,14 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
       /contract\.IncomeStatementCategoryDefaultSections\b/
     );
     expect(semua, "closing_journal_type").toMatch(/contract\.ClosingJournalType\b/);
+    /* Arus Kas Go (tahap 1d, `cash_flow.go`, 23 Okt 2026). */
+    expect(semua, "cash_flow.cash_account_type").toMatch(/contract\.CashAccountType\b/);
+    expect(semua, "cash_flow.categories").toMatch(/contract\.CashFlowCategories\b/);
+    expect(semua, "cash_flow.fallback_category").toMatch(/contract\.CashFlowFallbackCategory\b/);
+    expect(semua, "cash_flow.type_categories").toMatch(/contract\.CashFlowCategoryOf\b/);
+    /* `currencies.base` — pembaca Go PERTAMA dari pengecualian 23 Okt 2026:
+       baris "valas berkurs 1" Arus Kas. Dicoret dari pengecualian di bawah. */
+    expect(semua, "currencies.base").toMatch(/contract\.BaseCurrency\b/);
 
     const y = load(baca("contract", "accounting.yaml")) as Record<string, unknown>;
     expect(Object.keys(y).sort(), "kunci baru butuh pembaca Go + baris di tes ini").toEqual(
@@ -131,6 +139,7 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
         "account_categories",
         "account_type_categories",
         "account_types",
+        "cash_flow",
         "category_statement_side",
         "closing_journal_type",
         "contract_statuses",
@@ -156,8 +165,10 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
    */
   it("pengecualian tanpa-pembaca-Go masih benar-benar tanpa pembaca", () => {
     const semua = GO_PRODUKSI.map((b) => b.isi).join("\n");
+    /* `currencies` DICORET 23 Okt 2026: Arus Kas Go membaca
+       `contract.BaseCurrency` (baris valas berkurs 1) — pembacanya kini dijaga
+       di tes di atas. */
     const tanpaPembaca: Record<string, RegExp> = {
-      currencies: /contract\.(Currencies|IsCurrency|BaseCurrency|Currency[A-Z]{3})\b/,
       invoice_statuses: /contract\.(InvoiceStatuses|InvoiceStatus[A-Z]\w*)\b/,
       contract_statuses: /contract\.(ContractStatuses|IsContractStatus|ContractStatus[A-Z]\w*)\b/,
     };

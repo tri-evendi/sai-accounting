@@ -102,6 +102,38 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
        51 setara (angka, 3 tanggal) · isi XLSX 153 setara (3 tanggal × 3 bentuk pembanding) — 0 berselisih · 0 gagal. */
     parityProven: { date: "2026-10-22", books: 17 },
   },
+  /*
+   * Laporan KEEMPAT dan KELIMA tahap 1d (23 Okt 2026) — berhenti di
+   * `go-parity`, pola yang sama dengan Laba Rugi & Neraca sebelum paritas
+   * produksinya.
+   *
+   * Arus Kas: Go menghitung (`cash_flow.go`) dan menulis lembar sebarnya
+   * (`internal/document/cash_flow.go`); halaman SUDAH mengirim `sumber`
+   * (`from`/`to`) ke tombol Excel, dan penerbit Go sudah membentuk muatan
+   * berperiodenya (`goExportPayloadShape`) — peralihan ke `go` cukup
+   * menyunting entri ini + `bun run contract:gen`, SESUDAH
+   *   bun run parity:cash-flow · parity:cash-flow-xlsx
+   * lulus atas buku PRODUKSI. Tanpa kolom pembanding: halamannya tidak
+   * membaca `?compare=`.
+   *
+   * Laporan Perubahan Ekuitas: Go menghitung (`equity_statement.go`) dan
+   * `bun run parity:equity-changes` membandingkannya — tetapi laporan ini
+   * TIDAK PUNYA jalur berkas sama sekali (katalog: tanpa `payloadKind`; layar
+   * saja). Entri `go-parity`-nya karena itu hanya tentang ANGKA, dan ia tidak
+   * bisa menjadi `go` sebelum ada berkas yang bisa dipindahkan — penjaga
+   * `tests/report-engine.test.ts` menolaknya. Membangun berkasnya adalah
+   * keputusan produk tersendiri, bukan efek samping tahap 1d.
+   */
+  "cash-flow": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/cash_flow.go",
+    parityScript: "parity:cash-flow",
+  },
+  "equity-changes": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/equity_statement.go",
+    parityScript: "parity:equity-changes",
+  },
 };
 
 /** Mesin yang menghasilkan BERKAS laporan ini hari ini. */

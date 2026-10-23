@@ -1,0 +1,32 @@
+{
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-06-30T16:59:59.999Z",
+  "components": [
+    {
+      "code": "3101",
+      "name": "Modal Disetor",
+      "opening": "500000000.00",
+      "additions": "0.00",
+      "reductions": "0.00",
+      "closing": "500000000.00"
+    },
+    {
+      "code": "3102",
+      "name": "Laba Ditahan",
+      "opening": "20000000.50",
+      "additions": "0.00",
+      "reductions": "0.00",
+      "closing": "20000000.50"
+    }
+  ],
+  "unclosedIncome": {
+    "opening": "0.00",
+    "movement": "3773457.19",
+    "closing": "3773457.19"
+  },
+  "totalOpening": "520000000.50",
+  "totalClosing": "523773457.69",
+  "unknownTypes": [
+    "9999"
+  ]
+}

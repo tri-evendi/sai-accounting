@@ -210,7 +210,15 @@ export default async function CashFlowPage({
         actions={
           <>
             <StatementPDFButton payload={payload} />
-            <StatementExcelButton payload={payload} />
+            {/* `sumber` ikut SELALU: laporan ini `go-parity`
+                (src/lib/report-engine.ts), dan begitu register beralih ke
+                `go` lembar sebarnya dihitung pelari Go dari PARAMETER —
+                tanpa `sumber` rute ekspor menjawab 400. Selama TS, ia hanya
+                membuka penyerahan ke antrean di atas ambang baris. */}
+            <StatementExcelButton
+              payload={payload}
+              sumber={{ reportId: "cash-flow", params: { from: fromISO, to: toISO } }}
+            />
           </>
         }
       />

@@ -323,8 +323,13 @@ import { join } from "node:path";
  *     di state peramban (tokennya tidak boleh masuk HTML hasil render server).
  *     Daftar draf dan riwayat tetap server; "kembalikan versi" adalah
  *     `<form action>` server tanpa JS.
+ * 205 → 206 (23 Okt 2026, pratinjau isi halaman depan membawa tokennya):
+ *   + `app/(marketing)/preview-link-keeper.tsx`: pendengar klik yang hanya
+ *     dirender layout pemasaran SELAMA `?preview=`; ia menambahkan token ke
+ *     tautan `/`, `/pricing`, `/status`. Merender `null`; kunjungan biasa
+ *     tidak memuatnya.
  */
-const AMBANG_KLIEN = 205;
+const AMBANG_KLIEN = 206;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -478,6 +483,7 @@ const KLIEN_TERSAHKAN = [
   /* Halaman galat & 404 (2026-10-18) — lihat catatan di `AMBANG_KLIEN`. */
   "app/(app)/error.tsx",
   "app/(marketing)/error.tsx",
+  "app/(marketing)/preview-link-keeper.tsx",
   "app/global-error.tsx",
   "apps/operator/src/app/(operator)/error.tsx",
   "apps/operator/src/app/(operator)/login/login-form.tsx",

@@ -1,0 +1,153 @@
+{
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-03-31T16:59:59.999Z",
+  "rows": [
+    {
+      "id": 8,
+      "name": "Biji Kakao",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 100,
+      "movedOut": 52.5,
+      "processed": 0,
+      "closing": 47.5
+    },
+    {
+      "id": 10,
+      "name": "Cengkeh",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 50.5,
+      "movedOut": 5.25,
+      "processed": 0,
+      "closing": 45.25
+    },
+    {
+      "id": 2,
+      "name": "Gula Aren",
+      "unit": "kg",
+      "opening": 25.5,
+      "movedIn": 0,
+      "movedOut": 4.75,
+      "processed": 7.375,
+      "closing": 20.75
+    },
+    {
+      "id": 15,
+      "name": "Kayu Manis",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 0.5,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 0.5
+    },
+    {
+      "id": 1,
+      "name": "Kopi Arabika",
+      "unit": "kg",
+      "opening": 7.625,
+      "movedIn": 6.375,
+      "movedOut": 4.334,
+      "processed": 0,
+      "closing": 9.666
+    },
+    {
+      "id": 4,
+      "name": "Kopi Arabika",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 7,
+      "movedOut": 7,
+      "processed": 0,
+      "closing": 0
+    },
+    {
+      "id": 9,
+      "name": "Kopi Bubuk",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 2.9,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 2.9
+    },
+    {
+      "id": 13,
+      "name": "Kopi-Luwak",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 1,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 1
+    },
+    {
+      "id": 6,
+      "name": "Lada Hitam",
+      "unit": null,
+      "opening": 0,
+      "movedIn": 0.3,
+      "movedOut": 0.3,
+      "processed": 0,
+      "closing": 0
+    },
+    {
+      "id": 7,
+      "name": "Minyak Kelapa",
+      "unit": "L",
+      "opening": 0,
+      "movedIn": 2,
+      "movedOut": 5.5,
+      "processed": 0,
+      "closing": -3.5
+    },
+    {
+      "id": 11,
+      "name": "Pala",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 0.5,
+      "movedOut": 0.3,
+      "processed": 0,
+      "closing": 0.2
+    },
+    {
+      "id": 3,
+      "name": "Teh Hijau",
+      "unit": "",
+      "opening": 1.25,
+      "movedIn": 5.1,
+      "movedOut": 1.7,
+      "processed": 0,
+      "closing": 4.6499999999999995
+    },
+    {
+      "id": 14,
+      "name": "Vanili",
+      "unit": "g",
+      "opening": 0,
+      "movedIn": 4,
+      "movedOut": 1,
+      "processed": 0,
+      "closing": 3
+    },
+    {
+      "id": 12,
+      "name": "kopi Robusta",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 1,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 1
+    }
+  ],
+  "totalOpening": 34.375,
+  "totalIn": 181.175,
+  "totalOut": 82.634,
+  "totalProcessed": 7.375,
+  "totalClosing": 132.916,
+  "hasProcess": true,
+  "dormantCount": 1
+}

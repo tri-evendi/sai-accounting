@@ -186,7 +186,11 @@ export default async function StockMovementPage({
         actions={
           <>
             <StatementPDFButton payload={payload} />
-            <StatementExcelButton payload={payload} />
+            {/* `sumber` ikut SELALU: laporan ini `go-parity`
+                (src/lib/report-engine.ts) — begitu register beralih ke `go`,
+                lembarnya dihitung pelari Go dari PARAMETER ini (rentang yang
+                SUDAH diselesaikan `resolveStockPeriod`). */}
+            <StatementExcelButton payload={payload} sumber={{ reportId: "stock-movement", params: { from: period.fromISO, to: period.toISO, cols: sp.cols } }} />
           </>
         }
       />

@@ -41,6 +41,7 @@ import {
 } from "@sai/core/settings-crypto";
 
 import { registerSharedCache } from "./cache-bus";
+import { bumpCacheSignal, cacheSignalVersion, signalAllows } from "./cache-signals";
 
 export type MailTransport = "file" | "smtp";
 
@@ -163,7 +164,7 @@ export async function readMailSettings(
 
 const CACHE_TTL_MS = Number(process.env.MAIL_SETTINGS_CACHE_MS) || 60_000;
 
-let cache: { row: MailSettingsRow | null; at: number } | null = null;
+let cache: { row: MailSettingsRow | null; at: number; version: number | null } | null = null;
 
 /** Tahap 2: penulisnya konsol operator, pembacanya setiap replika — lewat bus. */
 const shared = registerSharedCache("platform-mail-settings", () => {
@@ -185,11 +186,24 @@ export async function cachedMailSettings(
   client?: MailSettingsClient
 ): Promise<MailSettingsRow | null> {
   const now = Date.now();
-  if (cache && now - cache.at < CACHE_TTL_MS && shared.usable()) return cache.row;
+  /* Sinyal `platform-mail-settings`: penulisnya konsol, pembacanya
+     `app-customer` dan `svc-worker` — tanpa sinyal, perubahan SMTP di konsol
+     baru dipakai proses lain sesudah TTL di atas habis. */
+  let db: MailSettingsClient | null = client ?? null;
+  let version: number | null = null;
+  try {
+    db ??= await defaultClient();
+    version = await cacheSignalVersion(db, "platform-mail-settings", now);
+  } catch {
+    version = null;
+  }
+  if (cache && now - cache.at < CACHE_TTL_MS && shared.usable() && signalAllows(cache.version, version)) {
+    return cache.row;
+  }
 
   let row: MailSettingsRow | null = null;
   try {
-    row = await readMailSettings(client);
+    row = await readMailSettings(db ?? undefined);
   } catch (error) {
     /* Penagihan mati ≠ surel mati: kalimat di log, env yang mengambil alih. */
     console.warn(
@@ -198,7 +212,7 @@ export async function cachedMailSettings(
     );
     row = null;
   }
-  cache = { row, at: now };
+  cache = { row, at: now, version };
   return row;
 }
 
@@ -328,6 +342,7 @@ export async function saveMailSettings(
   });
 
   invalidateMailSettingsCache();
+  await bumpCacheSignal(deps.platform, "platform-mail-settings");
   return { outcome: "saved", passwordChanged: wantsNewPassword || Boolean(input.clearPassword) };
 }
 

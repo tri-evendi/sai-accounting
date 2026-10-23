@@ -161,3 +161,46 @@ func LocaleCompare(a, b string) int {
 	}
 	return 0
 }
+
+// NumberString: padanan `String(x)` (`Number.prototype.toString()`) untuk
+// float64 — bentuk angka yang ditulis ExcelJS ke sel lembar sebar TS.
+// `strconv` menulis eksponen berbeda ("1e-07", "1e+06"); JS menulis desimal
+// biasa untuk 1e-7 ≤ |x| < 1e21 dan eksponen tanpa nol di depan ("1e-7",
+// "1e+21") di luar itu. −0 → "0", seperti JS.
+func NumberString(x float64) string {
+	switch {
+	case math.IsNaN(x):
+		return "NaN"
+	case math.IsInf(x, 1):
+		return "Infinity"
+	case math.IsInf(x, -1):
+		return "-Infinity"
+	case x == 0:
+		return "0"
+	case x < 0:
+		return "-" + NumberString(-x)
+	}
+	// Digit terpendek yang membulat-balik + eksponen: "d.ddde±XX".
+	e := strconv.FormatFloat(x, 'e', -1, 64)
+	mant, expText, _ := strings.Cut(e, "e")
+	digits := strings.Replace(mant, ".", "", 1)
+	exp, _ := strconv.Atoi(expText)
+	k, n := len(digits), exp+1
+	switch {
+	case k <= n && n <= 21:
+		return digits + strings.Repeat("0", n-k)
+	case 0 < n && n <= 21:
+		return digits[:n] + "." + digits[n:]
+	case -6 < n && n <= 0:
+		return "0." + strings.Repeat("0", -n) + digits
+	}
+	sign, abs := "+", n-1
+	if abs < 0 {
+		sign, abs = "-", -abs
+	}
+	head := digits[:1]
+	if k > 1 {
+		head += "." + digits[1:]
+	}
+	return head + "e" + sign + strconv.Itoa(abs)
+}

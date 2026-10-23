@@ -1666,6 +1666,59 @@ export function stockValueColumns(report: { visibleColumns?: string[] }): StockV
   return selectColumns(STOCK_VALUE_COLUMNS, report.visibleColumns, "name");
 }
 
+// ─── Kalimat cetak laporan stok (tahap 1d) ──────────────────────────────────
+//
+// Nilai Persediaan, Riwayat Stok, dan Riwayat Hitung Ulang Stok dulu menulis
+// kalimat-kalimat ini SEBARIS di `report-export.ts` dan halaman. Sejak lembar
+// sebarnya punya penulis kedua (Go, `internal/document/stock.go`), satu
+// salinan di setiap bahasa adalah dua salinan yang bisa menyimpang — jadi
+// kalimatnya tinggal di sini dan Go MEMBANGKITKANNYA (`bun run contract:gen`
+// → `internal/contract/stock_layout_gen.go`). Bunyinya tidak berubah.
+
+/** Kalimat cetak lembar sebar laporan stok. */
+export const STOCK_SHEET_LABELS = {
+  /** Kaki tabel Riwayat Stok (kolom nama). */
+  movementTotal: "Total",
+  /** Judul kolom Riwayat Hitung Ulang Stok, dalam urutan cetaknya. */
+  opnameItem: "Tanggal / Barang",
+  opnameUnit: "Satuan",
+  opnameIncrease: "Lebih",
+  opnameDecrease: "Susut",
+  /** Sel satuan barang yang satuannya kosong. */
+  noUnit: "-",
+  /** Awalan nama barang di bawah baris judul sesi hitung ulang. */
+  opnameItemIndent: "   ",
+} as const;
+
+/** Catatan kaki Riwayat Stok: barang tanpa saldo awal dan tanpa mutasi. */
+export function stockMovementDormantNote(count: number): string {
+  return `Catatan: ${count} barang tanpa saldo awal dan tanpa mutasi tidak ditampilkan.`;
+}
+
+/** Catatan kaki Nilai Persediaan: barang bersaldo tanpa dasar biaya. */
+export function stockValueUncostedNote(count: number): string {
+  return `Catatan: ${count} barang bersaldo belum punya dasar biaya, jadi nilainya tidak ikut dijumlahkan.`;
+}
+
+/** Baris judul satu sesi hitung ulang (`dateText` = tanggal cetak id-ID). */
+export function opnameSessionLabel(dateText: string): string {
+  return `Hitung ulang ${dateText}`;
+}
+
+/** Baris ringkasan Riwayat Hitung Ulang Stok. */
+export function opnameSummaryLabel(sessionCount: number, adjustmentCount: number): string {
+  return `${sessionCount} kali hitung ulang · ${adjustmentCount} penyesuaian · Selisih bersih`;
+}
+
+/**
+ * Label periode Nilai Persediaan — `formatDate(from) — formatDate(to)`. BEDA
+ * dari `periodRangeLabel` laporan lain ("Periode …"), dan itu bunyi lama yang
+ * dipertahankan: halaman dan jalur berkas memakai fungsi yang SAMA ini.
+ */
+export function stockValuePeriodLabel(fromText: string, toText: string): string {
+  return `${fromText} — ${toText}`;
+}
+
 // ─── Kolom Laporan Kas & Bank ────────────────────────────────────────────────
 
 export const CASH_BANK_COLUMNS = ["account", "opening", "net", "closing"] as const;

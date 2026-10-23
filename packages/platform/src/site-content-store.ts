@@ -28,14 +28,14 @@ import "server-only";
  * berarti halaman depan memakai kalimat bawaan kamus, bukan 500. Pembaca
  * konsol memulangkan `null` dan halamannya menyebutnya dalam satu kalimat.
  *
- * ══ CACHE: 30 DETIK, DAN KENAPA BUKAN `updateTag` ═════════════════════════
+ * ══ CACHE: SINYAL LINTAS PROSES, BUKAN `updateTag` ════════════════════════
  * Yang menulis adalah `app-operator`; yang membaca adalah `app-customer`. Dua
  * proses, dua cache Next yang terpisah (tanpa `cacheHandler` bersama), jadi
- * `updateTag` dari konsol tidak pernah sampai ke halaman depan. Versi sebelum
- * 0008 tetap memanggilnya dan mengatakan perubahan tampil "seketika"; yang
- * sebenarnya terjadi adalah umur cache 5 menit di sisi customer. Umurnya kini
- * 30 detik, dan konsol mengatakannya apa adanya. Bebannya satu query kecil per
- * bahasa per 30 detik.
+ * `updateTag` dari konsol tidak pernah sampai ke halaman depan. Penerbitan
+ * kini menaikkan sinyal `site-content` (`cache-signals.ts`), dan versinya
+ * bagian dari kunci cache baca di bawah: halaman depan berubah dalam
+ * `SITE_CONTENT_LIVE_DELAY_SECONDS` (= `CACHE_SIGNAL_POLL_SECONDS`). Umur
+ * cache 5 menit tinggal sebagai jaring bila sinyalnya tak terbaca.
  *
  * ⚠ KEGAGALAN TIDAK IKUT TER-CACHE: lemparan ditangkap DI LUAR pembungkus
  * cache. Kalau `{}` hasil kegagalan masuk ke cache, satu detik platform tak
@@ -46,11 +46,11 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { unstable_cache } from "next/cache";
 
+import { bumpCacheSignal, cacheSignalVersion } from "@sai/platform/cache-signals";
 import type { Locale } from "@sai/core/i18n/config";
 import { platformDb } from "@sai/platform/platform-db";
 import {
   SITE_CONTENT_KEY_PATTERN,
-  SITE_CONTENT_LIVE_DELAY_SECONDS,
   SITE_CONTENT_NOTE_MAX,
   SITE_CONTENT_PREVIEW_TOKEN_PATTERN,
   SITE_CONTENT_PREVIEW_TTL_MINUTES,
@@ -65,8 +65,11 @@ import {
 /** Tag cache baca halaman depan (berlaku di dalam proses `app-customer`). */
 export const SITE_CONTENT_TAG = "site-content";
 
-/** Umur cache yang tayang di `app-customer` — lihat kepala berkas. */
-export const SITE_CONTENT_CACHE_SECONDS = SITE_CONTENT_LIVE_DELAY_SECONDS;
+/**
+ * Umur cache yang tayang di `app-customer`: JARING, bukan jeda yang dijanjikan
+ * — jedanya `SITE_CONTENT_LIVE_DELAY_SECONDS` lewat sinyal (kepala berkas).
+ */
+export const SITE_CONTENT_CACHE_SECONDS = 300;
 
 /* ─────────────────────────────── Jalur publik ─────────────────────────────── */
 
@@ -81,10 +84,12 @@ async function readPublished(locale: Locale): Promise<Record<string, string>> {
 }
 
 const cachedPublished = unstable_cache(
-  async (locale: Locale) => readPublished(locale),
+  /* `_versi` = versi sinyal `site-content`; tidak dipakai di badan, ia ada
+     supaya menjadi bagian kunci cache. */
+  async (locale: Locale, _versi: number) => readPublished(locale),
   /* Kunci baru (`entries`): entri cache versi lama berisi baca `site_contents`
      dan tidak boleh dipakai ulang sesudah penukaran image. */
-  ["site-content", "entries", "published"],
+  ["site-content", "entries", "published", "signal"],
   { revalidate: SITE_CONTENT_CACHE_SECONDS, tags: [SITE_CONTENT_TAG] }
 );
 
@@ -94,7 +99,8 @@ const cachedPublished = unstable_cache(
  */
 export async function publishedSiteContent(locale: Locale): Promise<Record<string, string>> {
   try {
-    return await cachedPublished(locale);
+    /* -1 = versi tidak diketahui: satu entri tetap, umur cache yang memutuskan. */
+    return await cachedPublished(locale, (await cacheSignalVersion(platformDb, "site-content")) ?? -1);
   } catch (error) {
     console.error("[site-content] penimpa tak terbaca, memakai kamus bawaan:", error);
     return {};
@@ -418,7 +424,7 @@ export async function publishSiteContentDrafts(input: {
   note: string | null;
   isEditable: (key: string) => boolean;
 }): Promise<PublishResult> {
-  return platformDb.$transaction(async (tx) => {
+  const result = await platformDb.$transaction(async (tx) => {
     const drafts = await tx.siteContentEntry.findMany({
       where: { status: "draft" },
       select: { id: true, locale: true, key: true, value: true },
@@ -450,6 +456,10 @@ export async function publishSiteContentDrafts(input: {
     await tx.siteContentEntry.deleteMany({ where: { id: { in: usable.map((d) => d.id) } } });
     return { publicationId, changes };
   });
+  /* SESUDAH transaksi selesai: pembaca yang melihat versi baru wajib melihat
+     isi baru. Tanpa perubahan pada yang tayang, tidak ada yang perlu dibuang. */
+  if (result.changes.length > 0) await bumpCacheSignal(platformDb, "site-content");
+  return result;
 }
 
 /**
@@ -460,7 +470,7 @@ export async function publishSiteContentDrafts(input: {
 export async function purgeSiteContentKeys(keys: readonly string[], actor: string): Promise<PublishResult> {
   const valid = keys.filter((k) => SITE_CONTENT_KEY_PATTERN.test(k));
   if (valid.length === 0) return { publicationId: null, changes: [] };
-  return platformDb.$transaction(async (tx) => {
+  const result = await platformDb.$transaction(async (tx) => {
     const rows = await tx.siteContentEntry.findMany({
       where: { key: { in: valid } },
       select: { locale: true, key: true, status: true, value: true },
@@ -476,6 +486,8 @@ export async function purgeSiteContentKeys(keys: readonly string[], actor: strin
     await tx.siteContent.deleteMany({ where: { key: { in: valid } } });
     return { publicationId, changes };
   });
+  if (result.changes.length > 0) await bumpCacheSignal(platformDb, "site-content");
+  return result;
 }
 
 /* ───────────────────────────────── Pratinjau ───────────────────────────────── */

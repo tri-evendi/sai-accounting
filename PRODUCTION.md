@@ -141,60 +141,69 @@ docker compose run --rm -e OPERATOR_USERS migrate bun run operator-code <name>
 ### Turning console MFA on (from `OPERATOR_MFA=off`)
 
 `OPERATOR_MFA=off` (exact value `off`) skips the TOTP check at console sign-in;
-any other value, or no variable at all, means MFA is **on**. The TOTP secrets
-are never removed while it is off, so turning it back on needs no new
-credentials, only an authenticator that holds the secret that is already
-there. The console shows the QR code for that secret. Do not remove the switch
-until every account that will sign in shows **Confirmed**: an account whose
-phone does not have the secret is locked out the moment MFA comes back.
+any other value, or no variable at all, means MFA is **on**. While it is off,
+every console page shows a warning banner.
 
-**(a) Scan and confirm, one account at a time.** Do this from each account that
-will be used.
+With MFA on, sign-in depends on whether the account has **confirmed** an
+authenticator for its current TOTP secret (the readiness table on `/accounts`):
 
-1. Sign in to the console and open **Accounts → Set up authenticator**
-   (`/accounts/authenticator`).
-2. Re-enter the password (plus a current code if MFA is already on) and press
-   **Show QR code**. The QR code is generated on the server as inline SVG and
-   no external QR service is involved. The secret is also shown as text for
-   manual entry (TOTP, 6 digits, 30 s, SHA1).
-3. Scan it with Google Authenticator, Authy, Microsoft Authenticator,
-   1Password or another authenticator app, type the 6-digit code it shows, and
-   press **Confirm**. The operator audit trail records
-   `operator.authenticator.confirm` with a fingerprint of the secret. The secret
-   itself is never recorded.
-4. Check the **MFA readiness** table, which `/accounts` shows at the top while MFA is
-   off. Every account you need must read **Confirmed**. *Secret changed*
-   means the account was confirmed against a secret it no longer has (the env
-   entry was replaced, or a database account was reset), so confirm it again.
+| Account state | Sign-in |
+|---|---|
+| Confirmed | password + 6-digit code |
+| Not confirmed, or *Secret changed* | correct password opens a 10-minute **setup page** (`/login/authenticator`) with the QR code and the secret as text. The operator scans it, types one code, and only then gets a console session |
 
-Re-authentication is rate-limited to 5 attempts per 15 minutes per account, and
-confirmation to 10. A database account can also issue itself a **new secret**
-on the same page. The old secret stays valid until a code from the new one is
-confirmed. An env account (`OPERATOR_USERS`) cannot rotate from the console:
-generate a new entry with `scripts/operator-credential.ts <name>` (§3), replace
-it in `.env`, recreate `app-operator`, then repeat (a).
+The setup session can open nothing except that page (the console proxy sends it
+back there, and every page, action and download guard reads only the normal
+session cookie). Leaving the page, pressing **Cancel**, or waiting 10 minutes
+sends the operator back to sign-in. Codes on the setup page share the
+rate limit of `/accounts/authenticator`: 10 per 15 minutes per account. The
+audit trail records `operator.authenticator.enroll.start`, `.enroll.confirm`
+(with a fingerprint of the secret, never the secret) and `.enroll.failed`.
 
-**(b) Remove the switch.** Delete the `OPERATOR_MFA=off` line from `.env`. Do not
-set it to `false` or `0`. Those values also mean "on", but they leave a line
-that reads as if it might not. Then recreate the console:
+So turning MFA on no longer needs every account confirmed first, and nobody is
+locked out by it:
 
-```bash
-docker compose up -d --no-deps app-operator
-docker compose exec app-operator printenv OPERATOR_MFA   # expect no output
-```
+1. Delete the `OPERATOR_MFA=off` line from `.env`. Do not set it to `false` or
+   `0`: those also mean "on", but leave a line that reads as if it might not.
+2. Recreate the console (the environment is read only when the container is
+   created):
 
-If `up -d` reports the container as already running and `printenv` still prints
-`off`, add `--force-recreate`. The environment is read only when the container
-is created.
+   ```bash
+   docker compose up -d --no-deps app-operator
+   docker compose exec app-operator printenv OPERATOR_MFA   # expect no output
+   ```
 
-**(c) Prove it.** Sign out, then sign in again. The form now asks for the
-6-digit code, and a sign-in without the correct code fails. Keep that session
-open until a second sign-in from another browser has worked.
+   If `printenv` still prints `off`, add `--force-recreate`.
+3. Sign in. An account that has not confirmed an authenticator lands on the
+   setup page: scan, type the code, done. From then on every sign-in asks for
+   the code. Keep that session open until a second sign-in (another browser)
+   has worked.
+4. Watch the operator audit trail for `operator.authenticator.enroll.*` until
+   every account in use reads **Confirmed**.
+
+**Accepted risk.** Until an account confirms, whoever knows its password can
+enroll their own phone. This is the usual first-enrollment trade-off. It is
+limited to accounts that have never confirmed the current secret, and every
+enrollment shows up in the audit trail. A confirmed account cannot be
+re-enrolled from the sign-in page. If its phone is lost: a database account
+rotates its secret while signed in (`/accounts/authenticator`), or an owner
+resets it (`/accounts`), which issues a new secret and sends it through setup
+again. An env account (`OPERATOR_USERS`) gets a new entry from
+`scripts/operator-credential.ts <name>` (§3); after `.env` is replaced and
+`app-operator` recreated, its next sign-in goes through setup. If the audit
+trail (`sai_platform`) is unreachable, the console treats every account as
+confirmed: confirmed accounts still sign in with a code, unconfirmed ones wait.
+
+Confirming beforehand still works and is optional: **Accounts → Set up
+authenticator** (`/accounts/authenticator`) shows the QR code after the password
+(plus a current code when MFA is on) is re-entered, and records
+`operator.authenticator.confirm`.
 
 **Rollback.** Put `OPERATOR_MFA=off` back in `.env` and run the same
 `docker compose up -d --no-deps app-operator`. Every sign-in while it is off is
-logged as a warning (`OPERATOR_MFA=off — kode TOTP TIDAK diperiksa`), so the
-switch cannot quietly become permanent.
+logged as a warning (`OPERATOR_MFA=off — kode TOTP TIDAK diperiksa`) and every
+console page shows the banner, so the switch cannot quietly become permanent.
+Confirmations are kept; turning MFA on again needs no new setup.
 
 ## 4. Persistent data
 

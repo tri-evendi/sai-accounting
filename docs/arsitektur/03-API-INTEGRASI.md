@@ -107,6 +107,7 @@ Hanya-baca, lima sumber daya, semuanya `GET`. Bentuk jawaban ditetapkan di
 2. IP ∈ OPERATOR_IP_ALLOWLIST  →  kosong: TOLAK SEMUA
 3. Cookie sesi bertanda tangan →  kalau tidak: /login
 4. TOTP bila OPERATOR_MFA      →  kalau tidak: tolak
+   (belum terkonfirmasi        →  sesi PEMASANGAN 10 menit, hanya /login/authenticator)
 ```
 
 | | |

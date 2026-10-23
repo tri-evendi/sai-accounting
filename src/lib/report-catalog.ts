@@ -416,10 +416,11 @@ export const REPORTS: ReportDefinition[] = [
      * sifat yang dipaksakan dengan menurunkan kedua ujungnya dari
      * `getBalanceSheet()` dan diuji sebagai rekonsiliasi.
      *
-     * Tanpa `payloadKind` dan tanpa `columns`: belum ada cetakan/lembar
-     * sebarnya, preseden yang sama dengan `project-profit` dan
-     * `expense-by-nature`. Kartu yang jujur tentang apa yang disediakannya
-     * lebih baik daripada tombol unduh yang memulangkan berkas kosong.
+     * BERBERKAS sejak keputusan pemilik 23 Okt 2026 (`payloadKind`): Excel
+     * & PDF seperti laporan keuangan lainnya, bentuknya dari
+     * `equityStatementLayout()`. TANPA `columns`: susunannya ditentukan
+     * standar akuntansi (awal + tambah − kurang = akhir), dan centang kolom
+     * di situ adalah kendali yang memecah persamaan itu.
      *
      * TANPA `filters: ["costCenter"]`: ekuitas milik perusahaan, bukan milik
      * proyek. Menyaringnya per pusat biaya akan memulangkan potongan yang tidak
@@ -433,6 +434,7 @@ export const REPORTS: ReportDefinition[] = [
     href: "/reports/equity-changes",
     paramKind: "period",
     icon: "Layers",
+    payloadKind: "equity-changes",
   },
   {
     id: "balance-sheet",

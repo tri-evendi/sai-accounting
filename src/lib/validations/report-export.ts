@@ -156,6 +156,25 @@ const cashFlow = z.object({
   suspectUnrated: z.number().int().nonnegative(),
 });
 
+/** Laporan Perubahan Ekuitas — bentuk `EquityStatement` apa adanya. */
+const equityChanges = z.object({
+  kind: z.literal("equity-changes"),
+  period: z.string(),
+  components: rows(
+    z.object({
+      code: z.string(),
+      name: z.string(),
+      opening: money,
+      additions: money,
+      reductions: money,
+      closing: money,
+    })
+  ),
+  unclosedIncome: z.object({ opening: money, movement: money, closing: money }),
+  totalOpening: money,
+  totalClosing: money,
+});
+
 /**
  * Kartu Stok (issue #126). `quantity` is a plain finite number like `money` —
  * it may be negative (an oversold item, a correction) and is never re-rounded
@@ -371,6 +390,7 @@ export const statementPayloadSchema = z.discriminatedUnion("kind", [
   incomeStatement,
   balanceSheet,
   cashFlow,
+  equityChanges,
   stockMovement,
   opnameHistory,
   partyRecap,

@@ -920,6 +920,42 @@ retry resumes once fixed). Copy the release's compose file first; then
 PROVISION_DATABASE_URL` prints nothing, and create a company on the test
 tenant (step 6 above).
 
+### Timestamp convention — no migration, do not change the database time zone (23 Oct 2026)
+
+`TIMESTAMP(3)` columns hold **UTC wall time** everywhere except `jobs`, which
+holds the session-clock (`now()`, `Asia/Jakarta` here) by design (#741/#744).
+Full rule and evidence: [`docs/DATABASE.md`](docs/DATABASE.md) §4 "Kolom
+waktu". The release that brought this (`rate-limit-persistent.ts` now writes
+`now() AT TIME ZONE 'UTC'`) carries **no migration and no data change** — an
+ordinary `pull` + `up -d`. Nightly backups are unaffected:
+`timestamp without time zone` values dump and restore verbatim, whatever the
+`TZ` of either server.
+
+**Do not** "fix" times by running `ALTER DATABASE … SET timezone = 'UTC'` or by
+changing the `pg` container's `TZ`. Nothing outside `jobs` depends on the
+session zone, and inside `jobs` it would shift `now()` seven hours under a live
+queue (queued rows wait seven extra hours; held leases look negative-aged)
+until every pooled connection — Node, pgx, PgBouncer — is replaced. On-prem
+installs in other zones are correct as they are, for the same reason.
+
+Verification, read-only (any book, plus `sai_control` / `sai_platform`):
+
+```bash
+# 1. Prisma-written rows: created_at and updated_at agree (expect 0 in every database)
+docker exec sai-pg psql -U sai -d sai_control -Atc "
+  SELECT count(*) FROM users WHERE abs(extract(epoch FROM updated_at - created_at)) BETWEEN 25100 AND 25300"
+# 2. Only jobs may carry values in the 'future-in-UTC' window (Jakarta wall time written in the last 7 h)
+docker exec sai-pg psql -U sai -d sai_control -Atc "
+  SELECT count(*) FROM runtime_samples WHERE created_at > (now() AT TIME ZONE 'UTC') + interval '1 minute'"
+# 3. After the release: newest rate-limit row is UTC, i.e. not in the future (expect f)
+docker exec sai-pg psql -U sai -d sai_control -Atc "
+  SELECT max(updated_at) > (now() AT TIME ZONE 'UTC') + interval '1 minute' FROM rate_limit_counters"
+```
+
+Row 3 reads `t` only until the first rate-limited request after the swap;
+old Jakarta-time rows are read as expired windows (at most one early reset),
+never as a seven-hour lockout, and are cleaned up by the usual 24 h sweep.
+
 ### MariaDB retired (issue #636, 22 Oct 2026)
 
 Already done on the server by the main session, before the PR that removed

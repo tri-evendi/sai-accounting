@@ -123,6 +123,27 @@ import {
 } from "../src/lib/cost-centers";
 import { COMPARISON_MODES } from "../src/lib/statement-compare";
 import { accountTypeLabel } from "../src/lib/accounting";
+/* Laporan stok (tahap 1d, `go-parity`) — `stock_layout_gen.go`. */
+import { OPNAME_ADJUSTMENT_NOTE, STOCK_MOVEMENT_TYPES } from "@sai/core/constants";
+import {
+  EXPORT_TOTALS,
+  STOCK_MOVEMENT_COLUMNS,
+  STOCK_MOVEMENT_HEADERS,
+  STOCK_SHEET_LABELS,
+  STOCK_VALUE_COLUMNS,
+  STOCK_VALUE_HEADERS,
+  opnameSessionLabel,
+  opnameSummaryLabel,
+  stockMovementDormantNote,
+  stockValuePeriodLabel,
+  stockValueUncostedNote,
+} from "../src/lib/statement-layout";
+import {
+  OPNAME_HISTORY_COLUMNS,
+  QUANTITY_NUMBER_FORMAT,
+  STOCK_MOVEMENT_WIDTHS,
+  STOCK_VALUE_WIDTHS,
+} from "../src/lib/report-export";
 
 const AKAR = process.cwd();
 const SUMBER = join(AKAR, "contract", "kinds.yaml");
@@ -170,6 +191,18 @@ const TUJUAN_TATA_LETAK_UMUR_GO = join(
   "internal",
   "contract",
   "aging_layout_gen.go"
+);
+
+/* Laporan stok (tahap 1d, `go-parity`): berkas TERSENDIRI dengan alasan yang
+   sama dengan `aging_layout_gen.go` — laporan lain yang dipindah paralel tidak
+   menyunting fungsi pembangkit yang sama. */
+const TUJUAN_TATA_LETAK_STOK_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "stock_layout_gen.go"
 );
 
 const CEK = process.argv.includes("--cek");
@@ -2251,6 +2284,139 @@ const BackupInstanceObjectPrefix = ${q(k.backup.instance_object_prefix)}
 `;
 }
 
+// ═══ Tata letak laporan stok (tahap 1d) ════════════════════════════════════
+//
+// Nilai Persediaan, Riwayat Stok, Riwayat Hitung Ulang Stok. Sumbernya
+// `statement-layout.ts` (kalimat, judul), `report-export.ts` (lebar, format
+// kuantitas), `report-catalog.ts` (kolom `?cols=`), dan `@sai/core/constants`
+// (kosakata `stock_movements.type` dan penanda catatan opname — yang DITULIS
+// jalur tulis TS dan kini DIBACA Go).
+
+/** Kalimat TS dengan DUA bilangan bulat → pola Go berindeks (`%[1]d`, `%[2]d`). */
+function polaGoBulat2(fn: (a: number, b: number) => string): string {
+  const [A, B] = [987654321, 123456789];
+  const kalimat = fn(A, B);
+  for (const n of [A, B]) {
+    if (!kalimat.includes(String(n))) throw new Error(`pola Go: angka penanda hilang dari ${kalimat}`);
+  }
+  return kalimat.replace(/%/g, "%%").replace(String(A), "%[1]d").replace(String(B), "%[2]d");
+}
+
+function bangkitkanTataLetakStokGo(): string {
+  const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
+\`src/lib/report-catalog.ts\`, dan \`@sai/core/constants\` — JANGAN DISUNTING TANGAN.
+
+Jalankan \`bun run contract:gen\` setelah mengubah salah satunya, dan commit
+hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+berkas ini basi (penjaga \`tests/contract-jobs.test.ts\`).
+
+Pembacanya \`internal/ledgerread/stock.go\` (kosakata gerakan stok, penanda
+opname) dan \`internal/document/stock.go\` (lembar sebar Nilai Persediaan,
+Riwayat Stok, Riwayat Hitung Ulang Stok). Isi lembarnya wajib sama dengan
+\`buildStockValueSheet\` / \`buildStockMovementSheet\` / \`buildOpnameHistorySheet\`
+— dibuktikan \`bun run parity:stock-value-xlsx\` dst.`
+    .split("\n")
+    .map((b) => `// ${b}`.trimEnd())
+    .join("\n");
+  const q = (v: string) => JSON.stringify(v);
+
+  /* Kosakata gerakan stok: empat nilai yang DIKENAL pembaca Go. Nilai baru di
+     TS tanpa padanan di sini DITOLAK — Go akan diam-diam mengabaikannya, dan
+     itulah kelas cacat #111 (tipe tak dikenal terbaca sebagai keluar). */
+  const DIKENAL = ["in", "out", "process", "cost_adjust"];
+  if ([...STOCK_MOVEMENT_TYPES].sort().join(",") !== [...DIKENAL].sort().join(",")) {
+    throw new Error(`STOCK_MOVEMENT_TYPES (${STOCK_MOVEMENT_TYPES.join(",")}) ≠ yang dikenal Go (${DIKENAL.join(",")})`);
+  }
+  const tipe = ratakan(
+    STOCK_MOVEMENT_TYPES.map((t) => ({ kiri: `StockMovementType${pengenalGo(t)}`, kanan: `StockMovementType = ${q(t)}` }))
+  );
+
+  /* Kolom katalog WAJIB = daftar kanonik, berurutan: Go menyaring kolom tampil
+     (`resolveColumns` → `selectColumns`) dari satu daftar ini. */
+  const kolom = (id: "stock-value" | "stock-movement", kanonik: readonly string[], judul: Record<string, string>, lebar: Record<string, number>) => {
+    const spesifikasi = REPORTS.find((r) => r.id === id)?.columns ?? [];
+    const ids = spesifikasi.map((c) => c.id);
+    if (ids.join(",") !== kanonik.join(",")) {
+      throw new Error(`kolom katalog ${id} (${ids.join(",")}) ≠ daftar kanonik (${kanonik.join(",")})`);
+    }
+    return spesifikasi
+      .map(
+        (c) =>
+          `\t{ID: ${q(c.id)}, Header: ${q(judul[c.id]!)}, Width: ${lebar[c.id]}, ` +
+          `Fixed: ${c.fixed === true}, DefaultOn: ${c.defaultOn !== false}},`
+      )
+      .join("\n");
+  };
+
+  const konst = ratakan([
+    { kiri: "QuantityNumberFormat", kanan: `= ${q(QUANTITY_NUMBER_FORMAT)}` },
+    { kiri: "OpnameAdjustmentNote", kanan: `= ${q(OPNAME_ADJUSTMENT_NOTE)}` },
+    { kiri: "StockNoUnit", kanan: `= ${q(STOCK_SHEET_LABELS.noUnit)}` },
+    { kiri: "StockValueSheetName", kanan: `= ${q(SHEET_NAMES["stock-value"])}` },
+    { kiri: "StockValueTitle", kanan: `= ${q(STATEMENT_TITLES["stock-value"])}` },
+    { kiri: "StockValuePeriodFormat", kanan: `= ${q(polaGo(stockValuePeriodLabel, 2))}` },
+    { kiri: "StockValueEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.items)}` },
+    { kiri: "StockValueTotalLabel", kanan: `= ${q(EXPORT_TOTALS.stockValue)}` },
+    { kiri: "StockValueUncostedNoteFormat", kanan: `= ${q(polaGoBulat(stockValueUncostedNote))}` },
+    { kiri: "StockMovementSheetName", kanan: `= ${q(SHEET_NAMES["stock-movement"])}` },
+    { kiri: "StockMovementTitle", kanan: `= ${q(STATEMENT_TITLES["stock-movement"])}` },
+    { kiri: "StockMovementEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.stockMovement)}` },
+    { kiri: "StockMovementTotalLabel", kanan: `= ${q(STOCK_SHEET_LABELS.movementTotal)}` },
+    { kiri: "StockMovementDormantNoteFormat", kanan: `= ${q(polaGoBulat(stockMovementDormantNote))}` },
+    { kiri: "OpnameHistorySheetName", kanan: `= ${q(SHEET_NAMES["opname-history"])}` },
+    { kiri: "OpnameHistoryTitle", kanan: `= ${q(STATEMENT_TITLES["opname-history"])}` },
+    { kiri: "OpnameHistoryEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.opnameHistory)}` },
+    { kiri: "OpnameItemIndent", kanan: `= ${q(STOCK_SHEET_LABELS.opnameItemIndent)}` },
+    { kiri: "OpnameSessionFormat", kanan: `= ${q(polaGo(opnameSessionLabel))}` },
+    { kiri: "OpnameSummaryFormat", kanan: `= ${q(polaGoBulat2(opnameSummaryLabel))}` },
+  ]);
+  const kolomOpname = OPNAME_HISTORY_COLUMNS.map((c) => `\t{Header: ${q(c.header)}, Width: ${c.width}},`).join("\n");
+
+  return `${kepala}
+
+package contract
+
+// StockMovementType: kosakata \`stock_movements.type\` (STOCK_MOVEMENT_TYPES).
+type StockMovementType string
+
+// Kosakata gerakan stok.
+const (
+${tipe}
+)
+
+// StockColumn adalah satu kolom lembar laporan stok yang bisa dipilih
+// \`?cols=\`: id katalog, judul, lebar, dan aturan pilihnya (\`resolveColumns\`).
+type StockColumn struct {
+\tID        string
+\tHeader    string
+\tWidth     float64
+\tFixed     bool
+\tDefaultOn bool
+}
+
+// Kalimat cetak laporan stok. Pola ber-%s/%d disusun fmt.Sprintf.
+const (
+${konst}
+)
+
+// StockValueColumns: kolom Nilai Persediaan dalam urutan STOCK_VALUE_COLUMNS.
+var StockValueColumns = []StockColumn{
+${kolom("stock-value", STOCK_VALUE_COLUMNS, STOCK_VALUE_HEADERS, STOCK_VALUE_WIDTHS)}
+}
+
+// StockMovementColumns: kolom Riwayat Stok dalam urutan STOCK_MOVEMENT_COLUMNS.
+var StockMovementColumns = []StockColumn{
+${kolom("stock-movement", STOCK_MOVEMENT_COLUMNS, STOCK_MOVEMENT_HEADERS, STOCK_MOVEMENT_WIDTHS)}
+}
+
+// OpnameHistoryColumns: judul & lebar kolom Riwayat Hitung Ulang Stok
+// (OPNAME_HISTORY_COLUMNS).
+var OpnameHistoryColumns = []ReportColumn{
+${kolomOpname}
+}
+`;
+}
+
 const kontrak = baca();
 const kontrakAkuntansi = bacaAkuntansi();
 const kontrakInstans = bacaInstans();
@@ -2263,6 +2429,7 @@ const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_UMUR_GO, isi: bangkitkanTataLetakUmurGo(kontrakAkuntansi) },
+  { jalur: TUJUAN_TATA_LETAK_STOK_GO, isi: bangkitkanTataLetakStokGo() },
   { jalur: TUJUAN_INSTANS_TS, isi: bangkitkanInstans(kontrakInstans) },
   { jalur: TUJUAN_INSTANS_GO, isi: bangkitkanInstansGo(kontrakInstans) },
 ];

@@ -27,6 +27,17 @@
 //	parity equity-changes-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
 //	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> -registry-name <nama registry> -out <berkas.xlsx>
 //
+//	parity stock-value|stock-movement|opname-history -database <nama> -from <RFC3339> -to <RFC3339>
+//	parity stock-value-xlsx|stock-movement-xlsx|opname-history-xlsx -database <nama> \
+//	       -from <RFC3339> -to <RFC3339> -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> \
+//	       [-cols <id,id>] -registry-name <nama registry> -out <berkas.xlsx>
+//
+// Laporan stok (tahap 1d, `go-parity`): pembandingnya `scripts/parity-stock.ts`
+// / `scripts/parity-stock-xlsx.ts` (`bun run parity:stock-value` dst.). Angka
+// float64 dicetak sebagai JSON yang membulat-balik ke double yang SAMA, jadi
+// pembandingnya eksak. `-cols` = `?cols=` (Riwayat Hitung Ulang Stok tanpa
+// pilihan kolom).
+//
 // Arus Kas dan Laporan Perubahan Ekuitas (tahap 1d, 23 Okt 2026) membuka
 // bukunya lewat registry kendali (`openFromRegistry`) seperti Neraca Saldo —
 // instans tempat buku itu hidup, bukan instans bawaan. Varian -xlsx Laporan
@@ -150,7 +161,8 @@ func run(args []string) error {
 	if len(args) == 0 {
 		return errors.New("pakai: parity trial-balance|trial-balance-xlsx|balance-sheet|balance-sheet-xlsx|" +
 			"income-statement|income-statement-xlsx|cash-flow|cash-flow-xlsx|equity-changes|equity-changes-xlsx|" +
-			"receivables|receivables-xlsx|payables|payables-xlsx|conformance -database <nama> …")
+			"receivables|receivables-xlsx|payables|payables-xlsx|" +
+			"stock-value|stock-value-xlsx|stock-movement|stock-movement-xlsx|opname-history|opname-history-xlsx|conformance -database <nama> …")
 	}
 	switch args[0] {
 	case "conformance":
@@ -181,6 +193,10 @@ func run(args []string) error {
 		return aging("receivables", args[1:], true)
 	case "payables-xlsx":
 		return aging("payables", args[1:], true)
+	case "stock-value", "stock-movement", "opname-history":
+		return stock(args[0], args[1:], false)
+	case "stock-value-xlsx", "stock-movement-xlsx", "opname-history-xlsx":
+		return stock(strings.TrimSuffix(args[0], "-xlsx"), args[1:], true)
 	default:
 		return fmt.Errorf("laporan %q belum punya implementasi Go", args[0])
 	}
@@ -681,6 +697,109 @@ func aging(kind string, args []string, xlsx bool) error {
 	data, err := document.AgingWorkbook(rep, document.AgingVisibleColumns(specs, *cols), name, period, time.Now())
 	if err != nil {
 		return err
+	}
+	return os.WriteFile(*out, data, 0o600)
+}
+
+// stock: laporan stok sebagai JSON, atau (xlsx) lembar sebarnya lewat
+// `internal/document` — kode yang sama dengan pelari jalur `interactive`.
+func stock(kind string, args []string, xlsx bool) error {
+	fs := flag.NewFlagSet(kind, flag.ContinueOnError)
+	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
+	fromRaw := fs.String("from", "", "awal periode INKLUSIF sebagai instan RFC3339")
+	toRaw := fs.String("to", "", "akhir periode INKLUSIF sebagai instan RFC3339")
+	fromDate := fs.String("from-date", "", "xlsx: awal periode YYYY-MM-DD (label)")
+	toDate := fs.String("to-date", "", "xlsx: akhir periode YYYY-MM-DD (label)")
+	cols := fs.String("cols", "", "xlsx: kolom tampil MENTAH (`?cols=`)")
+	registryName := fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong")
+	out := fs.String("out", "", "xlsx: berkas .xlsx keluaran")
+	timeout := fs.Duration("timeout", 5*time.Minute, "batas waktu satu laporan")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	from, err := instant("from", *fromRaw)
+	if err != nil {
+		return err
+	}
+	to, err := instant("to", *toRaw)
+	if err != nil {
+		return err
+	}
+	if xlsx && (*fromDate == "" || *toDate == "" || *out == "") {
+		return errors.New("-from-date, -to-date, dan -out wajib")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	r, company, err := openFromRegistry(ctx, *database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	var name string
+	if xlsx {
+		reg := *registryName
+		if strings.TrimSpace(reg) == "" {
+			reg = company.Name
+		}
+		if name, err = headerName(ctx, r, reg); err != nil {
+			return err
+		}
+	}
+	var report any
+	var data []byte
+	switch kind {
+	case contract.ReportStockValue:
+		rep, err := r.StockValue(ctx, from, to)
+		if err != nil {
+			return err
+		}
+		report = rep
+		if xlsx {
+			period, err := document.StockValuePeriod(*fromDate, *toDate)
+			if err != nil {
+				return err
+			}
+			if data, err = document.StockValueWorkbook(rep, *cols, name, period, time.Now()); err != nil {
+				return err
+			}
+		}
+	case contract.ReportStockMovement:
+		rep, err := r.StockMovement(ctx, from, to)
+		if err != nil {
+			return err
+		}
+		report = rep
+		if xlsx {
+			period, err := document.PeriodRange(*fromDate, *toDate, "")
+			if err != nil {
+				return err
+			}
+			if data, err = document.StockMovementWorkbook(rep, *cols, name, period, time.Now()); err != nil {
+				return err
+			}
+		}
+	case contract.ReportOpnameHistory:
+		h, err := r.OpnameHistory(ctx, from, to)
+		if err != nil {
+			return err
+		}
+		report = h
+		if xlsx {
+			period, err := document.PeriodRange(*fromDate, *toDate, "")
+			if err != nil {
+				return err
+			}
+			if data, err = document.OpnameHistoryWorkbook(h, name, period, time.Now()); err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("laporan stok %q tidak dikenal", kind)
+	}
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(report)
 	}
 	return os.WriteFile(*out, data, 0o600)
 }

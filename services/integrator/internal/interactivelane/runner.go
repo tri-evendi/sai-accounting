@@ -177,6 +177,10 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 		// register yang memutuskan kapan cabang ini terjangkau.
 		case contract.ReportReceivables, contract.ReportPayables:
 			data, filename, err = umur(c.Ctx, company, m, c.Progress)
+		// Laporan stok (tahap 1d, `go-parity`): penghasilnya ada, register yang
+		// memutuskan kapan cabang ini terjangkau.
+		case contract.ReportStockValue, contract.ReportStockMovement, contract.ReportOpnameHistory:
+			data, filename, err = stok(c.Ctx, company, m, c.Progress)
 		default:
 			err = fmt.Errorf("laporan %q belum punya penghasil berkas Go", m.ReportID)
 		}
@@ -474,6 +478,89 @@ func umur(ctx context.Context, company *registry.Company, m muatanEkspor, progre
 		return nil, "", err
 	}
 	return data, document.FileName(document.AgingTitle(m.ReportID), now), nil
+}
+
+// stok: Nilai Persediaan, Riwayat Stok, atau Riwayat Hitung Ulang Stok
+// [fromInstant, toInstant]. Instan dihitung PENERBIT — `resolvePeriod` untuk
+// Nilai Persediaan, `resolveStockPeriod` untuk dua lainnya, persis cabangnya
+// di `buildReportPayload` — dan diterima apa adanya. `params.cols` = `?cols=`
+// halaman (Riwayat Hitung Ulang Stok tidak punya pilihan kolom). Tanpa kolom
+// pembanding: muatan yang membawanya DITOLAK.
+func stok(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+	if m.Params["compare"] != "" || m.PriorFromInstant != "" || m.PriorToInstant != "" || m.PriorAsOfInstant != "" {
+		return nil, "", fmt.Errorf("laporan stok tidak punya kolom pembanding (compare %q)", m.Params["compare"])
+	}
+	from, err := time.Parse(time.RFC3339Nano, m.FromInstant)
+	if err != nil {
+		return nil, "", fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
+	}
+	to, err := time.Parse(time.RFC3339Nano, m.ToInstant)
+	if err != nil {
+		return nil, "", fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
+	}
+
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, "", err
+	}
+	defer r.Close()
+
+	now := time.Now()
+	var data []byte
+	var title string
+	switch m.ReportID {
+	case contract.ReportStockValue:
+		period, err := document.StockValuePeriod(m.Params["from"], m.Params["to"])
+		if err != nil {
+			return nil, "", err
+		}
+		rep, err := r.StockValue(ctx, from, to)
+		if err != nil {
+			return nil, "", err
+		}
+		_ = progress(55)
+		name := companyName(ctx, r, company)
+		_ = progress(70)
+		if data, err = document.StockValueWorkbook(rep, m.Params["cols"], name, period, now); err != nil {
+			return nil, "", err
+		}
+		title = contract.StockValueTitle
+	case contract.ReportStockMovement:
+		period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
+		if err != nil {
+			return nil, "", err
+		}
+		rep, err := r.StockMovement(ctx, from, to)
+		if err != nil {
+			return nil, "", err
+		}
+		_ = progress(55)
+		name := companyName(ctx, r, company)
+		_ = progress(70)
+		if data, err = document.StockMovementWorkbook(rep, m.Params["cols"], name, period, now); err != nil {
+			return nil, "", err
+		}
+		title = contract.StockMovementTitle
+	case contract.ReportOpnameHistory:
+		period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
+		if err != nil {
+			return nil, "", err
+		}
+		h, err := r.OpnameHistory(ctx, from, to)
+		if err != nil {
+			return nil, "", err
+		}
+		_ = progress(55)
+		name := companyName(ctx, r, company)
+		_ = progress(70)
+		if data, err = document.OpnameHistoryWorkbook(h, name, period, now); err != nil {
+			return nil, "", err
+		}
+		title = contract.OpnameHistoryTitle
+	default:
+		return nil, "", fmt.Errorf("laporan stok %q tidak dikenal", m.ReportID)
+	}
+	return data, document.FileName(title, now), nil
 }
 
 // priorIncomeStatement: Laba Rugi periode pembanding (#557), atau nil bila

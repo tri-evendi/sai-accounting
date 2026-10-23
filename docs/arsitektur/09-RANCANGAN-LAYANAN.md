@@ -1352,9 +1352,90 @@ saringan (semua, hanya jatuh tempo); `-xlsx` juga × tiga pilihan kolom
 (bawaan, `party` saja, sebagian). Lulus keempatnya → `parityProven` di entri
 register, lalu `go-parity` → `go` + `bun run contract:gen`.
 
+#### Laporan stok: Nilai Persediaan, Riwayat Stok, Riwayat Hitung Ulang Stok (`go-parity`, 23 Okt 2026)
+
+Tiga laporan yang membaca `stock_movements`, bukan jurnal. Aturannya disalin
+dari `src/lib/stock-report.ts` (`buildStockValuePeriodReport`,
+`buildStockMovementReport`, `buildOpnameHistory`), bukan dirancang ulang.
+
+| Bagian | Di mana |
+|---|---|
+| Pembaca: Kartu Stok (dua `GROUP BY` terpisah `< from` / `[from, to]`, `process` dihitung tidak mengurangi), Nilai Persediaan (rata-rata tertimbang BERTANGGAL termasuk `cost_adjust` biaya impor #495, nilai keluar pada rata-rata tanggal gerakannya, selisih penilaian), opname (catatan `OPNAME_ADJUSTMENT_NOTE` persis, hari kalender Jakarta, urutan \|selisih\| ↓ lalu `localeCompare`) | `ledgerread/stock.go` |
+| Lembar sebar ketiganya (kolom `?cols=`, "Diolah" hanya bila ada mutasi olah, sel kosong untuk nilai tanpa dasar biaya, catatan kaki) | `document/stock.go` |
+| Kalimat cetak, lebar, format kuantitas, kolom katalog, kosakata `stock_movements.type`, penanda opname — DIBANGKITKAN; kalimat yang dulu sebaris di `report-export.ts` pindah ke `STOCK_SHEET_LABELS` dkk. di `statement-layout.ts` (bunyi tidak berubah) | `contract/stock_layout_gen.go` (berkas bangkitan tersendiri) |
+| Muatan penerbit: Riwayat Stok & Riwayat Hitung Ulang Stok memakai `resolveStockPeriod` (bawaan bulan berjalan), persis `buildReportPayload` | `report-export-go.ts` (`STOCK_PERIOD_REPORTS`) |
+| Halaman ketiganya mengirim `sumber` (`from`/`to`, + `cols` untuk Nilai Persediaan & Riwayat Stok) | `reports/stock-value`, `inventory/movement`, `inventory/opname/history` |
+| Paritas | `parity:stock-value[-xlsx]` · `parity:stock-movement[-xlsx]` · `parity:opname-history[-xlsx]` (`scripts/parity-stock*.ts`, `src/lib/stock-report-parity.ts`) |
+| Berkas emas lintas bahasa (buku `stock_books.json`, 18 kasus) | `go test -update` → `tests/stock-golden.test.ts` |
+
+Keputusan & temuan:
+
+1. **FLOAT64, bukan sen eksak — dan paritasnya EKSAK.** Seluruh aritmetika TS
+   ketiga laporan ini float tanpa titik pembulatan kuantitas. Go meniru
+   float64 dalam urutan operasi yang sama (hasil kali dibungkus `float64(…)`
+   supaya tidak dilebur FMA), dan JSON-nya membulat-balik ke double yang sama,
+   jadi pembanding memakai `===`, bukan toleransi sen.
+2. **Sisa float menentukan status barang (temuan TS, tidak diubah).** Di Nilai
+   Persediaan kuantitas dijumlah dalam JS: masuk 0,1 + 0,2 lalu keluar 0,3
+   menyisakan 5,55e-17 — barang itu "bersaldo", tidak masuk hitungan diam, dan
+   bila tanpa dasar biaya ikut `uncostedCount`. Riwayat Stok menjumlah di SQL
+   (NUMERIC tepat) sehingga barang yang sama bersaldo NOL di sana. Dua laporan,
+   satu barang, dua jawaban.
+3. **Dua `round2` di satu laporan (temuan TS, tidak diubah).** Rata-rata
+   tertimbang (`weightedAverageUnitCost`, mesin posting) membulatkan dengan
+   `Math.round((n + EPSILON) * 100) / 100` (`@sai/core/money-format`); nilai
+   laporan (`stock-value-report.ts`) dengan `Math.round(n * 100) / 100`
+   (`reconciliation.ts`). Pada nilai setengah sen yang tersimpan sedikit di
+   bawahnya keduanya berbeda: rata-rata 1,005 → 1,01, nilai 1,005 → 1,00. Go
+   meniru keduanya (`Round2PostingJS` / `Round2JS`).
+4. **Urutan kini ditentukan (TS diubah, hanya urutan).** `getStockValuePeriodReport`
+   memuat gerakan tanpa `orderBy` — urutan PENJUMLAHAN float diserahkan ke
+   rencana kueri; kini `orderBy: { id: "asc" }`. `getStockMovementReport`
+   mengurutkan barang `name` saja padahal nama boleh kembar (#493); kini
+   `[name, id]`. Angka eksak tidak berubah; hanya bit terakhir float yang
+   sebelumnya tidak deterministik, dan urutan tampilan barang senama.
+5. **Biaya impor tidak masuk "Nilai Masuk"**: `cost_adjust` menaikkan rata-rata
+   dan nilai akhir, tetapi kolom masuknya hanya Σ kuantitas × harga beli —
+   jadi tampil sebagai selisih penilaian (`revaluation`). Disalin apa adanya.
+6. **Tidak ada konsep gudang.** Skema tidak punya gudang/lokasi; "multi gudang"
+   tidak bisa diuji dan tidak ada yang perlu ditiru.
+7. **`localeCompare` nama barang non-ASCII** di urutan seri opname memakai
+   perkiraan `jscompat.LocaleCompare` (titik kode sesudah huruf ASCII) — akan
+   terlihat sebagai selisih urutan di paritas, bukan lolos diam-diam.
+
+Paritas lokal (23 Okt 2026, Postgres 17 sekali pakai, 2 buku sintetis: 64
+barang / 4.000 gerakan dan 9 barang / 300 gerakan — kuantitas berpecahan
+0,001–36,999, masuk tanpa biaya, `process`, `cost_adjust` bernilai negatif dan
+positif, saldo negatif, opname bercatatan persis dan "(manual)", 15 % gerakan
+tepat di `T16:59:59.999Z`/`T17:00:00.000Z`, nama kembar, satuan kosong/NULL,
+gerakan sesudah hari ini), 7 periode (tiga bawaan, Juli–Juni, satu hari,
+periode yang belum terjadi, periode sebelum buku): `parity:stock-value` 14/14,
+`parity:stock-movement` 14/14, `parity:opname-history` 14/14,
+`parity:stock-value-xlsx` 42/42 (× 3 pilihan kolom), `parity:stock-movement-xlsx`
+28/28 (× 2), `parity:opname-history-xlsx` 14/14 — 0 berselisih, 0 gagal.
+
+Perintah paritas produksi (sesi utama, buku PRODUKSI, hanya baca; biner dan
+skrip dari checkout yang sama):
+
+```bash
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+for s in parity:stock-value parity:stock-value-xlsx parity:stock-movement parity:stock-movement-xlsx \
+         parity:opname-history parity:opname-history-xlsx; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    -v $PWD/scripts:/app/scripts:ro -v $PWD/src:/app/src:ro -v $PWD/package.json:/app/package.json:ro \
+    -v $PWD/packages/core:/app/packages/core:ro -v $PWD/packages/billing:/app/packages/billing:ro \
+    -v $PWD/packages/platform:/app/packages/platform:ro -v $PWD/contract:/app/contract:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity \
+      --period "$(date +%Y)-01-01..$(date +%F),$(( $(date +%Y)-1 ))-01-01..$(( $(date +%Y)-1 ))-12-31,$(( $(date +%Y)-1 ))-07-01..$(date +%Y)-06-30"
+done
+```
+
+Lulus keenamnya → `parityProven` di entri register ketiganya, lalu
+`go-parity` → `go` + `bun run contract:gen`.
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus); Arus Kas, Laporan Perubahan Ekuitas, Umur Piutang & Umur Utang `go-parity` (23 Okt 2026, menunggu paritas produksi) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus); Arus Kas, Laporan Perubahan Ekuitas, Umur Piutang & Umur Utang `go-parity` (23 Okt 2026, menunggu paritas produksi); Nilai Persediaan, Riwayat Stok, Riwayat Hitung Ulang Stok `go-parity` (23 Okt 2026) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Cadangan Go per instans ✅ lolos gerbang Go 23 Okt 2026; pemindahan pertama menunggu peran cadangan di server instansnya | — |

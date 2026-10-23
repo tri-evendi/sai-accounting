@@ -40,6 +40,26 @@ func TestRoundMatchesJS(t *testing.T) {
 	}
 }
 
+func TestNumberStringMatchesJS(t *testing.T) {
+	// `String(x)` di Node 22, 23 Okt 2026.
+	cases := []struct {
+		in   float64
+		want string
+	}{
+		{0, "0"}, {math.Copysign(0, -1), "0"}, {1, "1"}, {-1.5, "-1.5"},
+		{0.30000000000000004, "0.30000000000000004"}, {12.345, "12.345"},
+		{1e6, "1000000"}, {123456789012345680000, "123456789012345680000"},
+		{1e21, "1e+21"}, {1.5e22, "1.5e+22"}, {1e-6, "0.000001"}, {1e-7, "1e-7"},
+		{5.551115123125783e-17, "5.551115123125783e-17"}, {-2.5e-8, "-2.5e-8"},
+		{1234.56, "1234.56"}, {0.001, "0.001"},
+	}
+	for _, c := range cases {
+		if got := NumberString(c.in); got != c.want {
+			t.Errorf("NumberString(%v) = %q, mau %q", c.in, got, c.want)
+		}
+	}
+}
+
 func TestLocaleCompareMatchesJS(t *testing.T) {
 	// `[...xs].sort((a, b) => a.localeCompare(b))` di Node 22 DAN Bun (keduanya
 	// ICU, lokal bawaan en-US), 22 Okt 2026. Urutan byte akan memberi

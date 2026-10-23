@@ -3,6 +3,9 @@
  *
  * Pembaca BANNER di-cache 60 detik di tingkat modul: ia dipanggil setiap kali
  * sebuah halaman aplikasi dimuat, dan pengumuman berubah beberapa kali setahun.
+ * Penulisnya konsol, pembacanya `app-customer`: setiap tulisan menaikkan
+ * sinyal `status-notices` (`cache-signals.ts`), jadi banner di proses lain
+ * berubah dalam `CACHE_SIGNAL_POLL_SECONDS`; 60 detik tinggal sebagai jaring.
  * Cache ini GLOBAL, bukan per perusahaan — isinya milik platform, bukan milik
  * satu PT (aturan cache per `companyId` di AGENTS.md tidak berlaku di sini).
  *
@@ -23,6 +26,7 @@ import {
 } from "@sai/core/status-notices";
 
 import { registerSharedCache } from "./cache-bus";
+import { bumpCacheSignal, cacheSignalVersion, signalAllows } from "./cache-signals";
 
 type Deps = { platform: PlatformClient };
 
@@ -50,7 +54,7 @@ export async function readStatusNoticeRecords(deps: Deps, now: Date = new Date()
 }
 
 const TTL_MS = 60 * 1000;
-let cache: { at: number; rows: StatusNoticeRecord[] } | null = null;
+let cache: { at: number; version: number | null; rows: StatusNoticeRecord[] } | null = null;
 
 /** Tahap 2: penulisnya konsol operator, pembacanya setiap replika — lewat bus. */
 const shared = registerSharedCache("status-notices", () => {
@@ -59,10 +63,13 @@ const shared = registerSharedCache("status-notices", () => {
 
 /** Pembaca BANNER: ber-cache, gagal-lunak (`[]`). */
 export async function cachedStatusNoticeRecords(deps: Deps, now: Date = new Date()): Promise<StatusNoticeRecord[]> {
-  if (cache && now.getTime() - cache.at < TTL_MS && shared.usable()) return cache.rows;
+  const version = await cacheSignalVersion(deps.platform, "status-notices", now.getTime());
+  if (cache && now.getTime() - cache.at < TTL_MS && shared.usable() && signalAllows(cache.version, version)) {
+    return cache.rows;
+  }
   try {
     const rows = await readStatusNoticeRecords(deps, now);
-    cache = { at: now.getTime(), rows };
+    cache = { at: now.getTime(), version, rows };
     return rows;
   } catch (error) {
     console.error("[status-notices] pengumuman tak terbaca — tanpa banner:", error);
@@ -117,6 +124,7 @@ export async function createStatusNotice(
     select: { id: true },
   });
   invalidateStatusNoticeCache();
+  await bumpCacheSignal(deps.platform, "status-notices");
   return { outcome: "ok", id: row.id };
 }
 
@@ -138,5 +146,6 @@ export async function setStatusNoticePhase(
     data: { phase: input.phase, ...(input.phase === "resolved" ? { resolvedAt: now } : {}) },
   });
   invalidateStatusNoticeCache();
+  await bumpCacheSignal(deps.platform, "status-notices");
   return { outcome: "ok", id: row.id };
 }

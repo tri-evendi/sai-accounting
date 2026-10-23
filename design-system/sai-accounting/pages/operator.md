@@ -98,7 +98,10 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
 - **Draf → pratinjau → terbit.** Menyimpan di editor membuat DRAF; halaman
   publik tidak berubah. Tampilan Tinjau memperlihatkan "tayang sekarang →
   sesudah terbit" per kunci+bahasa, membuat tautan pratinjau bertoken
-  (30 menit, host customer), dan menerbitkan. Riwayat menyimpan nilai
+  (30 menit, host customer; tautan ke `/`, `/pricing`, `/status` di dalam
+  pratinjau membawa tokennya, tautan lain tidak), dan menerbitkan. Yang
+  terbit tampil di halaman depan dalam 5 detik (sinyal `cache_signals`),
+  dan kalimat konsol menyebut angka itu. Riwayat menyimpan nilai
   sebelum/sesudah; "batalkan penerbitan" dan "pakai versi ini" membuat draf,
   tidak pernah langsung menayangkan.
 - **Tiga tampilan di URL** (`?view=edit|review|history`, `?section=`,

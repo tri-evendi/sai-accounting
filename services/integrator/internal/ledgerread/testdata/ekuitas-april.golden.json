@@ -1,0 +1,22 @@
+{
+  "from": "2025-03-31T17:00:00Z",
+  "to": "2025-06-30T16:59:59.999Z",
+  "components": [
+    {
+      "code": "3101",
+      "name": "Modal",
+      "opening": "10000000.00",
+      "additions": "0.00",
+      "reductions": "0.00",
+      "closing": "10000000.00"
+    }
+  ],
+  "unclosedIncome": {
+    "opening": "-30000000.00",
+    "movement": "5000000.00",
+    "closing": "-25000000.00"
+  },
+  "totalOpening": "-20000000.00",
+  "totalClosing": "-15000000.00",
+  "unknownTypes": []
+}

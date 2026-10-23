@@ -50,6 +50,12 @@ type statementBookMeta struct {
 		Case string `json:"case"`
 		AsOf string `json:"asOf"`
 	} `json:"balanceComparisons"`
+	// Arus Kas (tahap 1d, 23 Okt 2026) — `cash_flow_test.go`.
+	CashFlows []struct {
+		Case string `json:"case"`
+		From string `json:"from"`
+		To   string `json:"to"`
+	} `json:"cashFlows"`
 }
 
 // Berkas emas angka komparatif (`ledgerread.IncomeComparisonGolden` /

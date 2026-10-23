@@ -27,6 +27,9 @@
 #                       `incomeStatementSectionFor` dan Laba Rugi Go.
 #   • `closing_journal_type` — jenis jurnal penutup tahunan (#555) yang DIBUANG
 #                       Laba Rugi; dibaca `year-close.ts` dan Laba Rugi Go.
+#   • `cash_flow`     — akun kas & kelompok arus kas per tipe akun lawan;
+#                       dibaca `getCashFlow` (`reports.ts`) dan Arus Kas Go
+#                       (`internal/ledgerread/cash_flow.go`).
 #
 #   • `currencies`, `invoice_statuses`, `contract_statuses` — PENGECUALIAN
 #                       yang DISEBUT dari aturan di atas: dibangkitkan atas
@@ -39,6 +42,8 @@
 #                       `scripts/check-data-conformance.ts`. Daftar
 #                       pengecualiannya di `tests/contract-accounting.test.ts`;
 #                       pembaca Go pertama MENCORETNYA dari sana.
+#                       ✅ `currencies` sudah dicoret (23 Okt 2026): Arus Kas
+#                       Go membaca `BaseCurrency` untuk baris valas berkurs 1.
 #
 # Yang SENGAJA BELUM ada: saldo normal per tipe, ambang materialitas. Tidak
 # satu pun laporan Go membacanya —
@@ -157,6 +162,51 @@ income_statement:
 # baru ditutup melaporkan laba NOL); Neraca dan Neraca Saldo MEMASUKKANNYA —
 # di situlah Laba Ditahan memperoleh saldonya.
 closing_journal_type: closing
+
+# ── Arus Kas (PSAK 2 / IAS 7, metode langsung) ────────────────────────────
+# Dibaca `getCashFlow` (`src/lib/reports.ts`) dan Arus Kas Go
+# (`internal/ledgerread/cash_flow.go`, tahap 1d).
+#
+#   • `cash_account_type` — sisi KAS buku: gerakan menjadi arus kas hanya bila
+#     ia menyeberangi batas akun bertipe ini.
+#   • `categories` — urutan kelompok di laporan. `fallback_category` WAJIB
+#     salah satunya: tipe yang tidak dipetakan (tipe kontrak baru yang lupa
+#     dipetakan, atau tipe asing di basis data) mendarat di kelompok yang
+#     TERLIHAT, bukan dilipat diam-diam ke operasi.
+#   • `type_categories` — kelompok arus kas per tipe AKUN LAWAN (sisi lain
+#     jurnal), bukan per akun kas itu sendiri. Sengaja TIDAK wajib lengkap:
+#     itulah gunanya `fallback_category`. Generator menolak tipe yang tidak
+#     ada di `account_types`, kelompok asing, dan pemetaan ke kelompok
+#     cadangan (yang hanya boleh dicapai karena TIDAK dipetakan).
+cash_flow:
+  cash_account_type: cash_bank
+  categories:
+    - operating
+    - investing
+    - financing
+    - uncategorised
+  fallback_category: uncategorised
+  type_categories:
+    # Operasi — siklus dagang …
+    revenue: operating
+    other_income: operating
+    cogs: operating
+    expense: operating
+    other_expense: operating
+    # … dan modal kerjanya (waktu dari siklus yang sama).
+    account_receivable: operating
+    account_payable: operating
+    inventory: operating
+    tax_payable: operating
+    other_current_asset: operating
+    other_current_liability: operating
+    # Investasi — aset tidak lancar.
+    fixed_asset: investing
+    accumulated_depreciation: investing
+    other_asset: investing
+    # Pendanaan — cara usaha dibiayai.
+    equity: financing
+    long_term_liability: financing
 
 # ── Mata uang ──────────────────────────────────────────────────────────────
 # Kode ISO 4217 (tiga huruf besar) yang ditransaksikan aplikasi. URUTANNYA

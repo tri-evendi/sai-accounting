@@ -1,0 +1,77 @@
+{
+  "from": "2024-12-31T17:00:00Z",
+  "to": "2025-12-31T16:59:59.999Z",
+  "groups": [
+    {
+      "category": "operating",
+      "lines": [
+        {
+          "code": "5101",
+          "name": "Harga Pokok Penjualan",
+          "type": "cogs",
+          "inflow": "0.00",
+          "outflow": "60000000.00",
+          "net": "-60000000.00"
+        },
+        {
+          "code": "6101",
+          "name": "Beban Gaji",
+          "type": "expense",
+          "inflow": "0.00",
+          "outflow": "20000000.00",
+          "net": "-20000000.00"
+        }
+      ],
+      "inflow": "0.00",
+      "outflow": "80000000.00",
+      "net": "-80000000.00"
+    },
+    {
+      "category": "investing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "financing",
+      "lines": [
+        {
+          "code": "3101",
+          "name": "Modal Disetor",
+          "type": "equity",
+          "inflow": "500000000.00",
+          "outflow": "0.00",
+          "net": "500000000.00"
+        }
+      ],
+      "inflow": "500000000.00",
+      "outflow": "0.00",
+      "net": "500000000.00"
+    },
+    {
+      "category": "uncategorised",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    }
+  ],
+  "totalInflow": "500000000.00",
+  "totalOutflow": "80000000.00",
+  "netChange": "420000000.00",
+  "openingCash": "0.00",
+  "closingCash": "420000000.00",
+  "cashAccounts": [
+    {
+      "code": "1101",
+      "name": "Kas",
+      "opening": "0.00",
+      "closing": "420000000.00",
+      "net": "420000000.00"
+    }
+  ],
+  "reconciled": true,
+  "suspectUnrated": 0,
+  "unknownTypes": []
+}

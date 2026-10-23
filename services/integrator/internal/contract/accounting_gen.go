@@ -161,6 +161,60 @@ var IncomeStatementCategoryDefaultSections = map[AccountCategory]IncomeStatement
 // Rugi MEMBUANGNYA; Neraca dan Neraca Saldo memasukkannya.
 const ClosingJournalType = "closing"
 
+// CashAccountType: tipe akun sisi KAS — arus kas adalah gerakan yang
+// menyeberangi batas akun bertipe ini.
+const CashAccountType = AccountTypeCashBank
+
+// CashFlowCategory adalah satu kelompok Arus Kas (PSAK 2 / IAS 7).
+type CashFlowCategory string
+
+const (
+	CashFlowCategoryOperating     CashFlowCategory = "operating"
+	CashFlowCategoryInvesting     CashFlowCategory = "investing"
+	CashFlowCategoryFinancing     CashFlowCategory = "financing"
+	CashFlowCategoryUncategorised CashFlowCategory = "uncategorised"
+)
+
+// CashFlowCategories dalam urutan kelompok laporan.
+var CashFlowCategories = []CashFlowCategory{
+	CashFlowCategoryOperating,
+	CashFlowCategoryInvesting,
+	CashFlowCategoryFinancing,
+	CashFlowCategoryUncategorised,
+}
+
+// CashFlowFallbackCategory: kelompok tipe akun lawan yang TIDAK dipetakan.
+const CashFlowFallbackCategory = CashFlowCategoryUncategorised
+
+// CashFlowTypeCategories: kelompok arus kas per tipe AKUN LAWAN.
+var CashFlowTypeCategories = map[AccountType]CashFlowCategory{
+	AccountTypeRevenue:                 CashFlowCategoryOperating,
+	AccountTypeOtherIncome:             CashFlowCategoryOperating,
+	AccountTypeCogs:                    CashFlowCategoryOperating,
+	AccountTypeExpense:                 CashFlowCategoryOperating,
+	AccountTypeOtherExpense:            CashFlowCategoryOperating,
+	AccountTypeAccountReceivable:       CashFlowCategoryOperating,
+	AccountTypeAccountPayable:          CashFlowCategoryOperating,
+	AccountTypeInventory:               CashFlowCategoryOperating,
+	AccountTypeTaxPayable:              CashFlowCategoryOperating,
+	AccountTypeOtherCurrentAsset:       CashFlowCategoryOperating,
+	AccountTypeOtherCurrentLiability:   CashFlowCategoryOperating,
+	AccountTypeFixedAsset:              CashFlowCategoryInvesting,
+	AccountTypeAccumulatedDepreciation: CashFlowCategoryInvesting,
+	AccountTypeOtherAsset:              CashFlowCategoryInvesting,
+	AccountTypeEquity:                  CashFlowCategoryFinancing,
+	AccountTypeLongTermLiability:       CashFlowCategoryFinancing,
+}
+
+// CashFlowCategoryOf: kelompok arus kas tipe akun lawan MENTAH dari basis
+// data — padanan `cashFlowCategoryFor`; tipe tak dipetakan → cadangan.
+func CashFlowCategoryOf(accountType string) CashFlowCategory {
+	if c, ok := CashFlowTypeCategories[AccountType(accountType)]; ok {
+		return c
+	}
+	return CashFlowFallbackCategory
+}
+
 // Currency adalah kode ISO 4217 yang ditransaksikan aplikasi (kolom
 // `currency` dokumen). Dibangkitkan atas keputusan pemilik 23 Okt 2026,
 // sebelum pembaca Go pertamanya (pemeriksa kesesuaian data).

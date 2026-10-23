@@ -149,6 +149,48 @@ export const INCOME_STATEMENT_CATEGORY_DEFAULT_SECTIONS: Readonly<
 /** `journals.type` jurnal penutup tahunan (#555) — DIBUANG Laba Rugi saja. */
 export const CLOSING_JOURNAL_TYPE = "closing";
 
+// ── Arus Kas (PSAK 2 / IAS 7) — dibaca `getCashFlow` dan Arus Kas Go ─────
+
+/** Tipe akun sisi KAS: arus kas = gerakan yang menyeberangi batas akun ini. */
+export const CASH_ACCOUNT_TYPE = "cash_bank" satisfies AccountType;
+
+export type CashFlowCategory =
+  | "operating"
+  | "investing"
+  | "financing"
+  | "uncategorised";
+
+/** Urutan kelompok di laporan. */
+export const CASH_FLOW_CATEGORY_KEYS = [
+  "operating",
+  "investing",
+  "financing",
+  "uncategorised",
+] as const satisfies readonly CashFlowCategory[];
+
+/** Kelompok tipe yang TIDAK dipetakan — kelompok yang terlihat, bukan operasi. */
+export const CASH_FLOW_FALLBACK_CATEGORY = "uncategorised" satisfies CashFlowCategory;
+
+/** Kelompok arus kas per tipe AKUN LAWAN; tipe lain jatuh ke cadangan. */
+export const CASH_FLOW_TYPE_CATEGORIES: Readonly<Partial<Record<AccountType, CashFlowCategory>>> = {
+  revenue: "operating",
+  other_income: "operating",
+  cogs: "operating",
+  expense: "operating",
+  other_expense: "operating",
+  account_receivable: "operating",
+  account_payable: "operating",
+  inventory: "operating",
+  tax_payable: "operating",
+  other_current_asset: "operating",
+  other_current_liability: "operating",
+  fixed_asset: "investing",
+  accumulated_depreciation: "investing",
+  other_asset: "investing",
+  equity: "financing",
+  long_term_liability: "financing",
+};
+
 // ── Mata uang & status dokumen (23 Okt 2026) ──────────────────────────────
 // Dibaca lewat re-ekspor `@sai/core/constants`; label & warna tetap di TS.
 

@@ -1,0 +1,43 @@
+{
+  "from": "2024-12-31T17:00:00Z",
+  "to": "2025-11-30T16:59:59.999Z",
+  "groups": [
+    {
+      "category": "operating",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "investing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "financing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "uncategorised",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    }
+  ],
+  "totalInflow": "0.00",
+  "totalOutflow": "0.00",
+  "netChange": "0.00",
+  "openingCash": "0.00",
+  "closingCash": "0.00",
+  "cashAccounts": [],
+  "reconciled": true,
+  "suspectUnrated": 0,
+  "unknownTypes": []
+}

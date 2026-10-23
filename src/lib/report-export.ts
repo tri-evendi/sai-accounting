@@ -374,7 +374,7 @@ function buildTrialBalanceSheet(
  * lembar sebar sendiri (PDF mengatur kolomnya lain); judulnya TIDAK — itu
  * datang dari `CASH_FLOW_HEADERS` bersama cetakan.
  */
-const CASH_FLOW_WIDTHS: Record<CashFlowColumnId, number> = {
+export const CASH_FLOW_WIDTHS: Record<CashFlowColumnId, number> = {
   item: 44,
   inflow: 20,
   outflow: 20,

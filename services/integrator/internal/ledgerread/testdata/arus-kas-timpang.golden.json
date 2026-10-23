@@ -1,0 +1,60 @@
+{
+  "from": "2025-11-30T17:00:00Z",
+  "to": "2025-12-31T16:59:59.999Z",
+  "groups": [
+    {
+      "category": "operating",
+      "lines": [
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "type": "revenue",
+          "inflow": "100.00",
+          "outflow": "0.00",
+          "net": "100.00"
+        },
+        {
+          "code": "5101",
+          "name": "HPP",
+          "type": "cogs",
+          "inflow": "0.00",
+          "outflow": "100.01",
+          "net": "-100.01"
+        }
+      ],
+      "inflow": "100.00",
+      "outflow": "100.01",
+      "net": "-0.01"
+    },
+    {
+      "category": "investing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "financing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "uncategorised",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    }
+  ],
+  "totalInflow": "100.00",
+  "totalOutflow": "100.01",
+  "netChange": "-0.01",
+  "openingCash": "0.00",
+  "closingCash": "0.00",
+  "cashAccounts": [],
+  "reconciled": false,
+  "suspectUnrated": 0,
+  "unknownTypes": []
+}

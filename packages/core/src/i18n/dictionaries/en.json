@@ -1062,6 +1062,11 @@
     "closing": "Thank you for your business.",
     "colSent": "Sent"
   },
+  "invoiceAutoSend": {
+    "enable": "Email the invoice to the customer when it is posted",
+    "hint": "A newly posted invoice is sent automatically as a PDF attachment, once per invoice. Editing an invoice does not send it again. Customers without an email address are skipped.",
+    "historyLabel": "on posting"
+  },
   "invoiceReminder": {
     "subject": {
       "before_3": "Reminder: invoice {no} is coming due",
@@ -4917,6 +4922,19 @@
         "queueStatusWarn": "Held up",
         "queueStatusLate": "Late",
         "queueUnavailable": "The queue cannot be read. The control database is unreachable or a migration is not applied.",
+        "outboxHeading": "Outbox (book events → queue)",
+        "outboxNote": "Age of the oldest row the relay has not forwarded yet, per book. Warning at {warn} seconds, late at {late} seconds; a relay trace older than {stale} seconds means the relay is down or the book is unreachable.",
+        "outboxColBook": "Book",
+        "outboxColPending": "Unpublished",
+        "outboxColAge": "Oldest age (seconds)",
+        "outboxColLastPass": "Last relay pass",
+        "outboxColError": "Last error",
+        "outboxStatusOk": "Flowing",
+        "outboxStatusLagging": "Lagging",
+        "outboxStatusLate": "Late",
+        "outboxStatusUnknown": "No trace yet",
+        "outboxEmpty": "The relay has not touched any book yet.",
+        "outboxUnavailable": "The relay trace cannot be read. The control database is unreachable or control migration 0012 is not applied.",
         "metricsHeading": "Job rate & duration",
         "metricsNote": "Last {window} minutes. Percentiles only mean something with enough samples.",
         "metricsColPublished": "Published /min",

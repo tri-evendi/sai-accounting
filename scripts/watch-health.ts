@@ -42,6 +42,7 @@ import { decideBackupAlert } from "../src/lib/backup-watchdog";
 import {
   decideConformanceAlert,
   decideMigrationsAlert,
+  decideOutboxAlert,
   decideScheduleLaneAlert,
   decideSchedulerAlert,
 } from "../src/lib/health-watchdog";
@@ -51,6 +52,7 @@ import { scheduleLaneHealth, schedulerHealth } from "@sai/core/scheduler-heartbe
 import { goPublishedKinds } from "@sai/core/schedule-due";
 import { conformanceHealth } from "../src/lib/conformance-heartbeat";
 import { sendMail } from "@sai/platform/mailer-core";
+import { readOutboxRelay } from "@sai/platform/outbox-relay-store";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -232,6 +234,24 @@ async function main() {
         failedSlugs: bukuGagal(putaranMigrasi?.details ?? null),
       }),
     });
+
+    /* ── 5. Outbox transaksional (09 §4) ─────────────────────────────────── */
+    /* Jejak relay per buku di kendali (migration 0012); sebelum tabelnya ada
+       bacaannya gagal → `unknown` → diam. */
+    const outbox = await readOutboxRelay(control).catch(() => null);
+    if (outbox) {
+      const slugOf = new Map(outbox.books.map((b) => [b.companyId, b.slug]));
+      komponen.push({
+        nama: "outbox",
+        putusan: decideOutboxAlert({
+          status: outbox.health.status,
+          oldestAgeSeconds: outbox.health.oldestAgeSeconds,
+          unpublishedTotal: outbox.health.unpublishedTotal,
+          staleSlugs: outbox.health.staleBooks.map((id) => slugOf.get(id) ?? `#${id}`),
+          erroredSlugs: outbox.health.erroredBooks.map((id) => slugOf.get(id) ?? `#${id}`),
+        }),
+      });
+    }
 
     log(
       komponen

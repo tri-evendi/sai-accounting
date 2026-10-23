@@ -61,6 +61,7 @@ import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@op/lib/operator/guard";
 import {
   jobMetricsForOperator,
+  outboxRelayForOperator,
   queueSnapshotForOperator,
   runtimeSummaryForOperator,
   schedulerRunsForOperator,
@@ -88,6 +89,13 @@ import { buildLabel, type BuildVerdict, type ServiceBuildRow } from "@sai/core/b
 import { getT } from "@sai/platform/i18n/server";
 import { formatDateTime } from "@sai/core/utils";
 import { SPACE_XS } from "@sai/ui/layout-scale";
+import {
+  OUTBOX_LAG_LATE_SECONDS,
+  OUTBOX_LAG_WARN_SECONDS,
+  OUTBOX_RELAY_STALE_SECONDS,
+  type OutboxHealthStatus,
+} from "@sai/core/outbox-health";
+import type { OutboxRelayBookView } from "@sai/platform/outbox-relay-store";
 
 export const dynamic = "force-dynamic";
 
@@ -185,6 +193,25 @@ const QUEUE_BADGE: Record<QueueHealthStatus, BadgeVariant> = {
 };
 
 /*
+ * Putusan outbox (09 §4). `unknown` NETRAL — belum ada jejak relay bukan kabar
+ * sehat. `lagging` kuning: relay yang sedang mengejar; `late` merah: relay
+ * mati, buku tak terjangkau, atau penerbitan yang terus gagal.
+ */
+const OUTBOX_STATUS_KEY: Record<OutboxHealthStatus, string> = {
+  ok: "operator.scheduler.outboxStatusOk",
+  lagging: "operator.scheduler.outboxStatusLagging",
+  late: "operator.scheduler.outboxStatusLate",
+  unknown: "operator.scheduler.outboxStatusUnknown",
+};
+
+const OUTBOX_BADGE: Record<OutboxHealthStatus, BadgeVariant> = {
+  ok: "success",
+  lagging: "warning",
+  late: "danger",
+  unknown: "outline",
+};
+
+/*
  * Vonis pemicu 1d. `insufficient` NETRAL, bukan hijau — alasan yang sama dengan
  * `idle` di atas: "sampel kurang" tidak menyatakan beban kerjanya sehat, ia
  * menyatakan halaman ini belum tahu. Teksnya selalu ikut; warna bukan sinyal
@@ -227,12 +254,13 @@ export default async function OperatorSchedulerPage() {
   await requireOperatorPage();
   const t = await getT();
 
-  const [runs, queue, metrics, runtime, builds] = await Promise.all([
+  const [runs, queue, metrics, runtime, builds, outbox] = await Promise.all([
     schedulerRunsForOperator(10),
     queueSnapshotForOperator(),
     jobMetricsForOperator(),
     runtimeSummaryForOperator(),
     serviceBuildsForOperator(),
+    outboxRelayForOperator(),
   ]);
 
   const versionBadge = (verdict: BuildVerdict) => (
@@ -316,6 +344,55 @@ export default async function OperatorSchedulerPage() {
       render: (_v, lane) => (
         <span style={TABULAR}>{lane.ageSeconds === null ? "—" : lane.ageSeconds}</span>
       ),
+    },
+  ];
+
+  /*
+   * Panel outbox (09 §4): satu baris per buku dari jejak relay. Umurnya dalam
+   * DETIK, sama dengan ambangnya — alasan kolom umur antrean di atas.
+   */
+  const sekarang = Date.now();
+  const outboxColumns: SaiColumns<OutboxRelayBookView> = [
+    {
+      key: "book",
+      title: t("operator.scheduler.outboxColBook"),
+      align: "left",
+      render: (_v, b) => b.slug,
+    },
+    {
+      key: "pending",
+      title: t("operator.scheduler.outboxColPending"),
+      align: "right",
+      render: (_v, b) => <span style={TABULAR}>{b.unpublishedCount}</span>,
+    },
+    {
+      key: "age",
+      title: t("operator.scheduler.outboxColAge"),
+      align: "right",
+      render: (_v, b) => (
+        <span style={TABULAR}>
+          {b.oldestUnpublishedAt === null
+            ? "—"
+            : Math.max(0, Math.floor((sekarang - b.oldestUnpublishedAt.getTime()) / 1000))}
+        </span>
+      ),
+    },
+    {
+      key: "pass",
+      title: t("operator.scheduler.outboxColLastPass"),
+      align: "left",
+      render: (_v, b) => <span style={NOWRAP_MUTED}>{formatDateTime(b.lastPassAt)}</span>,
+    },
+    {
+      key: "error",
+      title: t("operator.scheduler.outboxColError"),
+      align: "left",
+      render: (_v, b) =>
+        b.lastError ? (
+          <span style={{ overflowWrap: "anywhere" }}>{b.lastError}</span>
+        ) : (
+          <span style={MUTED}>—</span>
+        ),
     },
   ];
 
@@ -638,6 +715,32 @@ export default async function OperatorSchedulerPage() {
               {t("operator.scheduler.queueNote", {
                 warn: QUEUE_AGE_WARN_SECONDS,
                 late: QUEUE_AGE_LATE_SECONDS,
+              })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
+
+      <ConsolePanel title={t("operator.scheduler.outboxHeading")}>
+        {outbox === null ? (
+          <ConsoleNotice>{t("operator.scheduler.outboxUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <div>
+              <Badge variant={OUTBOX_BADGE[outbox.health.status]}>
+                {t(OUTBOX_STATUS_KEY[outbox.health.status] as Parameters<typeof t>[0])}
+              </Badge>
+            </div>
+            {outbox.books.length === 0 ? (
+              <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.outboxEmpty")}</p>
+            ) : (
+              <StaticTable columns={outboxColumns} rows={outbox.books} rowKey={(b) => String(b.companyId)} />
+            )}
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.outboxNote", {
+                warn: OUTBOX_LAG_WARN_SECONDS,
+                late: OUTBOX_LAG_LATE_SECONDS,
+                stale: OUTBOX_RELAY_STALE_SECONDS,
               })}
             </p>
           </div>

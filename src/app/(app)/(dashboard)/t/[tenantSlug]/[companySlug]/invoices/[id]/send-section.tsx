@@ -114,6 +114,8 @@ export function InvoiceSendSection({
     if (kind === "before_3") return t("invoiceReminder.pointLabel.before_3");
     if (kind === "after_1") return t("invoiceReminder.pointLabel.after_1");
     if (kind === "after_7") return t("invoiceReminder.pointLabel.after_7");
+    /* Kiriman saat diposting (outbox, 09 §4) — `invoice-auto-send.ts`. */
+    if (kind === "on_post") return t("invoiceAutoSend.historyLabel");
     return "";
   }
 

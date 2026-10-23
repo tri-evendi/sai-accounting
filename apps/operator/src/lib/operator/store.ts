@@ -38,6 +38,7 @@ import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@o
  * `next build` (ditemukan saat penggelaran #151). */
 import { runReconciliation, type ReconciliationReport } from "@sai/platform/platform-reconciliation";
 import { queueSnapshot } from "@sai/platform/job-queue";
+import { readOutboxRelay, type OutboxRelaySnapshot } from "@sai/platform/outbox-relay-store";
 import { jobMetrics, type LaneMetrics } from "@sai/platform/job-metrics";
 import { runtimeSummary, type RuntimeSummary } from "@sai/platform/runtime-samples";
 import type { LaneQueueHealth } from "@sai/core/queue-health";
@@ -684,6 +685,22 @@ export async function queueSnapshotForOperator(
     return await deps.snapshot();
   } catch (error) {
     console.error("[operator-store] potret antrean tak terbaca:", error);
+    return null;
+  }
+}
+
+/**
+ * Jejak relay outbox per buku (09 §4) — `null` bila tak terbaca (migration
+ * kendali 0012 belum diterapkan), pola yang sama dengan potret antrean:
+ * "belum bisa dibaca" bukan "tidak ada yang tertahan".
+ */
+export async function outboxRelayForOperator(
+  deps: { read: () => Promise<OutboxRelaySnapshot> } = { read: () => readOutboxRelay(controlDb) }
+): Promise<OutboxRelaySnapshot | null> {
+  try {
+    return await deps.read();
+  } catch (error) {
+    console.error("[operator-store] jejak relay outbox tak terbaca:", error);
     return null;
   }
 }

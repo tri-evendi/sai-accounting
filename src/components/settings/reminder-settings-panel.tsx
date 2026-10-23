@@ -44,6 +44,8 @@ interface ReminderState {
   enabled: boolean;
   points: string[];
   testedAt: string | null;
+  /** Kirim faktur saat diposting (outbox, 09 §4) — bawaan MATI. */
+  autoSendOnPost: boolean;
 }
 
 /**
@@ -99,7 +101,11 @@ export function ReminderSettingsPanel() {
       const res = await apiFetch("/api/company-settings/reminders", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: state.enabled, points: state.points }),
+        body: JSON.stringify({
+          enabled: state.enabled,
+          points: state.points,
+          autoSendOnPost: state.autoSendOnPost,
+        }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -122,7 +128,12 @@ export function ReminderSettingsPanel() {
         toast(data?.error ?? t("invoiceReminder.errSave"), "error");
         return;
       }
-      setState({ enabled: data.enabled, points: data.points, testedAt: data.testedAt });
+      setState({
+        enabled: data.enabled,
+        points: data.points,
+        testedAt: data.testedAt,
+        autoSendOnPost: data.autoSendOnPost,
+      });
       toast(t("invoiceReminder.testSent", { recipient: data.recipient }));
     } finally {
       setTesting(false);
@@ -168,6 +179,26 @@ export function ReminderSettingsPanel() {
                 {t(point.labelKey)}
               </Checkbox>
             ))}
+          </Flex>
+
+          {/* Kiriman SAAT POSTING — sakelar terpisah dari pengingat, sebab
+              yang satu menagih yang jatuh tempo dan yang lain mengantar
+              faktur baru. Bawaan MATI; disimpan tombol yang sama. */}
+          <Flex vertical gap={token.marginXXS}>
+            <Checkbox
+              checked={state.autoSendOnPost}
+              onCheckedChange={(checked) =>
+                setState((prev) => (prev ? { ...prev, autoSendOnPost: checked } : prev))
+              }
+            >
+              {t("invoiceAutoSend.enable")}
+            </Checkbox>
+            <Text
+              type="secondary"
+              style={{ fontSize: token.fontSizeSM, paddingInlineStart: token.marginLG }}
+            >
+              {t("invoiceAutoSend.hint")}
+            </Text>
           </Flex>
 
           {state.testedAt && (

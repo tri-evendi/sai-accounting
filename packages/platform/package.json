@@ -24,6 +24,7 @@
     "./mailer-core": "./src/mailer-core.ts",
     "./membership-upsert": "./src/membership-upsert.ts",
     "./next-cache-tags": "./src/next-cache-tags.ts",
+    "./outbox-relay-store": "./src/outbox-relay-store.ts",
     "./password-reset-store": "./src/password-reset-store.ts",
     "./payment-webhook": "./src/payment-webhook.ts",
     "./platform-db": "./src/platform-db.ts",

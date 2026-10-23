@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.15.2",
+    tanggal: "2026-10-23",
+    ringkas: "Penjadwalan cadangan harian kini dijalankan layanan latar yang baru; tidak ada perubahan pada tampilan.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Cadangan harian dijadwalkan oleh layanan latar yang baru, dengan pemantauan denyut tersendiri.",
+      },
+    ],
+  },
+  {
     versi: "0.15.1",
     tanggal: "2026-10-23",
+    sha: "5c7af90",
     ringkas: "Ekspor Excel Arus Kas, Umur Piutang, dan Umur Utang kini disiapkan di latar.",
     butir: [
       {

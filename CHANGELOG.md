@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.16.1 — 2026-10-23 — belum digelar
+## 0.16.2 — 2026-10-23 — belum digelar
+
+Penjadwalan dokumen berulang kini dijalankan layanan latar yang baru; tidak ada perubahan pada tampilan.
+
+### Berubah
+
+- Dokumen berulang dijadwalkan oleh layanan latar yang baru, sama seperti cadangan harian.
+
+---
+
+## 0.16.1 — 2026-10-23 (9bb3d81)
 
 Ekspor Laporan Perubahan Ekuitas kini disiapkan di latar.
 

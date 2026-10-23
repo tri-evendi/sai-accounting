@@ -572,6 +572,83 @@ survive across commands.
 > `up -d --remove-orphans`. Rolling back `app-customer`/`app-operator` alone, as
 > above, is not affected.
 
+### Penerbit denyut — switching schedule publishing between Node and Go (Oct 2026)
+
+Two job kinds are published by the hourly heartbeat rather than by a user:
+`ledger.recurring` (one row per active company per **UTC hour**, executed by the
+`ledger` role in `svc-worker` — the only background writer of the ledger) and
+`tenant.backup` (one row per **UTC day**, executed by the `tenant` lane in
+`svc-integrator`). Exactly one side publishes each kind, and that side is named
+in the contract, not in compose or `.env`:
+
+```yaml
+# contract/kinds.yaml
+  ledger.recurring:
+    schedule: { grain: hour, per_company: true,  publisher: node }   # node | go
+  tenant.backup:
+    schedule: { grain: day,  per_company: false, publisher: node }
+```
+
+| `publisher` | Who publishes | What the other side does |
+|---|---|---|
+| `node` (default, today) | steps `recurring:publish` / `backup:publish` of the `scheduler` role (`svc-worker`) | the `schedule` lane in `svc-integrator` holds its lane lock and publishes **nothing** — log: `[schedule] Node masih penerbit …` |
+| `go` | the `schedule` lane (`svc-integrator`): one `schedule.tick` per UTC hour, which publishes the due rows | the Node step exits 0 without touching the queue — log: `penerbit \`<kind>\` adalah GO … dilewati` |
+
+Both images read the value from the commit they were built from, so "both
+publish" cannot happen within one release. During a swap (old `svc-worker`,
+new `svc-integrator`, a few minutes) both may publish — and the dedupe keys are
+**byte-identical** on both sides (`ledger.recurring:<companyId>:<YYYY-MM-DDTHH>`,
+`tenant.backup:<YYYY-MM-DD>`, UTC), so the second publisher hits
+`ON CONFLICT (dedupe_key) DO NOTHING`. That equality is proven by one fixture
+read by both languages
+(`services/integrator/internal/schedulelane/testdata/schedule_due_fixtures.json`).
+
+Nothing about the work changes when the publisher changes: the same rows, the
+same payloads, the same executors. Only the timing within the hour moves — Go
+publishes within a minute after each UTC hour turns; Node publishes once per
+scheduler loop (hourly from container start). The daily backup is published at
+~00:00 UTC (07:00 WIB) by Go, versus the first Node loop after 00:00 UTC.
+
+**Switch one kind to Go** (recommended order: `tenant.backup` first, then
+`ledger.recurring` a day later):
+
+1. In a PR: set `publisher: go` on that kind, run `bun run contract:gen`, commit
+   the three generated files with it. Merge and release as usual — the swap
+   must include **both** `svc-worker` and `svc-integrator` (step 4 of
+   *Updates* already does).
+2. Within a minute of the swap:
+   ```bash
+   docker compose logs --since 10m svc-integrator | grep '\[schedule\]'
+   # [schedule] penerbit Go untuk [tenant.backup] — satu schedule.tick per jam UTC
+   # [schedule] tick 2026-10-24T03 diterbitkan → pekerjaan #…
+   # [schedule] tick #… (…): 0 diterbitkan, 1 sudah ada        ← the day's row already existed
+   docker compose logs --since 70m svc-worker | grep 'dilewati'
+   ```
+3. Next hour: `watch:health` prints `penerbit-go=ok`; the operator console
+   `/scheduler` shows lane `schedule` with one `done` per hour. If the Go lane
+   ever stops, `watch:health` mails `[SAI] penerbit Go: late` (or `unknown`
+   if no tick ever completed) — the Node scheduler heartbeat does **not**
+   catch it, because the Node loop keeps finishing on time while skipping its
+   step.
+
+**Switch back to Node (rollback)** — either is enough, no data repair:
+
+- *Fast:* pin both background services to the previous release, which still
+  says `publisher: node`:
+  `SAI_TAG=sha-<previous> docker compose up -d --no-deps svc-worker svc-integrator`.
+- *Durable:* revert the contract line, `bun run contract:gen`, release.
+
+At most one `schedule.tick` row may be left `queued` by the switch back. An
+image that has the `schedule` lane claims it and publishes nothing. An image
+**older than the lane** has no claimer for it, and that one row would
+eventually trip the queue-age warning — close it by hand:
+
+```sql
+UPDATE jobs SET status = 'dead', finished_at = now(), updated_at = now(),
+       last_error = 'penerbit dikembalikan ke Node'
+ WHERE kind = 'schedule.tick' AND status = 'queued';
+```
+
 ### Env allowlist, non-root containers, least-privilege roles (Oct 2026)
 
 Three hardening changes ship together; the first two take effect with the

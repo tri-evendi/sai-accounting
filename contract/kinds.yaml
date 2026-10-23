@@ -46,6 +46,17 @@ lanes:
   bulk:
     description: impor besar, paket laporan, surel borongan
     single_instance: false
+    # Pagar memori PER PEKERJAAN (MiB heap Go). Jalur ini seproses dengan
+    # `tenant` dan `interactive` di `svc-integrator` (09 §3.2, "1 image = 1
+    # container"), jadi satu pekerjaan borongan yang kehabisan memori bukan
+    # hanya menjatuhkan dirinya: OOM-killer membunuh SELURUH container —
+    # termasuk dump cadangan yang sedang berjalan. Pagar ini membatalkan
+    # pekerjaan `bulk` itu sendiri lebih dulu (gagal dengan sebab yang
+    # terbaca), sebelum kernel memutuskan siapa yang mati.
+    #
+    # Konkurensi: SATU pekerjaan per proses (`jobs.Runner`, sama dengan setiap
+    # jalur lain); skala jalur jamak = jumlah proses, bukan utas.
+    memory_fence_mib: 512
   schedule:
     description: denyut penerbitan tiap jam — hanya MENERBITKAN, tidak melaksanakan
     single_instance: true
@@ -65,6 +76,34 @@ lanes:
 # ── Jenis pekerjaan ────────────────────────────────────────────────────────
 # `writes_ledger: true` HANYA boleh pada jalur `ledger`. Penjaga menegakkannya:
 # pintu posting wajib tunggal, dan ia TypeScript (rancangan §3.3).
+#
+# ══ `schedule:` — KIND YANG DITERBITKAN DENYUT, DAN SIAPA PENERBITNYA ═══════
+# Kind ber-`schedule:` diterbitkan tiap jam oleh SATU penerbit, dengan
+# rekonsiliasi (09 §4): penerbit membaca keadaan, menyimpulkan apa yang jatuh
+# tempo, dan `dedupe_key` yang unik membuat penerbitan ulang tidak melakukan
+# apa pun. Tiga kunci, dan ketiganya dibaca DUA bahasa:
+#
+#   • `grain` — butir kunci idempotensi: `hour` (`YYYY-MM-DDTHH`) atau `day`
+#     (`YYYY-MM-DD`), SELALU di UTC. Bukan WIB, dan itu disengaja: mesin
+#     berulang menghitung batas hari di UTC (`src/lib/recurring.ts`), dan
+#     menukar zonanya menggeser batas butir tujuh jam — pada hari peralihan
+#     itu satu butir terbit DUA kali dengan kunci berbeda.
+#   • `per_company` — satu baris per perusahaan aktif (kunci
+#     `<kind>:<companyId>:<butir>`) atau satu untuk seluruh pemasangan
+#     (`<kind>:<butir>`). Bentuk kuncinya SAMA PERSIS di kedua bahasa
+#     (`@sai/core/schedule-due` · `internal/schedulelane/due.go`), dan
+#     fikstur bersama `internal/schedulelane/testdata/schedule_due_fixtures.json`
+#     membuktikannya — kunci yang sama itulah yang membuat peralihan penerbit
+#     tidak pernah menerbitkan dua kali.
+#   • `publisher` — `node` (langkah `recurring:publish`/`backup:publish` di
+#     peran `scheduler`, `svc-worker`) atau `go` (jalur `schedule`,
+#     `svc-integrator`). TEPAT SATU, dan kedua sisi membaca nilai yang sama
+#     dari commit yang sama: sisi yang bukan penerbit melewati langkahnya.
+#     Peralihan & jalan mundurnya: PRODUCTION.md §Penerbit denyut.
+#
+# Generator menolak: `grain` di luar hour/day, `publisher` di luar node/go,
+# `schedule:` pada kind jalur `schedule` sendiri (denyut tidak menerbitkan
+# dirinya lewat dirinya), dan `per_company` yang bukan boolean.
 kinds:
   report.export:
     lane: interactive
@@ -125,6 +164,11 @@ kinds:
     lane: tenant
     max_attempts: 2
     description: cadangan per perusahaan, tersandi sebelum meninggalkan mesin
+    # Satu baris untuk SELURUH pemasangan per HARI UTC (RPO satu hari).
+    schedule:
+      grain: day
+      per_company: false
+      publisher: node
 
   tenant.conformance:
     lane: tenant
@@ -144,12 +188,25 @@ kinds:
     description: >
       denyut penerbitan. `max_attempts: 1` karena putaran berikutnya datang
       sejam kemudian dan menyusul sendiri — rekonsiliasi, bukan pengulangan.
+      Diterbitkan DAN diklaim jalur `schedule` Go (`internal/schedulelane`),
+      satu baris per jam UTC (`schedule.tick:<YYYY-MM-DDTHH>`), dan HANYA bila
+      sedikitnya satu kind ber-`schedule:` menyatakan `publisher: go` — selama
+      Node penerbit semuanya, denyut ini tidak terbit sama sekali. Barisnya
+      jejak denyut Go: satu `done` per jam, kegagalannya `dead` dengan
+      `last_error`, terbaca di konsol `/scheduler`.
 
   ledger.recurring:
     lane: ledger
     max_attempts: 3
     writes_ledger: true
     description: dokumen berulang yang MEMPOSTING lewat pintu posting
+    # Diterbitkan DENYUT (lihat `schedule:` di kepala bagian `kinds`): satu
+    # baris per perusahaan per JAM UTC. Yang memposting tetap jalur `ledger`
+    # (Node) — penerbit Go hanya menulis baris `jobs`.
+    schedule:
+      grain: hour
+      per_company: true
+      publisher: node
 
   ledger.dunning:
     lane: ledger

@@ -1,0 +1,204 @@
+{
+  "_keterangan": "FIKSTUR BERSAMA penerbit denyut — dibaca tests/schedule-due.test.ts (TypeScript, @sai/core/schedule-due) DAN internal/schedulelane/due_test.go (Go). Kasus baru ditulis SEKALI di sini dan berlaku untuk kedua bahasa. Kunci yang identik sampai ke byte-nya adalah yang membuat peralihan penerbit Node <-> Go tidak pernah menerbitkan dua kali (contract/kinds.yaml -> schedule.publisher). Payload dibandingkan sebagai JSON terurai (urutan kunci jsonb tidak bermakna).",
+  "cases": [
+    {
+      "name": "jam biasa, dua perusahaan — urutan masukan dipertahankan",
+      "at": "2026-10-23T05:17:42.123Z",
+      "kind": "ledger.recurring",
+      "companies": [
+        3,
+        1
+      ],
+      "expected": [
+        {
+          "kind": "ledger.recurring",
+          "companyId": 3,
+          "dedupeKey": "ledger.recurring:3:2026-10-23T05",
+          "payload": {
+            "companyId": 3,
+            "today": "2026-10-23T05:17:42.123Z"
+          }
+        },
+        {
+          "kind": "ledger.recurring",
+          "companyId": 1,
+          "dedupeKey": "ledger.recurring:1:2026-10-23T05",
+          "payload": {
+            "companyId": 1,
+            "today": "2026-10-23T05:17:42.123Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "milidetik nol tetap tertulis .000Z (bentuk toISOString)",
+      "at": "2026-10-23T06:00:00.000Z",
+      "kind": "ledger.recurring",
+      "companies": [
+        7
+      ],
+      "expected": [
+        {
+          "kind": "ledger.recurring",
+          "companyId": 7,
+          "dedupeKey": "ledger.recurring:7:2026-10-23T06",
+          "payload": {
+            "companyId": 7,
+            "today": "2026-10-23T06:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "batas jam: .999 masih jam sebelumnya",
+      "at": "2026-10-23T16:59:59.999Z",
+      "kind": "ledger.recurring",
+      "companies": [
+        2
+      ],
+      "expected": [
+        {
+          "kind": "ledger.recurring",
+          "companyId": 2,
+          "dedupeKey": "ledger.recurring:2:2026-10-23T16",
+          "payload": {
+            "companyId": 2,
+            "today": "2026-10-23T16:59:59.999Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tanpa perusahaan terpilih → tidak ada baris dokumen berulang",
+      "at": "2026-10-23T08:00:00.000Z",
+      "kind": "ledger.recurring",
+      "companies": [],
+      "expected": []
+    },
+    {
+      "name": "pergantian tahun UTC — detik terakhir",
+      "at": "2026-12-31T23:59:59.999Z",
+      "kind": "ledger.recurring",
+      "companies": [
+        1
+      ],
+      "expected": [
+        {
+          "kind": "ledger.recurring",
+          "companyId": 1,
+          "dedupeKey": "ledger.recurring:1:2026-12-31T23",
+          "payload": {
+            "companyId": 1,
+            "today": "2026-12-31T23:59:59.999Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "pergantian tahun UTC — detik pertama",
+      "at": "2027-01-01T00:00:00.000Z",
+      "kind": "ledger.recurring",
+      "companies": [
+        1
+      ],
+      "expected": [
+        {
+          "kind": "ledger.recurring",
+          "companyId": 1,
+          "dedupeKey": "ledger.recurring:1:2027-01-01T00",
+          "payload": {
+            "companyId": 1,
+            "today": "2027-01-01T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "masukan berzona +07:00 tetap dibaca UTC (butir TIDAK ikut WIB)",
+      "at": "2026-10-24T06:30:00.000+07:00",
+      "kind": "ledger.recurring",
+      "companies": [
+        123456
+      ],
+      "expected": [
+        {
+          "kind": "ledger.recurring",
+          "companyId": 123456,
+          "dedupeKey": "ledger.recurring:123456:2026-10-23T23",
+          "payload": {
+            "companyId": 123456,
+            "today": "2026-10-23T23:30:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cadangan: tengah malam WIB BUKAN tengah malam UTC — masih hari kemarin",
+      "at": "2026-10-23T17:00:00.000Z",
+      "kind": "tenant.backup",
+      "companies": [],
+      "expected": [
+        {
+          "kind": "tenant.backup",
+          "companyId": null,
+          "dedupeKey": "tenant.backup:2026-10-23",
+          "payload": {
+            "butir": "2026-10-23"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cadangan: tengah malam UTC berganti hari",
+      "at": "2026-10-24T00:00:00.000Z",
+      "kind": "tenant.backup",
+      "companies": [],
+      "expected": [
+        {
+          "kind": "tenant.backup",
+          "companyId": null,
+          "dedupeKey": "tenant.backup:2026-10-24",
+          "payload": {
+            "butir": "2026-10-24"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cadangan: satu baris untuk seluruh pemasangan, daftar perusahaan diabaikan",
+      "at": "2026-10-23T09:41:00.500Z",
+      "kind": "tenant.backup",
+      "companies": [
+        1,
+        2,
+        3
+      ],
+      "expected": [
+        {
+          "kind": "tenant.backup",
+          "companyId": null,
+          "dedupeKey": "tenant.backup:2026-10-23",
+          "payload": {
+            "butir": "2026-10-23"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tahun kabisat: 29 Februari",
+      "at": "2028-02-29T12:00:00.001Z",
+      "kind": "tenant.backup",
+      "companies": [],
+      "expected": [
+        {
+          "kind": "tenant.backup",
+          "companyId": null,
+          "dedupeKey": "tenant.backup:2028-02-29",
+          "payload": {
+            "butir": "2028-02-29"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -43,6 +43,7 @@
     "./rate-limit": "./src/rate-limit.ts",
     "./registration": "./src/registration.ts",
     "./runtime-trigger": "./src/runtime-trigger.ts",
+    "./schedule-due": "./src/schedule-due.ts",
     "./scheduler-heartbeat": "./src/scheduler-heartbeat.ts",
     "./schema-version": "./src/schema-version.ts",
     "./settings-crypto": "./src/settings-crypto.ts",

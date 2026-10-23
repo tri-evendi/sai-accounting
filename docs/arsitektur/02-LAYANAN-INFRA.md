@@ -286,9 +286,9 @@ tidak menumpuk lebih dari satu.
 | 2 | `notify:setup` | Kabar penyiapan mandek (H+1/+3/+7/+14) | `dedupe_key`, maks 4 seumur hidup |
 | 3 | `notify:invoice-due` | Kabar jatuh tempo + ringkasan mingguan | `dedupe_key` |
 | 4 | `remind:customers` | **Surel ke pelanggan** (H-3/H+1/H+7) | Kunci unik (invoice, kind, due_key) |
-| 5 | `recurring:publish` | **Terbitkan PEKERJAAN** dokumen berulang — satu baris `jobs` per PT; yang memposting peran `ledger` | `dedupe_key` berbutir jam UTC |
-| 6 | `backup:publish` | **Terbitkan PEKERJAAN** cadangan — satu baris `jobs` per HARI; yang mencadangkan jalur `tenant` di `svc-integrator` | `dedupe_key` berbutir hari UTC |
-| 7 | `watch:health` | Baca 3 heartbeat, kirim surel peringatan | Satu surel per status per 24 jam |
+| 5 | `recurring:publish` | **Terbitkan PEKERJAAN** dokumen berulang — satu baris `jobs` per PT; yang memposting peran `ledger`. Keluar 0 tanpa menerbitkan bila kontrak menyerahkannya ke jalur `schedule` Go | `dedupe_key` berbutir jam UTC |
+| 6 | `backup:publish` | **Terbitkan PEKERJAAN** cadangan — satu baris `jobs` per HARI; yang mencadangkan jalur `tenant` di `svc-integrator`. Idem: dilewati bila penerbitnya Go | `dedupe_key` berbutir hari UTC |
+| 7 | `watch:health` | Baca 3 heartbeat (+ denyut penerbit Go bila ada kind milik Go), kirim surel peringatan | Satu surel per status per 24 jam |
 | 8 | `prune:trails` | Pangkas jejak putaran > 90 hari | Putaran kosong = satu `SELECT` per tabel |
 
 ⚠ **Dua butir kunci yang BERBEDA, dan bedanya disengaja.** Langkah 5 berbutir
@@ -298,6 +298,12 @@ sampai besok. Langkah 6 berbutir HARI: cadensi cadangan memang harian (RPO satu
 hari), dan butir jam akan menerbitkan 24 dump seluruh pemasangan sehari. Satu
 pertanyaan memutuskan keduanya — **berapa sering pekerjaan ini SEHARUSNYA
 terjadi**, bukan berapa sering penerbitnya berjalan.
+
+Sejak Okt 2026 butir, kunci, dan muatan kedua langkah itu tidak lagi ditulis di
+skripnya: `grain`/`per_company`/`publisher` di `contract/kinds.yaml`, aturannya
+di `@sai/core/schedule-due` — kembarannya di jalur `schedule` Go dibuktikan
+sama oleh satu fikstur bersama, supaya peralihan penerbit tidak pernah
+menerbitkan dua kali (§`svc-integrator` di bawah).
 
 Tiga keputusan desain:
 
@@ -377,19 +383,40 @@ sengaja keluar bukan-nol saat menemukan sesuatu, dan tanpa penelan itu setiap
 temuan mengakhiri perannya — sejak penyatuan berarti *crash-loop* seluruh
 `svc-worker`.
 
-### `svc-integrator` — dua jalur Go, satu proses
+### `svc-integrator` — tiga jalur Go, satu proses
 
 Sejak 22 Okt 2026 (09 §3.2) satu biner, `cmd/integrator`, menjalankan pelari
-jalur `tenant` dan jalur `interactive` sisi Go bersamaan; logikanya di
-`internal/tenantlane` dan `internal/interactivelane`. Satu pelari berakhir →
+jalur `tenant`, jalur `interactive` sisi Go, dan — sejak Okt 2026 — jalur
+`schedule` bersamaan; logikanya di `internal/tenantlane`,
+`internal/interactivelane`, dan `internal/schedulelane`. Satu pelari berakhir →
 yang lain berhenti mengklaim → proses keluar **bukan-nol** → restart utuh.
 `cmd/tenant` dan `cmd/interactive` tetap ada untuk mengembangkan satu jalur,
-tapi tidak masuk image.
+tapi tidak masuk image. Jalur `bulk` punya kerangkanya (`internal/bulklane`,
+pagar memori per pekerjaan dari kontrak) tetapi **tidak dijalankan** sampai ia
+punya kind ber-handler — 09 §3.2.
 
 | Jalur | Sambungan kendali | Kenapa |
 |---|---|---|
 | `tenant` | `CONTROL_DATABASE_DIRECT_URL` — **langsung** ke `pg`; Go menolak URL pooler | pencacahan `pg_database`, pagar advisory lock, parameter `pg_dump` |
 | `interactive` (Go) | `CONTROL_DATABASE_URL` dari `.env` — PgBouncer | satu buku PT per pekerjaan |
+| `schedule` | pekerjaan: `CONTROL_DATABASE_URL` (PgBouncer); pagar: `CONTROL_DATABASE_DIRECT_URL` | membaca registry & menulis baris `jobs` — puluhan baris sejam; pagar tunggal-instans wajib di sesi yang miliknya sendiri |
+
+#### Jalur `schedule` — denyut penerbitan (bawaan: diam)
+
+Menerbitkan kind ber-`schedule:` di `contract/kinds.yaml` yang `publisher`-nya
+`go`: satu `schedule.tick` per jam UTC (`schedule.tick:<YYYY-MM-DDTHH>`), yang
+diklaim jalur itu sendiri dan menerbitkan baris yang jatuh tempo —
+`ledger.recurring` per perusahaan per jam UTC, `tenant.backup` per hari UTC —
+dengan kunci yang **identik** dengan penerbit Node (fikstur bersama,
+`internal/schedulelane/testdata/`). Hanya menulis `jobs`; yang memposting tetap
+peran `ledger` (Node). Selama kontrak menyatakan `publisher: node` — keadaan
+hari ini — jalur ini memegang pagarnya dan tidak menerbitkan apa pun, dan
+langkah `recurring:publish`/`backup:publish` peran `scheduler` yang
+menerbitkan (dan sebaliknya: begitu `go`, langkah Node keluar 0 tanpa
+menyentuh antrean). Jejaknya baris `schedule.tick` (`done` per jam), dan
+`watch:health` membacanya sebagai komponen `penerbit-go` — denyut penjadwal
+Node TIDAK menangkap penerbit Go yang mati. Peralihan & jalan mundur:
+PRODUCTION.md §Penerbit denyut.
 
 ⚠ **Rahasia cadangan kini seproses dengan masukan pengguna** — diputuskan
 pemilik, risikonya dan pemicu memisahkannya lagi di 09 §3.2.
@@ -397,9 +424,10 @@ pemilik, risikonya dan pemicu memisahkannya lagi di 09 §3.2.
 #### Jalur `tenant` — cadangan PER BASIS DATA
 
 Pelari Go yang menguras `tenant.backup` dari tabel `jobs`. Yang menjadwalkannya
-langkah `backup:publish` di putaran penjadwal, berbutir **hari** UTC: putaran
-pertama hari itu menerbitkan, 23 berikutnya menabrak `dedupe_key` dan tidak
-melakukan apa pun. RPO 1 hari, disengaja.
+langkah `backup:publish` di putaran penjadwal — atau jalur `schedule` bila
+kontrak menyerahkannya ke Go — berbutir **hari** UTC: penerbitan pertama hari
+itu menerbitkan, berikutnya menabrak `dedupe_key` dan tidak melakukan apa pun.
+RPO 1 hari, disengaja.
 
 Volume: `documents` (:ro) · `audit` (:ro) · `cadangan` (RW) · `hasil` (RW, milik
 jalur `interactive` Go). Menyambung **langsung** ke `pg`, melewati PgBouncer — pooler hanya mengekspos basis data

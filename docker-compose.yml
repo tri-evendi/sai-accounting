@@ -584,6 +584,13 @@ services:
       # pada pekerjaan yang masih bisa diulang, bukan pada satu-satunya yang tak
       # punya langkah balik. Dijaga `tests/run-trail-retention.test.ts`.
       #
+      # ⚠ PENERBIT TEPAT SATU (Okt 2026): `recurring:publish` dan
+      # `backup:publish` TETAP di putaran ini, dan masing-masing keluar 0 tanpa
+      # menyentuh antrean bila `contract/kinds.yaml` menyerahkan kind-nya ke
+      # jalur `schedule` Go (`schedule.publisher: go`). Jadi peralihan penerbit
+      # — dan jalan mundurnya — tidak pernah menyentuh baris di sini; dijaga
+      # `tests/schedule-lane.test.ts`.
+      #
       # ⚠ `backup:publish` adalah langkah KEDELAPAN, dan BATAS diturunkan
       # 480 → 420 karena itu. Aturannya aritmetika, bukan selera, dan
       # `tests/scheduler-heartbeat.test.ts` menghitungnya: 8 × 420 = 3.360s,
@@ -757,15 +764,17 @@ services:
         echo "[backup] Pakai: docker compose run --rm job-backup bun run prove-backup-restore"
         exit 0
 
-  # ══ `svc-integrator` — DUA JALUR GO, SATU PROSES ══════════════════════════
+  # ══ `svc-integrator` — TIGA JALUR GO, SATU PROSES ═════════════════════════
   #
   # Keputusan pemilik 22 Okt 2026: **1 image = 1 container**. Image
   # `-integrator` dulu menjalankan DUA container — `svc-tenant` (cadangan) dan
   # `svc-interactive-go` (lembar sebar laporan) — dan kini satu biner
-  # (`cmd/integrator`) yang menjalankan kedua pelari bersamaan. Satu pelari
-  # berakhir → yang lain dihentikan → proses keluar bukan-nol →
-  # `restart: unless-stopped` menghidupkan keduanya utuh. Tidak ada container
-  # setengah-hidup.
+  # (`cmd/integrator`) yang menjalankan setiap pelari bersamaan: `tenant`,
+  # `interactive` sisi Go, dan sejak Okt 2026 `schedule` (denyut penerbitan,
+  # lihat di bawah). Satu pelari berakhir → yang lain dihentikan → proses
+  # keluar bukan-nol → `restart: unless-stopped` menghidupkan semuanya utuh.
+  # Tidak ada container setengah-hidup. Jalur `bulk` punya kerangkanya
+  # (`internal/bulklane`) tetapi TIDAK dijalankan sampai ada kind ber-handler.
   #
   # `svc-`, bukan `job-`: ia BERJALAN TERUS menguras antrean.
   #
@@ -835,6 +844,20 @@ services:
   # SELALU mengantre, berapa pun barisnya. Tanpa layanan ini ekspor Neraca
   # Saldo menumpuk sebagai baris `queued` tanpa pengklaim — tombol unduhnya
   # menunggu sepuluh menit lalu menyerah, dan tidak satu halaman pun rusak.
+  #
+  # ══ JALUR `schedule` — DENYUT PENERBITAN (tahap 1c, 09 §3.2) ═════════════
+  #
+  # Menerbitkan kind ber-`schedule:` di `contract/kinds.yaml` yang
+  # `publisher`-nya `go` — HANYA menulis baris `jobs`; yang memposting dokumen
+  # berulang tetap peran `ledger` di `svc-worker` (I-2). BAWAANNYA DIAM:
+  # selama kontrak menyatakan `publisher: node` (keadaan hari ini), jalur ini
+  # memegang pagarnya (`sai.lane.schedule`, lewat
+  # `CONTROL_DATABASE_DIRECT_URL`) dan tidak menerbitkan apa pun, dan langkah
+  # `recurring:publish`/`backup:publish` di peran `scheduler` yang
+  # menerbitkan. Peralihan ke Go dan jalan mundurnya SATU BARIS kontrak + rilis,
+  # tanpa perubahan di berkas ini — PRODUCTION.md §Penerbit denyut. Tidak ada
+  # env baru: pekerjaannya lewat `CONTROL_DATABASE_URL` (PgBouncer), pagarnya
+  # lewat sambungan langsung yang sudah ada untuk jalur `tenant`.
   #
   # Memori: biner statis Go, tanpa Node — puluhan MB saat diam (09 §3.3).
   svc-integrator:

@@ -143,6 +143,66 @@ func (q *Queue) Claim(
 	return &j, nil
 }
 
+// Publication adalah satu baris `jobs` yang akan DITERBITKAN pohon Go.
+//
+// Bentuknya bentuk `PublishInput` sisi Node (`@sai/platform/job-queue`), dan
+// tidak lebih: penerbit Go tidak menyetel `tenant_id`, `priority`, maupun
+// `run_after` — yang terakhir sengaja jatuh ke DEFAULT kolomnya (lihat Publish).
+type Publication struct {
+	Kind      contract.JobKind
+	CompanyID *int32
+	// Payload sudah JSON — penerbit yang menyusunnya, karena bentuknya milik
+	// PELAKSANA kind itu, bukan milik antrean.
+	Payload   json.RawMessage
+	DedupeKey string
+}
+
+// Publish menerbitkan satu pekerjaan dan memulangkan id barisnya, atau
+// (0, false) bila `dedupe_key`-nya sudah ada — penerbitan ulang yang tidak
+// melakukan apa pun, dan justru itulah yang membuat denyut aman diulang.
+//
+// Padanan `publishJob` (Node), dengan SATU beda yang disengaja: `run_after`
+// TIDAK dikirim dari jam proses ini melainkan jatuh ke DEFAULT kolomnya
+// (`CURRENT_TIMESTAMP`, jam SERVER). Klaim di kedua bahasa membandingkan
+// `run_after <= now()` — jam server juga — jadi baris terbitan Go langsung bisa
+// diklaim berapa pun selisih jam antara container ini dan basis data, dan
+// berapa pun zona sesi koneksinya (kolomnya `TIMESTAMP` tanpa zona).
+//
+// ══ MENERBITKAN KIND PENULIS BUKU DIBOLEHKAN — MENGKLAIMNYA TIDAK ══════════
+// `ledger.recurring` ber-WritesLedger, dan jalur `schedule` Go MENERBITKANNYA.
+// Itu bukan pelanggaran I-2: yang ditulis di sini hanya baris `jobs` (tabel di
+// daftar-izin pohon Go); yang memposting tetap pelari jalur `ledger` Node,
+// satu-satunya pengklaimnya. Pemeriksaan WritesLedger di Claim tetap berdiri.
+//
+// Kind harus dikenal kontrak, dan kunci idempotensi WAJIB ada: penerbit Go
+// hanya menerbitkan denyut, dan denyut tanpa kunci adalah denyut yang
+// menggandakan dirinya setiap kali diulang.
+func (q *Queue) Publish(ctx context.Context, p Publication) (int64, bool, error) {
+	spec, ada := contract.JobKinds[p.Kind]
+	if !ada {
+		return 0, false, fmt.Errorf("kind %q tidak ada di kontrak", p.Kind)
+	}
+	if p.DedupeKey == "" {
+		return 0, false, fmt.Errorf("penerbitan %q tanpa dedupe_key — denyut wajib idempoten", p.Kind)
+	}
+	if !json.Valid(p.Payload) {
+		return 0, false, fmt.Errorf("muatan %q bukan JSON yang sah", p.Kind)
+	}
+	var id int64
+	err := q.pool.QueryRow(ctx, `
+		INSERT INTO jobs (kind, company_id, payload, status, dedupe_key, max_attempts, updated_at)
+		VALUES ($1, $2, $3::jsonb, 'queued', $4, $5, now())
+		ON CONFLICT (dedupe_key) DO NOTHING
+		RETURNING id`, string(p.Kind), p.CompanyID, string(p.Payload), p.DedupeKey, spec.MaxAttempts).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("terbitkan %s (%s): %w", p.Kind, p.DedupeKey, err)
+	}
+	return id, true, nil
+}
+
 // RenewLease memperpanjang lease. false = pekerjaan ini sudah bukan milik
 // pekerja itu.
 //

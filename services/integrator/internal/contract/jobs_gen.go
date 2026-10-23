@@ -98,17 +98,19 @@ var JobKinds = map[JobKind]KindSpec{
 // konfigurasi, bukan penskalaan.
 type LaneSpec struct {
 	SingleInstance bool
+	// MemoryFenceMiB: pagar memori per pekerjaan (MiB heap Go); 0 = tanpa pagar.
+	MemoryFenceMiB int
 }
 
 // JobLanes memetakan setiap jalur ke sifatnya.
 var JobLanes = map[JobLane]LaneSpec{
-	LaneBulk:        {SingleInstance: false},
-	LaneIntegration: {SingleInstance: false},
-	LaneInteractive: {SingleInstance: false},
-	LaneLedger:      {SingleInstance: true},
-	LaneSchedule:    {SingleInstance: true},
-	LaneSchema:      {SingleInstance: true},
-	LaneTenant:      {SingleInstance: true},
+	LaneBulk:        {SingleInstance: false, MemoryFenceMiB: 512},
+	LaneIntegration: {SingleInstance: false, MemoryFenceMiB: 0},
+	LaneInteractive: {SingleInstance: false, MemoryFenceMiB: 0},
+	LaneLedger:      {SingleInstance: true, MemoryFenceMiB: 0},
+	LaneSchedule:    {SingleInstance: true, MemoryFenceMiB: 0},
+	LaneSchema:      {SingleInstance: true, MemoryFenceMiB: 0},
+	LaneTenant:      {SingleInstance: true, MemoryFenceMiB: 0},
 }
 
 // KindsByLane adalah klausa WHERE kind = ANY(…) milik setiap pelari.
@@ -120,6 +122,38 @@ var KindsByLane = map[JobLane][]JobKind{
 	LaneSchedule:    {KindScheduleTick},
 	LaneSchema:      {KindSchemaMigrate},
 	LaneTenant:      {KindTenantBackup, KindTenantConformance},
+}
+
+// ScheduleGrain: butir kunci idempotensi denyut — SELALU UTC.
+type ScheduleGrain string
+
+const (
+	GrainHour ScheduleGrain = "hour"
+	GrainDay  ScheduleGrain = "day"
+)
+
+// SchedulePublisher: bahasa yang MENERBITKAN satu kind berjadwal — tepat satu.
+type SchedulePublisher string
+
+const (
+	PublisherNode SchedulePublisher = "node"
+	PublisherGo   SchedulePublisher = "go"
+)
+
+// ScheduleSpec: bagaimana denyut menerbitkan satu kind, dan siapa penerbitnya.
+type ScheduleSpec struct {
+	Grain ScheduleGrain
+	// PerCompany: satu baris per perusahaan aktif (`<kind>:<id>:<butir>`),
+	// atau satu untuk seluruh pemasangan (`<kind>:<butir>`).
+	PerCompany bool
+	Publisher  SchedulePublisher
+}
+
+// ScheduledKinds: kind yang diterbitkan DENYUT. Dibaca `internal/schedulelane`;
+// padanan TS `SCHEDULED_KINDS` dibaca `@sai/core/schedule-due`.
+var ScheduledKinds = map[JobKind]ScheduleSpec{
+	KindLedgerRecurring: {Grain: GrainHour, PerCompany: true, Publisher: PublisherNode},
+	KindTenantBackup:    {Grain: GrainDay, PerCompany: false, Publisher: PublisherNode},
 }
 
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.

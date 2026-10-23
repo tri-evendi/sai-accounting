@@ -172,12 +172,24 @@ const CEK = process.argv.includes("--cek");
 interface Lane {
   description: string;
   single_instance: boolean;
+  /** Pagar memori per pekerjaan (MiB heap Go); tanpa kunci = tanpa pagar. */
+  memory_fence_mib?: number;
+}
+/** Butir kunci idempotensi denyut — SELALU UTC. */
+const SCHEDULE_GRAINS = ["hour", "day"] as const;
+/** Penerbit kind berjadwal: tepat satu bahasa. */
+const SCHEDULE_PUBLISHERS = ["node", "go"] as const;
+interface Schedule {
+  grain: (typeof SCHEDULE_GRAINS)[number];
+  per_company: boolean;
+  publisher: (typeof SCHEDULE_PUBLISHERS)[number];
 }
 interface Kind {
   lane: string;
   max_attempts: number;
   description: string;
   writes_ledger?: boolean;
+  schedule?: Schedule;
 }
 /** Setiap angka yang dibaca DUA bahasa. Semuanya bilangan bulat ≥ 1. */
 interface Numbers {
@@ -244,6 +256,35 @@ function baca(): Kontrak {
         `kind \`${nama}\` menulis buku besar di jalur \`${kind.lane}\` — ` +
           "hanya jalur `ledger` boleh (invarian I-2, pintu posting tunggal)"
       );
+    }
+    /* Kind berjadwal: penerbitnya TEPAT SATU bahasa, dan butirnya salah satu
+       dari dua yang dimengerti kedua penerbit. Nilai asing ditolak DI SINI —
+       penerbit yang tidak mengenali `publisher` akan mengira dirinya bukan
+       penerbit, dan kind itu berhenti terbit tanpa satu galat pun. */
+    const j = kind.schedule;
+    if (j !== undefined) {
+      if (kind.lane === "schedule") {
+        salah.push(`kind \`${nama}\`: \`schedule:\` pada jalur \`schedule\` sendiri — denyut tidak menerbitkan dirinya lewat dirinya`);
+      }
+      if (!(SCHEDULE_GRAINS as readonly string[]).includes(j?.grain)) {
+        salah.push(`kind \`${nama}\`: schedule.grain harus salah satu dari ${SCHEDULE_GRAINS.join("/")} (kini: ${String(j?.grain)})`);
+      }
+      if (typeof j?.per_company !== "boolean") {
+        salah.push(`kind \`${nama}\`: schedule.per_company harus boolean`);
+      }
+      if (!(SCHEDULE_PUBLISHERS as readonly string[]).includes(j?.publisher)) {
+        salah.push(
+          `kind \`${nama}\`: schedule.publisher harus salah satu dari ${SCHEDULE_PUBLISHERS.join("/")} ` +
+            `(kini: ${String(j?.publisher)}) — tepat SATU penerbit, tidak pernah dua`
+        );
+      }
+    }
+  }
+
+  for (const [nama, lane] of Object.entries(k.lanes ?? {})) {
+    const f = lane.memory_fence_mib;
+    if (f !== undefined && (!Number.isInteger(f) || f < 64)) {
+      salah.push(`jalur \`${nama}\`: memory_fence_mib harus bilangan bulat ≥ 64 (kini: ${String(f)})`);
     }
   }
 
@@ -344,7 +385,15 @@ function bangkitkan(k: Kontrak): string {
   const barisLane = lanes
     .map((nama) => {
       const d = k.lanes[nama]!;
-      return `  ${nama}: { singleInstance: ${d.single_instance === true} },`;
+      return `  ${nama}: { singleInstance: ${d.single_instance === true}, memoryFenceMiB: ${d.memory_fence_mib ?? 0} },`;
+    })
+    .join("\n");
+
+  const berjadwal = kinds.filter((kk) => k.kinds[kk]!.schedule !== undefined);
+  const barisJadwal = berjadwal
+    .map((nama) => {
+      const j = k.kinds[nama]!.schedule!;
+      return `  "${nama}": { grain: "${j.grain}", perCompany: ${j.per_company}, publisher: "${j.publisher}" },`;
     })
     .join("\n");
 
@@ -383,6 +432,8 @@ ${barisKind}
 export interface JobLaneSpec {
   /** Lebih dari satu proses jalur ini adalah kesalahan konfigurasi. */
   singleInstance: boolean;
+  /** Pagar memori per pekerjaan, MiB heap; 0 = tanpa pagar. */
+  memoryFenceMiB: number;
 }
 
 export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
@@ -392,6 +443,26 @@ ${barisLane}
 /** \`kind\` milik setiap jalur — klausa \`WHERE kind IN (…)\` pekerjanya. */
 export const KINDS_BY_LANE: Readonly<Record<JobLane, readonly JobKind[]>> = {
 ${jalurKind}
+};
+
+${union("ScheduledKind", berjadwal)}
+
+/** Butir kunci idempotensi denyut — SELALU UTC (\`contract/kinds.yaml\`). */
+export type ScheduleGrain = ${SCHEDULE_GRAINS.map((g) => `"${g}"`).join(" | ")};
+
+/** Penerbit kind berjadwal — tepat SATU bahasa. */
+export type SchedulePublisher = ${SCHEDULE_PUBLISHERS.map((g) => `"${g}"`).join(" | ")};
+
+export interface ScheduleSpec {
+  grain: ScheduleGrain;
+  /** Satu baris per perusahaan aktif (\`<kind>:<id>:<butir>\`), atau satu untuk seluruh pemasangan. */
+  perCompany: boolean;
+  publisher: SchedulePublisher;
+}
+
+/** Kind yang diterbitkan DENYUT, beserta penerbitnya. Dibaca \`@sai/core/schedule-due\`. */
+export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
+${barisJadwal}
 };
 
 export const isJobKind = (v: string): v is JobKind =>
@@ -521,9 +592,28 @@ function bangkitkanGo(k: Kontrak): string {
       const d = k.lanes[nama]!;
       return {
         kiri: `Lane${pengenalGo(nama)}:`,
-        kanan: `{SingleInstance: ${d.single_instance === true}},`,
+        kanan: `{SingleInstance: ${d.single_instance === true}, MemoryFenceMiB: ${d.memory_fence_mib ?? 0}},`,
       };
     })
+  );
+
+  const berjadwal = kinds.filter((kk) => k.kinds[kk]!.schedule !== undefined);
+  const petaJadwal = ratakan(
+    berjadwal.map((nama) => {
+      const j = k.kinds[nama]!.schedule!;
+      return {
+        kiri: `Kind${pengenalGo(nama)}:`,
+        kanan:
+          `{Grain: Grain${pengenalGo(j.grain)}, PerCompany: ${j.per_company}, ` +
+          `Publisher: Publisher${pengenalGo(j.publisher)}},`,
+      };
+    })
+  );
+  const konstGrain = ratakan(
+    SCHEDULE_GRAINS.map((g) => ({ kiri: `Grain${pengenalGo(g)}`, kanan: `ScheduleGrain = "${g}"` }))
+  );
+  const konstPenerbit = ratakan(
+    SCHEDULE_PUBLISHERS.map((g) => ({ kiri: `Publisher${pengenalGo(g)}`, kanan: `SchedulePublisher = "${g}"` }))
   );
 
   const petaJalurKind = ratakan(
@@ -595,6 +685,8 @@ ${petaKind}
 // konfigurasi, bukan penskalaan.
 type LaneSpec struct {
 \tSingleInstance bool
+\t// MemoryFenceMiB: pagar memori per pekerjaan (MiB heap Go); 0 = tanpa pagar.
+\tMemoryFenceMiB int
 }
 
 // JobLanes memetakan setiap jalur ke sifatnya.
@@ -605,6 +697,35 @@ ${petaLane}
 // KindsByLane adalah klausa WHERE kind = ANY(…) milik setiap pelari.
 var KindsByLane = map[JobLane][]JobKind{
 ${petaJalurKind}
+}
+
+// ScheduleGrain: butir kunci idempotensi denyut — SELALU UTC.
+type ScheduleGrain string
+
+const (
+${konstGrain}
+)
+
+// SchedulePublisher: bahasa yang MENERBITKAN satu kind berjadwal — tepat satu.
+type SchedulePublisher string
+
+const (
+${konstPenerbit}
+)
+
+// ScheduleSpec: bagaimana denyut menerbitkan satu kind, dan siapa penerbitnya.
+type ScheduleSpec struct {
+\tGrain ScheduleGrain
+\t// PerCompany: satu baris per perusahaan aktif (\`<kind>:<id>:<butir>\`),
+\t// atau satu untuk seluruh pemasangan (\`<kind>:<butir>\`).
+\tPerCompany bool
+\tPublisher  SchedulePublisher
+}
+
+// ScheduledKinds: kind yang diterbitkan DENYUT. Dibaca \`internal/schedulelane\`;
+// padanan TS \`SCHEDULED_KINDS\` dibaca \`@sai/core/schedule-due\`.
+var ScheduledKinds = map[JobKind]ScheduleSpec{
+${petaJadwal}
 }
 
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.

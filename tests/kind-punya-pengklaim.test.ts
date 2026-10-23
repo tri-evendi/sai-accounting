@@ -26,9 +26,15 @@
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { AKAR_REPO, akarGo, berkasGo } from "./akar-sumber";
-import { JOB_KINDS, KINDS_BY_LANE, type JobKind, type JobLane } from "@sai/core/generated/job-kinds";
+import {
+  JOB_KINDS,
+  KINDS_BY_LANE,
+  SCHEDULED_KINDS,
+  type JobKind,
+  type JobLane,
+} from "@sai/core/generated/job-kinds";
 
 const SEMUA: JobKind[] = Object.keys(JOB_KINDS) as JobKind[];
 
@@ -70,13 +76,36 @@ function kindDiterbitkan(): Set<JobKind> {
       if (new RegExp(`kind:\\s*"${kind.replace(".", "\\.")}"`).test(b.isi)) hasil.add(kind);
     }
   }
+  /* Sisi Go (jalur `schedule`, Okt 2026): kind ditulis sebagai KONSTANTA
+     bangkitan (`contract.KindScheduleTick`), tidak pernah sebagai teks —
+     `tests/services-go.test.ts` menolak teksnya. Versi pertama penjaga ini
+     mencari `"<kind>"` di berkas Go, yaitu bentuk yang dilarang penjaga lain,
+     jadi ia tidak akan pernah menemukan satu penerbit Go pun: lulus dengan nol
+     penerbit. Yang dibaca sekarang: berkas produksi yang memanggil `.Publish(`
+     — (a) setiap `contract.Kind<…>` yang disebutnya, dan (b) bila ia
+     menerbitkan lewat `GoOwned()`, setiap kind berjadwal ber-`publisher: go`. */
   for (const b of berkasGo()) {
-    if (!b.isi.includes("Publish")) continue;
+    if (b.rel.endsWith("_test.go") || !/\.Publish\(/.test(b.isi)) continue;
+    const paket = berkasGo().filter((x) => !x.rel.endsWith("_test.go") && dirname(x.rel) === dirname(b.rel));
+    const isiPaket = paket.map((x) => x.isi).join("\n");
     for (const kind of SEMUA) {
-      if (b.isi.includes(`Kind: contract.Kind`) && b.isi.includes(`"${kind}"`)) hasil.add(kind);
+      if (new RegExp(`\\b${pengenalGo(kind).replace(".", "\\.")}\\b`).test(b.isi)) hasil.add(kind);
+    }
+    if (isiPaket.includes("GoOwned()")) {
+      for (const [kind, spec] of Object.entries(SCHEDULED_KINDS)) {
+        if (spec.publisher === "go") hasil.add(kind as JobKind);
+      }
     }
   }
   return hasil;
+}
+
+/** `ledger.recurring` → `contract.KindLedgerRecurring`. */
+function pengenalGo(kind: string): string {
+  return `contract.Kind${kind
+    .split(/[._-]/)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join("")}`;
 }
 
 /**
@@ -104,10 +133,7 @@ function kindDiklaim(): Map<JobKind, string[]> {
     if (i < 0) continue;
     const blok = b.isi.slice(i, b.isi.indexOf("\n\t\t},", i));
     for (const kind of SEMUA) {
-      const pengenal = `contract.Kind${kind
-        .split(/[._-]/)
-        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-        .join("")}`;
+      const pengenal = pengenalGo(kind);
       /* Batas kata WAJIB: `contract.KindReportExport` adalah awalan
          `contract.KindReportExportGo` (tahap 1d), dan pencocokan substring
          membaca satu pengklaim sebagai pengklaim DUA kind. */
@@ -128,6 +154,15 @@ describe("pengklaim: penjaganya memang sedang melihat sesuatu", () => {
   it("menemukan sedikitnya satu penerbit dan satu pengklaim", () => {
     expect([...kindDiterbitkan()].length).toBeGreaterThan(0);
     expect([...kindDiklaim().keys()].length).toBeGreaterThan(0);
+  });
+
+  it("melihat penerbit GO juga — jalur `schedule` menerbitkan `schedule.tick`", () => {
+    /* Penjaga yang hanya melihat penerbit Node lulus dengan nol pelanggar
+       begitu penerbit pertama lahir di Go. */
+    expect(kindDiterbitkan()).toContain("schedule.tick");
+    expect(kindDiklaim().get("schedule.tick")).toEqual([
+      "services/integrator/internal/schedulelane/runner.go",
+    ]);
   });
 });
 

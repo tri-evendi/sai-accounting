@@ -343,11 +343,11 @@ COPY services/integrator/ ./
 # pembangun dari biner; `-s -w` membuang tabel simbol debug (~30% ukuran).
 #
 # SATU biner sejak "1 image = 1 container" (keputusan pemilik 22 Okt 2026):
-# `svc-integrator` menjalankan jalur `tenant` (cadangan) DAN jalur
-# `interactive` sisi Go (lembar sebar laporan ber-`engine: "go"`, tahap 1d)
-# dalam satu proses. `cmd/tenant` dan `cmd/interactive` tetap ada untuk
-# mengembangkan satu jalur, tapi TIDAK masuk image — biner yang tidak
-# dijalankan compose mana pun hanya permukaan.
+# `svc-integrator` menjalankan jalur `tenant` (cadangan), jalur `interactive`
+# sisi Go (lembar sebar laporan ber-`engine: "go"`, tahap 1d), dan jalur
+# `schedule` (denyut penerbitan, Okt 2026) dalam satu proses. `cmd/tenant` dan
+# `cmd/interactive` tetap ada untuk mengembangkan satu jalur, tapi TIDAK
+# masuk image — biner yang tidak dijalankan compose mana pun hanya permukaan.
 # Stempel build DITANAM di biner (`-ldflags -X`, paket `internal/buildinfo`) —
 # satu-satunya tahap yang membutuhkannya sebelum `RUN`. Biner yang disalin ke
 # mana pun tetap tahu build-nya; `ENV` di tahap `integrator` hanya cadangan.

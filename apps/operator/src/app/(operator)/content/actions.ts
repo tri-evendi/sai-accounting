@@ -1,149 +1,321 @@
 "use server";
 
 /**
- * Server action ISI HALAMAN PENDARATAN — SENGAJA server action, bukan route
- * API: `tests/authz-coverage.test.ts` menolak `route.ts` mana pun di bawah grup
- * `(operator)`, karena permukaan `src/app/api` adalah permukaan PELANGGAN dan
- * konsol ini bukan.
+ * Server action ISI HALAMAN DEPAN (migration platform 0008): draf → pratinjau
+ * → terbit, dan kembali ke versi lama lewat riwayat.
  *
- * Lapisannya tipis — lima kewajiban, nol logika isi:
- *   1. penjaga bidang (`requireOperatorActionSession`: host + IP + cookie +
- *      MFA), sama seperti aksi tulis tenant #155 dan pengaturan surel #169;
- *   2. validasi ulang dengan SKEMA YANG SAMA yang dipakai editor client
- *      (`lib/validations/operator.ts` → `siteContentSchema`);
- *   3. saring kunci terhadap KAMUS — bukan terhadap daftar tulisan tangan.
- *      Inilah pemeriksaan yang menahan `entries` kiriman sendiri dari menulis
- *      penimpa atas kunci di luar `landing.*` (mis. `errors.*`): kalimat sistem
- *      bukan pemasaran, dan operator tidak boleh bisa mengosongkannya;
- *   4. panggil inti `lib/site-content-store.ts` (upsert/hapus + revalidasi tag);
- *   5. catat jejak audit operator — kunci mana saja yang berubah, bukan isinya.
+ * SENGAJA server action, bukan route API: `tests/authz-coverage.test.ts`
+ * menolak `route.ts` tulis di bawah grup `(operator)`.
  *
- * ⚠ Yang TIDAK dicatat ke jejak adalah NILAI barunya. Bukan karena ia rahasia
- * (ia akan terbit di halaman publik beberapa detik kemudian), melainkan karena
- * jejak audit yang memuat setiap kalimat pemasaran yang pernah diketik berhenti
- * bisa dibaca sebagai jejak. Yang dicatat: bahasa, bagian, daftar kunci yang
- * ditulis, daftar kunci yang dikembalikan ke bawaan, dan panjang nilainya.
+ * Setiap aksi: penjaga bidang + izin (`requireOperatorActionSession`), urai
+ * ulang dengan skema yang sama dengan editor, saring kunci terhadap KAMUS
+ * (hanya `landing.*` yang ada di ketiga bahasa), lalu panggil store dan catat
+ * jejak audit operator. Jejak mencatat kunci dan panjang, tidak pernah
+ * nilainya; nilainya ada di riwayat penerbitan.
+ *
+ * Izin: `site.content` menyunting draf, membuat pratinjau, membuang draf, dan
+ * mengembalikan versi lama sebagai draf. `site.publish` (owner) menerbitkan
+ * dan membersihkan kunci yatim, karena hanya dua itu yang mengubah halaman
+ * publik.
  */
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-import { getDictionary, getT } from "@sai/platform/i18n/server";
-import { writeOperatorAuditLog } from "@op/lib/operator/audit";
-import { requireOperatorActionSession } from "@op/lib/operator/guard";
+import { LOCALES, type Locale } from "@sai/core/i18n/config";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
 import { clientIpFrom } from "@sai/core/operator-plane";
 import {
   SITE_CONTENT_PREFIX,
-  isEditableContentKey,
-  isSiteContentLocale,
+  SITE_CONTENT_PREVIEW_PARAM,
+  contentFieldSpec,
+  contentValueProblem,
+  defaultsOf,
+  describeContentProblem,
+  isEditableInAll,
 } from "@sai/core/site-content";
-import { saveSiteContent } from "@sai/platform/site-content-store";
-import { siteContentSchema } from "@op/lib/validations/operator";
+import { formatDateTime } from "@sai/core/utils";
+import { getDictionary, getT } from "@sai/platform/i18n/server";
+import {
+  SITE_CONTENT_CACHE_SECONDS,
+  createSiteContentPreview,
+  discardSiteContentDrafts,
+  draftsFromHistory,
+  publishSiteContentDrafts,
+  purgeSiteContentKeys,
+  saveSiteContentDrafts,
+  siteContentEntriesForOperator,
+  type DraftInput,
+} from "@sai/platform/site-content-store";
+import { writeOperatorAuditLog } from "@op/lib/operator/audit";
+import { customerOrigin } from "@op/lib/operator/customer-origin";
+import { requireOperatorActionSession } from "@op/lib/operator/guard";
+import {
+  siteContentDraftSchema,
+  siteContentHistorySchema,
+  siteContentPublishSchema,
+} from "@op/lib/validations/operator";
 
 export interface OperatorContentActionResult {
   ok: boolean;
-  /** Kalimat sukses/galat dalam bahasa pengguna — untuk `root` form. */
+  /** Kalimat sukses/galat dalam bahasa operator. */
   message: string;
+  /** `entries.<locale>.<nama>` → kalimat masalah, untuk `form.setError`. */
+  fieldErrors?: Record<string, string>;
+  /** Pratinjau: alamat di host customer, dan sampai kapan berlaku. */
+  previewUrl?: string;
+  previewUntil?: string;
 }
 
-export async function operatorSaveSiteContent(
+async function allDictionaries(): Promise<Record<Locale, Dictionary>> {
+  const list = await Promise.all(LOCALES.map((l) => getDictionary(l)));
+  return Object.fromEntries(LOCALES.map((l, i) => [l, list[i]])) as Record<Locale, Dictionary>;
+}
+
+async function audit(
+  operator: string,
+  action: Parameters<typeof writeOperatorAuditLog>[0]["action"],
+  details: Record<string, unknown>
+) {
+  await writeOperatorAuditLog({
+    operator,
+    action,
+    ipAddress: clientIpFrom(await headers()),
+    details,
+  });
+}
+
+/* ──────────────────────────────── Simpan draf ─────────────────────────────── */
+
+export async function operatorSaveContentDrafts(
   input: unknown
 ): Promise<OperatorContentActionResult> {
   const t = await getT();
-
   const session = await requireOperatorActionSession("site.content");
-  if (!session) {
-    /* Jawaban seragam — tidak membedakan "host salah" dari "sesi habis". */
-    return { ok: false, message: t("operator.actions.denied") };
-  }
+  if (!session) return { ok: false, message: t("operator.actions.denied") };
 
-  const parsed = siteContentSchema.safeParse(input);
+  const parsed = siteContentDraftSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: t("validation.invalidInput") };
-  const { locale, section, entries } = parsed.data;
+  const { section, entries } = parsed.data;
 
-  if (!isSiteContentLocale(locale)) {
-    return { ok: false, message: t("validation.invalidInput") };
-  }
+  const dictionaries = await allDictionaries();
+  const inputs: DraftInput[] = [];
+  const fieldErrors: Record<string, string> = {};
+  let rejected = 0;
 
-  /*
-   * Kunci disaring terhadap kamus BAHASA ITU SENDIRI. Kamus mana tidak
-   * menentukan hasilnya — `tests/i18n.test.ts` menuntut ketiga bahasa punya
-   * kunci yang sama persis — tetapi memakai kamus bahasa yang sedang disunting
-   * membuat pemeriksaan ini tetap benar bila suatu hari jaminan itu melemah.
-   */
-  const dictionary = await getDictionary(locale);
-  const diterima: Record<string, string> = {};
-  let ditolak = 0;
-  for (const [name, value] of Object.entries(entries)) {
-    const key = `${SITE_CONTENT_PREFIX}${name}`;
-    if (!isEditableContentKey(dictionary, key)) {
-      ditolak += 1;
-      continue;
+  for (const locale of LOCALES) {
+    for (const [name, value] of Object.entries(entries[locale])) {
+      const key = `${SITE_CONTENT_PREFIX}${name}`;
+      if (!isEditableInAll(dictionaries, key)) {
+        rejected += 1;
+        continue;
+      }
+      const defaults = defaultsOf(dictionaries, key);
+      const spec = contentFieldSpec(Object.values(defaults));
+      const problem = contentValueProblem(value, defaults[locale], spec);
+      if (problem) {
+        fieldErrors[`entries.${locale}.${name}`] = describeContentProblem(
+          problem,
+          { value, defaultValue: defaults[locale], spec },
+          t
+        );
+        continue;
+      }
+      inputs.push({ locale, key, input: value });
     }
-    diterima[key] = value;
   }
 
-  if (ditolak > 0) {
-    /* Satu kunci asing berarti kiriman ini tidak datang dari layar yang
-       dirender server — dan di permukaan seperti ini jawabannya penolakan
-       UTUH, bukan penyimpanan separuh. Jejaknya ditulis: percobaan menulis
-       kunci di luar `landing.*` adalah hal yang ingin dilihat seseorang. */
-    await writeOperatorAuditLog({
-      operator: session.operator.name,
-      action: "operator.content.rejected",
-      ipAddress: clientIpFrom(await headers()),
-      details: { locale, section, rejectedKeys: ditolak },
-    });
+  if (rejected > 0) {
+    /* Kunci asing = kiriman yang tidak datang dari layar yang dirender server.
+       Ditolak utuh, dan dicatat. */
+    await audit(session.operator.name, "operator.content.rejected", { section, rejectedKeys: rejected });
     return { ok: false, message: t("validation.invalidInput") };
+  }
+  const problems = Object.keys(fieldErrors).length;
+  if (problems > 0) {
+    return { ok: false, message: t("operator.content.errFields", { count: problems }), fieldErrors };
   }
 
   let result;
   try {
-    result = await saveSiteContent({
-      locale,
-      entries: diterima,
-      actor: session.operator.name,
-    });
+    result = await saveSiteContentDrafts(inputs, session.operator.name);
   } catch (error) {
-    /* Platform mati: tidak ada yang tersimpan, TETAPI halaman pendaratan tetap
-     * tampil utuh dengan kalimat bawaan — itu yang dikatakan kalimatnya, bukan
-     * "500". */
-    console.error("[operator-content] penimpa gagal disimpan:", error);
+    console.error("[operator-content] draf gagal disimpan:", error);
     return { ok: false, message: t("operator.content.errSave") };
   }
 
-  await writeOperatorAuditLog({
-    operator: session.operator.name,
-    action: "operator.content.update",
-    ipAddress: clientIpFrom(await headers()),
-    details: {
-      locale,
+  if (result.drafted.length > 0 || result.cleared.length > 0) {
+    await audit(session.operator.name, "operator.content.draft", {
       section,
-      updated: result.updated,
-      reset: result.reset,
-      /* PANJANGNYA, bukan nilainya — lihat kepala berkas. */
+      drafted: result.drafted,
+      cleared: result.cleared,
+    });
+  }
+  revalidatePath("/content");
+
+  return result.drafted.length === 0 && result.cleared.length === 0
+    ? { ok: true, message: t("operator.content.draftNothing") }
+    : { ok: true, message: t("operator.content.draftSaved", { count: result.drafted.length }) };
+}
+
+/* ───────────────────────────────── Terbitkan ──────────────────────────────── */
+
+export async function operatorPublishContent(input: unknown): Promise<OperatorContentActionResult> {
+  const t = await getT();
+  const session = await requireOperatorActionSession("site.publish");
+  if (!session) return { ok: false, message: t("operator.actions.denied") };
+
+  const parsed = siteContentPublishSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t("validation.invalidInput") };
+
+  const dictionaries = await allDictionaries();
+  let result;
+  try {
+    result = await publishSiteContentDrafts({
+      actor: session.operator.name,
+      note: parsed.data.note ? parsed.data.note : null,
+      isEditable: (key) => isEditableInAll(dictionaries, key),
+    });
+  } catch (error) {
+    console.error("[operator-content] penerbitan gagal:", error);
+    return { ok: false, message: t("operator.content.errSave") };
+  }
+
+  if (result.publicationId !== null) {
+    await audit(session.operator.name, "operator.content.publish", {
+      publicationId: result.publicationId,
+      changed: result.changes.map((c) => `${c.locale}:${c.key}`),
       lengths: Object.fromEntries(
-        result.updated.map((key) => [key, diterima[key]?.trim().length ?? 0])
+        result.changes.map((c) => [`${c.locale}:${c.key}`, c.value?.length ?? 0])
       ),
-    },
+    });
+  }
+  revalidatePath("/content");
+
+  return result.changes.length === 0
+    ? { ok: true, message: t("operator.content.publishedNothing") }
+    : {
+        ok: true,
+        message: t("operator.content.published", {
+          count: result.changes.length,
+          seconds: SITE_CONTENT_CACHE_SECONDS,
+        }),
+      };
+}
+
+/* ─────────────────────────────── Buang draf ──────────────────────────────── */
+
+export async function operatorDiscardContentDrafts(): Promise<OperatorContentActionResult> {
+  const t = await getT();
+  const session = await requireOperatorActionSession("site.content");
+  if (!session) return { ok: false, message: t("operator.actions.denied") };
+
+  let count;
+  try {
+    count = await discardSiteContentDrafts();
+  } catch (error) {
+    console.error("[operator-content] draf gagal dibuang:", error);
+    return { ok: false, message: t("operator.content.errSave") };
+  }
+  if (count > 0) await audit(session.operator.name, "operator.content.discard", { count });
+  revalidatePath("/content");
+  return { ok: true, message: t("operator.content.discarded", { count }) };
+}
+
+/* ──────────────────────────────── Pratinjau ──────────────────────────────── */
+
+export async function operatorCreateContentPreview(): Promise<OperatorContentActionResult> {
+  const t = await getT();
+  const session = await requireOperatorActionSession("site.content");
+  if (!session) return { ok: false, message: t("operator.actions.denied") };
+
+  const origin = customerOrigin();
+  if (!origin) return { ok: false, message: t("operator.content.previewNoUrl") };
+
+  let preview;
+  try {
+    preview = await createSiteContentPreview(session.operator.name);
+  } catch (error) {
+    console.error("[operator-content] pratinjau gagal dibuat:", error);
+    return { ok: false, message: t("operator.content.errSave") };
+  }
+  await audit(session.operator.name, "operator.content.preview", {
+    expiresAt: preview.expiresAt.toISOString(),
   });
 
-  revalidatePath("/content");
-  /* Halaman publiknya ikut: `revalidateTag` di dalam `saveSiteContent` sudah
-     membuang query penimpanya, tapi `/` dan `/pricing` punya cache render
-     sendiri. Keduanya `force-dynamic` hari ini — baris ini yang menjaga
-     kebenaran kalau salah satunya kelak berhenti begitu. */
-  revalidatePath("/");
-  revalidatePath("/pricing");
-
-  const nothing = result.updated.length === 0 && result.reset.length === 0;
+  const url = new URL("/", origin);
+  url.searchParams.set(SITE_CONTENT_PREVIEW_PARAM, preview.token);
+  const until = formatDateTime(preview.expiresAt);
   return {
     ok: true,
-    message: nothing
-      ? t("operator.content.savedNothing")
-      : t("operator.content.saved", {
-          updated: result.updated.length,
-          reset: result.reset.length,
-        }),
+    message: t("operator.content.previewReady", { time: until }),
+    previewUrl: url.toString(),
+    previewUntil: until,
   };
+}
+
+/* ─────────────────────────── Kembalikan dari riwayat ────────────────────────── */
+
+/**
+ * Dipanggil dari `<form action>` di halaman riwayat (server component, tanpa
+ * JS): membuat draf dari riwayat, lalu memindahkan operator ke tampilan
+ * Tinjau supaya ia langsung melihat draf yang dihasilkan.
+ */
+export async function operatorRevertContent(formData: FormData): Promise<void> {
+  const session = await requireOperatorActionSession("site.content");
+  if (!session) redirect("/content?view=history");
+
+  const mode = formData.get("mode");
+  const id = Number(formData.get("id"));
+  const parsed = siteContentHistorySchema.safeParse(
+    mode === "undo" ? { mode, publicationId: id } : { mode, revisionId: id }
+  );
+  if (!parsed.success) redirect("/content?view=history");
+
+  const dictionaries = await allDictionaries();
+  let drafted = 0;
+  try {
+    const result = await draftsFromHistory(parsed.data, session.operator.name, (key) =>
+      isEditableInAll(dictionaries, key)
+    );
+    drafted = result.drafted.length;
+    await audit(session.operator.name, "operator.content.revert", {
+      ...parsed.data,
+      drafted: result.drafted,
+      cleared: result.cleared,
+    });
+  } catch (error) {
+    console.error("[operator-content] versi lama gagal dikembalikan:", error);
+    redirect("/content?view=history&reverted=error");
+  }
+  revalidatePath("/content");
+  redirect(`/content?view=review&reverted=${drafted}`);
+}
+
+/* ─────────────────────────────── Kunci yatim ─────────────────────────────── */
+
+export async function operatorPurgeOrphanContent(): Promise<OperatorContentActionResult> {
+  const t = await getT();
+  const session = await requireOperatorActionSession("site.publish");
+  if (!session) return { ok: false, message: t("operator.actions.denied") };
+
+  const [dictionaries, rows] = await Promise.all([allDictionaries(), siteContentEntriesForOperator()]);
+  if (rows === null) return { ok: false, message: t("operator.content.errSave") };
+  /* Daftarnya dihitung ULANG di server dari kamus, tidak diterima dari layar. */
+  const orphans = [...new Set(rows.map((r) => r.key))].filter((k) => !isEditableInAll(dictionaries, k));
+
+  let result;
+  try {
+    result = await purgeSiteContentKeys(orphans, session.operator.name);
+  } catch (error) {
+    console.error("[operator-content] kunci yatim gagal dihapus:", error);
+    return { ok: false, message: t("operator.content.errSave") };
+  }
+  await audit(session.operator.name, "operator.content.purge", {
+    keys: orphans,
+    publicationId: result.publicationId,
+  });
+  revalidatePath("/content");
+  return { ok: true, message: t("operator.content.purged", { count: orphans.length }) };
 }

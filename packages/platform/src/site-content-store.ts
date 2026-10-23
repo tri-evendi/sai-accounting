@@ -50,6 +50,7 @@ import type { Locale } from "@sai/core/i18n/config";
 import { platformDb } from "@sai/platform/platform-db";
 import {
   SITE_CONTENT_KEY_PATTERN,
+  SITE_CONTENT_LIVE_DELAY_SECONDS,
   SITE_CONTENT_NOTE_MAX,
   SITE_CONTENT_PREVIEW_TOKEN_PATTERN,
   SITE_CONTENT_PREVIEW_TTL_MINUTES,
@@ -65,7 +66,7 @@ import {
 export const SITE_CONTENT_TAG = "site-content";
 
 /** Umur cache yang tayang di `app-customer` — lihat kepala berkas. */
-export const SITE_CONTENT_CACHE_SECONDS = 30;
+export const SITE_CONTENT_CACHE_SECONDS = SITE_CONTENT_LIVE_DELAY_SECONDS;
 
 /* ─────────────────────────────── Jalur publik ─────────────────────────────── */
 

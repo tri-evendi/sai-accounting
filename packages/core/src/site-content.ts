@@ -291,6 +291,14 @@ export const SITE_CONTENT_KEY_PATTERN = /^landing\.[A-Za-z][A-Za-z0-9]*$/;
 /** Batas catatan penerbitan — kolom `site_content_publications.note`. */
 export const SITE_CONTENT_NOTE_MAX = 200;
 
+/**
+ * Berapa lama sampai penerbitan terlihat di halaman depan: umur cache baca di
+ * `app-customer` (`site-content-store.ts`). Konsol menyebut angka ini apa
+ * adanya, karena `updateTag` dari proses konsol tidak menjangkau proses
+ * customer.
+ */
+export const SITE_CONTENT_LIVE_DELAY_SECONDS = 30;
+
 /** Umur token pratinjau draf. */
 export const SITE_CONTENT_PREVIEW_TTL_MINUTES = 30;
 

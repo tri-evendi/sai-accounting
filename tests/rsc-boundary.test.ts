@@ -317,8 +317,14 @@ import { join } from "node:path";
  *     QR → konfirmasi kode. Rahasia hanya hidup di state peramban; QR-nya
  *     dikodekan di server dan `QrCode` sendiri tetap tanpa `"use client"`.
  *     Halaman dan tabel kesiapannya tetap server.
+ * 204 → 205 (23 Okt 2026, isi halaman depan draf → terbit, migration platform 0008):
+ *   + `content-publish-controls` (konsol `/content?view=review`): dialog
+ *     konfirmasi terbit/buang, dan tautan pratinjau bertoken yang hanya hidup
+ *     di state peramban (tokennya tidak boleh masuk HTML hasil render server).
+ *     Daftar draf dan riwayat tetap server; "kembalikan versi" adalah
+ *     `<form action>` server tanpa JS.
  */
-const AMBANG_KLIEN = 204;
+const AMBANG_KLIEN = 205;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -485,6 +491,8 @@ const KLIEN_TERSAHKAN = [
      nilai bawaan + nilai tersimpan dihitung di server dan diturunkan sebagai
      daftar. */
   "apps/operator/src/components/operator/content-editor.tsx",
+  /* Tinjau & terbit isi halaman depan — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/content-publish-controls.tsx",
   /* Register lisensi on-premise — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/licence-register-panel.tsx",
   /* Kunci penanda lisensi (migration platform 0007) — lihat `AMBANG_KLIEN`. */

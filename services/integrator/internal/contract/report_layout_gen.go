@@ -122,13 +122,17 @@ const (
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
-	ReportBalanceSheet    = "balance-sheet"
-	ReportCashFlow        = "cash-flow"
-	ReportEquityChanges   = "equity-changes"
-	ReportIncomeStatement = "income-statement"
-	ReportPayables        = "payables"
-	ReportReceivables     = "receivables"
-	ReportTrialBalance    = "trial-balance"
+	ReportBalanceSheet        = "balance-sheet"
+	ReportBudgetRealization   = "budget-realization"
+	ReportCashBank            = "cash-bank"
+	ReportCashFlow            = "cash-flow"
+	ReportEquityChanges       = "equity-changes"
+	ReportIncomeStatement     = "income-statement"
+	ReportPayables            = "payables"
+	ReportPurchasesBySupplier = "purchases-by-supplier"
+	ReportReceivables         = "receivables"
+	ReportSalesByCustomer     = "sales-by-customer"
+	ReportTrialBalance        = "trial-balance"
 )
 
 // GoEngineReports: laporan yang BERKAS-nya hari ini dihasilkan Go

@@ -49,7 +49,7 @@ type BudgetVarianceRow struct {
 	Actual   Cents                    `json:"actual"`
 	Variance Cents                    `json:"variance"`
 	// VariancePct nil = anggaran nol (tak terdefinisi).
-	VariancePct *float64                     `json:"variancePct"`
+	VariancePct *float64                      `json:"variancePct"`
 	Status      contract.BudgetVarianceStatus `json:"status"`
 }
 
@@ -83,6 +83,9 @@ type BudgetRealization struct {
 	Totals      BudgetTotals           `json:"totals"`
 	HasBudgets  bool                   `json:"hasBudgets"`
 	SalesTarget SalesTargetRealization `json:"salesTarget"`
+	// UnknownTypes: kode akun bergerak (di periode) bertipe di luar kontrak —
+	// dari pembaca Laba Rugi; dicatat supaya terlihat.
+	UnknownTypes []string `json:"unknownTypes"`
 }
 
 // centsFloat: sen → angka JavaScript `k / 100` (pembagian float yang
@@ -140,6 +143,7 @@ type BudgetEntry struct {
 func BuildBudgetRealization(entries []BudgetEntry, sums []accountSums, targets []Cents, thresholdPct float64) *BudgetRealization {
 	rep := &BudgetRealization{Rows: []BudgetVarianceRow{}, HasBudgets: len(entries) > 0}
 	is := BuildIncomeStatement(sums)
+	rep.UnknownTypes = is.UnknownTypes
 
 	actualByCode := map[string]Cents{}
 	for _, l := range is.Revenue {

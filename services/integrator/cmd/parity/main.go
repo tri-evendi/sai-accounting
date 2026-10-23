@@ -27,6 +27,22 @@
 //	parity equity-changes-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
 //	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> -registry-name <nama registry> -out <berkas.xlsx>
 //
+//	parity sales-by-customer|purchases-by-supplier -database <nama> -from <RFC3339> -to <RFC3339>
+//	parity sales-by-customer-xlsx|purchases-by-supplier-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
+//	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> [-cols <id,id>] -registry-name <nama registry> -out <berkas.xlsx>
+//	parity cash-bank -database <nama> -from <RFC3339> -to <RFC3339>
+//	parity cash-bank-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
+//	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> [-cols <id,id>] -registry-name <nama registry> -out <berkas.xlsx>
+//	parity budget-realization -database <nama> -year <YYYY> -month <0–12> -from <RFC3339> -to <RFC3339>
+//	parity budget-realization-xlsx -database <nama> -year <YYYY> -month <0–12> -from <RFC3339> -to <RFC3339> \
+//	       -registry-name <nama registry> -out <berkas.xlsx>
+//
+// Gelombang A berikutnya (`go-parity`, 23 Okt 2026): Rekap per Pihak, Laporan
+// Kas & Bank, Realisasi vs Anggaran. Pembandingnya `scripts/parity-party-recap*.ts`,
+// `scripts/parity-cash-bank*.ts`, `scripts/parity-budget*.ts`. Instan periode
+// (dan, untuk anggaran, tahun/bulan + `budgetPeriodRange`) dihitung PENERBIT TS
+// (`goExportPayloadShape`) — perkakas ini tidak menghitungnya sendiri.
+//
 // Arus Kas dan Laporan Perubahan Ekuitas (tahap 1d, 23 Okt 2026) membuka
 // bukunya lewat registry kendali (`openFromRegistry`) seperti Neraca Saldo —
 // instans tempat buku itu hidup, bukan instans bawaan. Varian -xlsx Laporan
@@ -150,7 +166,8 @@ func run(args []string) error {
 	if len(args) == 0 {
 		return errors.New("pakai: parity trial-balance|trial-balance-xlsx|balance-sheet|balance-sheet-xlsx|" +
 			"income-statement|income-statement-xlsx|cash-flow|cash-flow-xlsx|equity-changes|equity-changes-xlsx|" +
-			"receivables|receivables-xlsx|payables|payables-xlsx -database <nama> …")
+			"receivables|receivables-xlsx|payables|payables-xlsx|sales-by-customer[-xlsx]|" +
+			"purchases-by-supplier[-xlsx]|cash-bank[-xlsx]|budget-realization[-xlsx] -database <nama> …")
 	}
 	switch args[0] {
 	case "trial-balance":
@@ -179,6 +196,18 @@ func run(args []string) error {
 		return aging("receivables", args[1:], true)
 	case "payables-xlsx":
 		return aging("payables", args[1:], true)
+	case "sales-by-customer", "purchases-by-supplier":
+		return partyRecap(args[0], args[1:], false)
+	case "sales-by-customer-xlsx", "purchases-by-supplier-xlsx":
+		return partyRecap(strings.TrimSuffix(args[0], "-xlsx"), args[1:], true)
+	case "cash-bank":
+		return cashBank(args[1:], false)
+	case "cash-bank-xlsx":
+		return cashBank(args[1:], true)
+	case "budget-realization":
+		return budgetRealization(args[1:], false)
+	case "budget-realization-xlsx":
+		return budgetRealization(args[1:], true)
 	default:
 		return fmt.Errorf("laporan %q belum punya implementasi Go", args[0])
 	}
@@ -681,4 +710,189 @@ func aging(kind string, args []string, xlsx bool) error {
 		return err
 	}
 	return os.WriteFile(*out, data, 0o600)
+}
+
+// registryFallback: `-registry-name`, lalu nama registry yang baru dibaca.
+func registryFallback(flagValue string, company *registry.Company) string {
+	if strings.TrimSpace(flagValue) != "" {
+		return flagValue
+	}
+	return company.Name
+}
+
+// periodFlags: -from/-to wajib, dan (xlsx) -from-date/-to-date/-out.
+type periodFlags struct {
+	database, fromRaw, toRaw, fromDate, toDate, cols, registryName, out *string
+	timeout                                                             *time.Duration
+}
+
+func newPeriodFlags(fs *flag.FlagSet) periodFlags {
+	return periodFlags{
+		database:     fs.String("database", "", "nama basis data perusahaan (companies.database_name)"),
+		fromRaw:      fs.String("from", "", "awal periode INKLUSIF sebagai instan RFC3339"),
+		toRaw:        fs.String("to", "", "akhir periode INKLUSIF sebagai instan RFC3339"),
+		fromDate:     fs.String("from-date", "", "xlsx: awal periode YYYY-MM-DD (label)"),
+		toDate:       fs.String("to-date", "", "xlsx: akhir periode YYYY-MM-DD (label)"),
+		cols:         fs.String("cols", "", "xlsx: kolom tampil MENTAH (`?cols=`)"),
+		registryName: fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong"),
+		out:          fs.String("out", "", "xlsx: berkas .xlsx keluaran"),
+		timeout:      fs.Duration("timeout", 5*time.Minute, "batas waktu satu laporan"),
+	}
+}
+
+func (p periodFlags) parse(xlsx bool) (time.Time, time.Time, error) {
+	from, err := instant("from", *p.fromRaw)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	to, err := instant("to", *p.toRaw)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	if xlsx && (*p.fromDate == "" || *p.toDate == "" || *p.out == "") {
+		return time.Time{}, time.Time{}, errors.New("-from-date, -to-date, dan -out wajib")
+	}
+	return from, to, nil
+}
+
+// partyRecap: Penjualan per Pelanggan / Pembelian per Pemasok sebagai JSON,
+// atau (xlsx) lembar sebarnya lewat `internal/document` — kode pelari.
+func partyRecap(kind string, args []string, xlsx bool) error {
+	fs := flag.NewFlagSet(kind, flag.ContinueOnError)
+	p := newPeriodFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	from, to, err := p.parse(xlsx)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), *p.timeout)
+	defer cancel()
+	r, company, err := openFromRegistry(ctx, *p.database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	rep, err := r.PartyRecap(ctx, kind, from, to)
+	if err != nil {
+		return err
+	}
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(rep)
+	}
+	period, err := document.PeriodRange(*p.fromDate, *p.toDate, "")
+	if err != nil {
+		return err
+	}
+	specs, err := document.PartyRecapColumnsFor(kind)
+	if err != nil {
+		return err
+	}
+	name, err := headerName(ctx, r, registryFallback(*p.registryName, company))
+	if err != nil {
+		return err
+	}
+	data, err := document.PartyRecapWorkbook(rep, document.CatalogVisibleColumns(specs, *p.cols), name, period, time.Now())
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(*p.out, data, 0o600)
+}
+
+// cashBank: Laporan Kas & Bank sebagai JSON, atau (xlsx) lembar sebarnya.
+func cashBank(args []string, xlsx bool) error {
+	fs := flag.NewFlagSet("cash-bank", flag.ContinueOnError)
+	p := newPeriodFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	from, to, err := p.parse(xlsx)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), *p.timeout)
+	defer cancel()
+	r, company, err := openFromRegistry(ctx, *p.database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	cb, err := r.CashBank(ctx, from, to)
+	if err != nil {
+		return err
+	}
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(cb)
+	}
+	period, err := document.PeriodRange(*p.fromDate, *p.toDate, "")
+	if err != nil {
+		return err
+	}
+	name, err := headerName(ctx, r, registryFallback(*p.registryName, company))
+	if err != nil {
+		return err
+	}
+	data, err := document.CashBankWorkbook(cb, document.CatalogVisibleColumns(contract.CashBankColumns, *p.cols), name, period, time.Now())
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(*p.out, data, 0o600)
+}
+
+// budgetRealization: Realisasi vs Anggaran sebagai JSON, atau (xlsx) lembar
+// sebarnya. -year/-month = `params.year`/`params.month` penerbit; -from/-to =
+// `fromInstant`/`toInstant`-nya (`budgetPeriodRange`).
+func budgetRealization(args []string, xlsx bool) error {
+	fs := flag.NewFlagSet("budget-realization", flag.ContinueOnError)
+	p := newPeriodFlags(fs)
+	year := fs.Int("year", 0, "tahun anggaran (params.year)")
+	month := fs.Int("month", -1, "bulan 1–12, atau 0 = setahun penuh (params.month)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	from, err := instant("from", *p.fromRaw)
+	if err != nil {
+		return err
+	}
+	to, err := instant("to", *p.toRaw)
+	if err != nil {
+		return err
+	}
+	if *year == 0 || *month < 0 || *month > 12 {
+		return errors.New("-year dan -month (0–12) wajib")
+	}
+	if xlsx && *p.out == "" {
+		return errors.New("-out wajib")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), *p.timeout)
+	defer cancel()
+	r, company, err := openFromRegistry(ctx, *p.database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	rep, err := r.BudgetRealization(ctx, *year, *month, from, to)
+	if err != nil {
+		return err
+	}
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(rep)
+	}
+	period, err := document.BudgetPeriod(*year, *month)
+	if err != nil {
+		return err
+	}
+	name, err := headerName(ctx, r, registryFallback(*p.registryName, company))
+	if err != nil {
+		return err
+	}
+	data, err := document.BudgetWorkbook(rep, name, period, time.Now())
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(*p.out, data, 0o600)
 }

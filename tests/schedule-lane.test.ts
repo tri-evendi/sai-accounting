@@ -113,9 +113,24 @@ describe("sisi Node: penerbit memeriksa kontrak SEBELUM menerbitkan", () => {
 describe("sisi Go: hanya jalur `schedule` yang menerbitkan, dan hanya milik Go", () => {
   const penerbitGo = GO_PRODUKSI.filter((b) => /\.Publish\(/.test(b.isi) && !b.rel.endsWith("/jobs/queue.go"));
 
-  it("satu-satunya pemanggil Publish di pohon Go ada di `internal/schedulelane`", () => {
+  it("pemanggil Publish di pohon Go hanya `internal/schedulelane` dan `internal/integrationlane`", () => {
     expect(penerbitGo.length, "penjaga ini tidak melihat penerbit Go mana pun").toBeGreaterThan(0);
-    for (const b of penerbitGo) expect(b.rel, b.rel).toContain("/internal/schedulelane/");
+    /* Penerbit KEDUA lahir Okt 2026: jalur `integration` (e-Faktur,
+       docs/EFAKTUR.md) menerbitkan `integration.efaktur_poll` (dirinya sendiri)
+       dan `efaktur.record` (diklaim Node). Keduanya BUKAN kind berjadwal —
+       janji penjaga ini (Go tidak menerbitkan kind berjadwal milik Node) tetap
+       dipegang hanya oleh `schedulelane`, dan diperiksa di bawah. */
+    for (const b of penerbitGo) {
+      expect(b.rel, b.rel).toMatch(/\/internal\/(schedulelane|integrationlane)\//);
+    }
+  });
+
+  it("jalur `integration` tidak menyentuh kind berjadwal sama sekali", () => {
+    const integrasi = GO_PRODUKSI.filter((b) => b.rel.includes("/internal/integrationlane/"));
+    expect(integrasi.length).toBeGreaterThan(0);
+    for (const b of integrasi) {
+      expect(b.isi, b.rel).not.toMatch(/ScheduledKinds|GoOwned\(|KindLedgerRecurring|KindTenantBackup|KindScheduleTick/);
+    }
   });
 
   it("penerbit Go menyaring kind berjadwal pada `publisher: go`", () => {

@@ -2130,10 +2130,10 @@
       "readyTitle": "Faktur siap",
       "colTrxCode": "Kode",
       "trx": {
-        "01": "01 — tarif 12% penuh (barang mewah)",
-        "02": "02 — kepada pemungut PPN instansi pemerintah",
-        "03": "03 — kepada pemungut PPN selain instansi pemerintah",
-        "04": "04 — DPP nilai lain (11/12)"
+        "code01": "01 — tarif 12% penuh (barang mewah)",
+        "code02": "02 — kepada pemungut PPN instansi pemerintah",
+        "code03": "03 — kepada pemungut PPN selain instansi pemerintah",
+        "code04": "04 — DPP nilai lain (11/12)"
       },
       "problem": {
         "seller_npwp": "NPWP penjual kosong atau bukan 15/16 digit",

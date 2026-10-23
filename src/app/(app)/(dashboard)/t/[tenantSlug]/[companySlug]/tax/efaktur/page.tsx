@@ -88,6 +88,47 @@ function parseDate(value: string | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/*
+ * Kunci kamus ditulis UTUH (bukan `tax.coretax.problem.${kode}`), supaya
+ * penjaga kunci yatim melihatnya; `Record` bertipe penuh membuat kode baru
+ * tanpa label ditolak `tsc`.
+ */
+const PROBLEM_KEY = {
+  seller_npwp: "tax.coretax.problem.seller_npwp",
+  seller_nitku: "tax.coretax.problem.seller_nitku",
+  seller_not_pkp: "tax.coretax.problem.seller_not_pkp",
+  before_coretax: "tax.coretax.problem.before_coretax",
+  buyer_id: "tax.coretax.problem.buyer_id",
+  buyer_nitku: "tax.coretax.problem.buyer_nitku",
+  buyer_address: "tax.coretax.problem.buyer_address",
+  no_lines: "tax.coretax.problem.no_lines",
+  line_quantity: "tax.coretax.problem.line_quantity",
+  rate_unsupported: "tax.coretax.problem.rate_unsupported",
+} as const satisfies Record<CoretaxProblemCode, string>;
+
+const WARNING_KEY = {
+  unit_other: "tax.coretax.warning.unit_other",
+  vat_rounding: "tax.coretax.warning.vat_rounding",
+  dpp_mismatch: "tax.coretax.warning.dpp_mismatch",
+} as const satisfies Record<CoretaxWarningCode, string>;
+
+const TRX_KEY = {
+  "01": "tax.coretax.trx.code01",
+  "02": "tax.coretax.trx.code02",
+  "03": "tax.coretax.trx.code03",
+  "04": "tax.coretax.trx.code04",
+} as const satisfies Record<CoretaxTrxCode, string>;
+
+const STATUS_KEY = {
+  queued: "tax.pjap.status.queued",
+  submitted: "tax.pjap.status.submitted",
+  approved: "tax.pjap.status.approved",
+  rejected: "tax.pjap.status.rejected",
+  failed: "tax.pjap.status.failed",
+  cancel_requested: "tax.pjap.status.cancel_requested",
+  canceled: "tax.pjap.status.canceled",
+} as const satisfies Record<EfakturSubmissionStatus, string>;
+
 /** Status kiriman → varian badge. Badge selalu berteks (MASTER §Badge). */
 const STATUS_BADGE: Record<EfakturSubmissionStatus, "default" | "success" | "warning" | "danger" | "outline"> = {
   queued: "outline",
@@ -206,8 +247,8 @@ export default async function EfakturPage({
   const xmlHref = `${basePath}/coretax?${range}`;
   const csvHref = `${basePath}?${range}`;
 
-  const problemLabel = (c: CoretaxProblemCode) => t(`tax.coretax.problem.${c}`);
-  const warningLabel = (c: CoretaxWarningCode) => t(`tax.coretax.warning.${c}`);
+  const problemLabel = (c: CoretaxProblemCode) => t(PROBLEM_KEY[c]);
+  const warningLabel = (c: CoretaxWarningCode) => t(WARNING_KEY[c]);
 
   const rows: ReadyRow[] = result.invoices.map((inv) => ({
     invoiceId: coretax.invoiceIds.get(inv.invoiceNo)!,
@@ -235,7 +276,7 @@ export default async function EfakturPage({
     {
       ...textColumn<ReadyRow>({ dataIndex: "trxCode", title: t("tax.coretax.colTrxCode") }),
       render: (_raw, row) => (
-        <span title={t(`tax.coretax.trx.${row.trxCode}`)} style={NUMERIC}>
+        <span title={t(TRX_KEY[row.trxCode])} style={NUMERIC}>
           {row.trxCode}
         </span>
       ),
@@ -254,7 +295,7 @@ export default async function EfakturPage({
         return (
           <div style={{ display: "grid", gap: 2 }}>
             <span style={{ display: "inline-flex", gap: SPACE_XS, flexWrap: "wrap" }}>
-              <Badge variant={STATUS_BADGE[s.status]}>{t(`tax.pjap.status.${s.status}`)}</Badge>
+              <Badge variant={STATUS_BADGE[s.status]}>{t(STATUS_KEY[s.status])}</Badge>
               {s.provider === "mock" && <Badge variant="outline">{t("tax.pjap.mockBadge")}</Badge>}
             </span>
             {s.taxInvoiceNumber && <span style={{ ...NUMERIC, ...MUTED }}>{s.taxInvoiceNumber}</span>}

@@ -2130,10 +2130,10 @@
       "readyTitle": "Ready invoices",
       "colTrxCode": "Code",
       "trx": {
-        "01": "01 — full 12% rate (luxury goods)",
-        "02": "02 — to a government VAT collector",
-        "03": "03 — to a non-government VAT collector",
-        "04": "04 — other tax base (11/12)"
+        "code01": "01 — full 12% rate (luxury goods)",
+        "code02": "02 — to a government VAT collector",
+        "code03": "03 — to a non-government VAT collector",
+        "code04": "04 — other tax base (11/12)"
       },
       "problem": {
         "seller_npwp": "seller NPWP empty or not 15/16 digits",
@@ -5530,12 +5530,12 @@
       "pjapDescription": "Customer e-Faktur through a PJAP. Credentials belong to the company and are not shown here.",
       "colCompany": "Company",
       "colProvider": "Provider",
-      "colMode": "Mode",
+      "colMode": "Environment",
       "colCredential": "Credentials",
       "colSubmissions": "Submissions",
       "providerNone": "None",
       "production": "Production",
-      "sandbox": "Sandbox",
+      "sandbox": "Test (sandbox)",
       "credentialStored": "Saved",
       "credentialMissing": "Not set",
       "unreadable": "Unreadable",

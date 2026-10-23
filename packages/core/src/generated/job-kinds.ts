@@ -121,7 +121,7 @@ export interface ScheduleSpec {
 
 /** Kind yang diterbitkan DENYUT, beserta penerbitnya. Dibaca `@sai/core/schedule-due`. */
 export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
-  "ledger.recurring": { grain: "hour", perCompany: true, publisher: "node" },
+  "ledger.recurring": { grain: "hour", perCompany: true, publisher: "go" },
   "tenant.backup": { grain: "day", perCompany: false, publisher: "go" },
 };
 

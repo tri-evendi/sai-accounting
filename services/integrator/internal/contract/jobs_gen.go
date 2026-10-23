@@ -152,7 +152,7 @@ type ScheduleSpec struct {
 // ScheduledKinds: kind yang diterbitkan DENYUT. Dibaca `internal/schedulelane`;
 // padanan TS `SCHEDULED_KINDS` dibaca `@sai/core/schedule-due`.
 var ScheduledKinds = map[JobKind]ScheduleSpec{
-	KindLedgerRecurring: {Grain: GrainHour, PerCompany: true, Publisher: PublisherNode},
+	KindLedgerRecurring: {Grain: GrainHour, PerCompany: true, Publisher: PublisherGo},
 	KindTenantBackup:    {Grain: GrainDay, PerCompany: false, Publisher: PublisherGo},
 }
 

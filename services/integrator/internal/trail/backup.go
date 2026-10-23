@@ -65,14 +65,39 @@ type PutaranCadangan struct {
 // Yang hilang saat kendali tak terjangkau hanyalah SATU baris riwayat, dan
 // denyutnya sudah menangani ketiadaan itu — `backupHealth` memulangkan
 // `unknown`, bukan `ok`.
+//
+// ══ `started_at`/`finished_at` = UTC, DIKIRIM SEBAGAI TEKS ═════════════════
+// Berbeda dari `jobs` (yang jamnya `now()` sesi, lihat `jobs/queue.go`),
+// kedua kolom ini INSTAN yang dihitung di luar basis data, dan pembacanya
+// Prisma (`backupRun.findFirst` di `/api/health`, `watch:health`, konsol) —
+// yang membaca TIMESTAMP tanpa zona sebagai UTC. `record-backup-run.ts` juga
+// menulisnya lewat Prisma, jadi UTC. Maka nilainya dikirim sebagai teks UTC
+// yang di-cast `::timestamp`, bentuk yang sama dengan `asOf` di `ledgerread`:
+// `time.Time` yang diikat langsung bergantung pada mode koneksi pgx (mode
+// bawaan membuang zonanya → jam dinding proses; mode `exec` mengirim
+// `timestamptz` → dikonversi zona SESI, tujuh jam bergeser di server WIB).
+// `created_at`/`updated_at` ikut UTC (`now() AT TIME ZONE 'UTC'`), sebab
+// Prisma mengisi keduanya dengan UTC pada baris yang ia tulis; `now()` polos
+// akan menyimpan jam dinding zona sesi di tabel yang sama.
 func RekamCadangan(ctx context.Context, kendali *pgxpool.Pool, p PutaranCadangan) error {
 	_, err := kendali.Exec(ctx, `
 		INSERT INTO backup_runs (started_at, finished_at, status, error, artifact,
 		                         size_bytes, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, now(), now())`,
-		p.MulaiPada, p.SelesaiPada, p.Status, p.Galat, p.Artifact, p.SizeBytes)
+		VALUES ($1::timestamp, $2::timestamp, $3, $4, $5, $6,
+		        now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')`,
+		TeksUTC(p.MulaiPada), TeksUTC(p.SelesaiPada), p.Status, p.Galat, p.Artifact, p.SizeBytes)
 	if err != nil {
 		return fmt.Errorf("rekam putaran cadangan: %w", err)
 	}
 	return nil
+}
+
+// tataLetakUTC: presisi mikrodetik tanpa zona — cukup untuk TIMESTAMP(3).
+const tataLetakUTC = "2006-01-02 15:04:05.999999"
+
+// TeksUTC menulis instan sebagai jam dinding UTC tanpa zona — bentuk yang
+// disimpan Prisma untuk kolom TIMESTAMP tanpa zona. Murni, jadi bisa diuji
+// tanpa basis data dan tanpa bergantung pada TZ proses.
+func TeksUTC(t time.Time) string {
+	return t.UTC().Format(tataLetakUTC)
 }

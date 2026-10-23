@@ -1357,6 +1357,8 @@ Dua di antaranya memblokir komersialisasi, bukan sekadar kerapian: **disiplin
 versi** — tanpa artefak bernomor tidak ada yang bisa dijual atau didukung — dan
 **severity insiden**, tanpanya tidak ada SLA yang bisa dijanjikan.
 
+🔶 **Draf jawabannya ada (23 Okt 2026): [`docs/TATA-KELOLA.md`](../TATA-KELOLA.md)** — usulan angka per butir, menunggu pengesahan pemilik.
+
 ⚠ **Delapan sisanya KEBIJAKAN, bukan kode — dan itu sebabnya ia tidak
 dikerjakan di sini.** Jendela dukungan, retensi data, severity insiden, sasaran
 SLO, definisi GA: semuanya menyatakan apa yang DIJANJIKAN kepada orang di luar

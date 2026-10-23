@@ -153,7 +153,7 @@ type ScheduleSpec struct {
 // padanan TS `SCHEDULED_KINDS` dibaca `@sai/core/schedule-due`.
 var ScheduledKinds = map[JobKind]ScheduleSpec{
 	KindLedgerRecurring: {Grain: GrainHour, PerCompany: true, Publisher: PublisherNode},
-	KindTenantBackup:    {Grain: GrainDay, PerCompany: false, Publisher: PublisherNode},
+	KindTenantBackup:    {Grain: GrainDay, PerCompany: false, Publisher: PublisherGo},
 }
 
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.

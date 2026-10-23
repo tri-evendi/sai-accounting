@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.15.1 — 2026-10-23 — belum digelar
+## 0.15.2 — 2026-10-23 — belum digelar
+
+Penjadwalan cadangan harian kini dijalankan layanan latar yang baru; tidak ada perubahan pada tampilan.
+
+### Berubah
+
+- Cadangan harian dijadwalkan oleh layanan latar yang baru, dengan pemantauan denyut tersendiri.
+
+---
+
+## 0.15.1 — 2026-10-23 (5c7af90)
 
 Ekspor Excel Arus Kas, Umur Piutang, dan Umur Utang kini disiapkan di latar.
 

@@ -101,7 +101,8 @@ Sudah ada: `SECURITY.md`. Yang wajib diisi pemilik di sana:
 
 ## 8. Infrastruktur yang punya tanggal kedaluwarsa
 
-⚠ **P0-3 ([05-PENILAIAN](./arsitektur/05-PENILAIAN.md)): masa aktif VM berakhir
-3 Juni 2027 dan perpanjangan otomatis MATI.** Satu tanggal yang terlewat
-menghapus server produksi beserta cadangan lokalnya. 🔶 Usul: nyalakan
-perpanjangan otomatis, dan pasang pengingat 60 dan 14 hari sebelum tanggal itu.
+**P0-3 ([05-PENILAIAN](./arsitektur/05-PENILAIAN.md)): masa aktif VM berakhir
+3 Juni 2027.** ✅ Diputuskan pemilik 23 Okt 2026: perpanjangan dilakukan
+**manual**, perpanjangan otomatis tetap mati. Risiko yang diterima: satu tanggal
+yang terlewat menghapus server produksi beserta cadangan lokalnya — selama
+cadangan luar-server (P0-1) belum ada, itu berarti seluruh data.

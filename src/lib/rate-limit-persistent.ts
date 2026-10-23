@@ -111,8 +111,23 @@ export async function checkPersistentRateLimit(
 
   /*
    * Satu perjalanan atomik: reset jendela yang kedaluwarsa ATAU tambah satu,
-   * diputuskan di server basis data. `NOW()` dipakai di kedua sisi supaya jam
+   * diputuskan di server basis data. Jamnya jam SERVER basis data supaya jam
    * aplikasi tidak ikut bermain.
+   *
+   * ══ JAMNYA UTC, BUKAN `NOW()` POLOS ═════════════════════════════════════
+   * Kolom-kolom ini TIMESTAMP tanpa zona, dan selain pernyataan ini ada dua
+   * penulis/pembaca Prisma di tabel yang sama — pembersihan di bawah
+   * (`updatedAt < cutoff`) dan peredam alarm `watch:health`
+   * (`windowStartedAt`). Prisma menulis & membaca jam dinding UTC, sedangkan
+   * `NOW()` polos menyimpan jam dinding zona SESI (`Asia/Jakarta` di
+   * produksi). Sampai 23 Okt 2026 pernyataan ini memakai `NOW()` polos, jadi
+   * barisnya tujuh jam "lebih muda" dari tetangganya dan pembersihannya
+   * terlambat tujuh jam. Konvensinya: docs/DATABASE.md §4 "Kolom waktu".
+   *
+   * Baris lama (jam WIB) terbaca BERADA DI MASA DEPAN terhadap jam UTC. Cabang
+   * `> jam + 1 menit` memperlakukannya sebagai jendela kedaluwarsa, jadi
+   * peralihan ini paling banter membuka SATU jendela baru lebih awal — bukan
+   * mengunci pengguna tujuh jam lebih lama. Tanpa migrasi data.
    *
    * Ditulis sebagai SQL, bukan disembunyikan di balik ORM: pembatas laju adalah
    * pagar keamanan, dan pernyataan yang bisa dibaca mata bisa diperiksa. Cabang
@@ -120,15 +135,17 @@ export async function checkPersistentRateLimit(
    */
   await controlDb.$executeRaw`
     INSERT INTO rate_limit_counters ("key", window_started_at, count, created_at, updated_at)
-    VALUES (${key}, NOW(), 1, NOW(), NOW())
+    VALUES (${key}, now() AT TIME ZONE 'UTC', 1, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')
     ON CONFLICT ("key") DO UPDATE SET
       count = CASE
-        WHEN rate_limit_counters.window_started_at <= NOW() - MAKE_INTERVAL(secs => ${windowSeconds})
+        WHEN rate_limit_counters.window_started_at <= (now() AT TIME ZONE 'UTC') - MAKE_INTERVAL(secs => ${windowSeconds})
+          OR rate_limit_counters.window_started_at > (now() AT TIME ZONE 'UTC') + interval '1 minute'
         THEN 1 ELSE rate_limit_counters.count + 1 END,
       window_started_at = CASE
-        WHEN rate_limit_counters.window_started_at <= NOW() - MAKE_INTERVAL(secs => ${windowSeconds})
-        THEN NOW() ELSE rate_limit_counters.window_started_at END,
-      updated_at = NOW()`;
+        WHEN rate_limit_counters.window_started_at <= (now() AT TIME ZONE 'UTC') - MAKE_INTERVAL(secs => ${windowSeconds})
+          OR rate_limit_counters.window_started_at > (now() AT TIME ZONE 'UTC') + interval '1 minute'
+        THEN now() AT TIME ZONE 'UTC' ELSE rate_limit_counters.window_started_at END,
+      updated_at = now() AT TIME ZONE 'UTC'`;
 
   const row = await controlDb.rateLimitCounter.findUnique({
     where: { key },

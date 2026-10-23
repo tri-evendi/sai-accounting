@@ -1,0 +1,103 @@
+{
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-01-31T16:59:59.999Z",
+  "rows": [
+    {
+      "id": 8,
+      "name": "Biji Kakao",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 100,
+      "movedOut": 52.5,
+      "processed": 0,
+      "closing": 47.5
+    },
+    {
+      "id": 10,
+      "name": "Cengkeh",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 50,
+      "movedOut": 2,
+      "processed": 0,
+      "closing": 48
+    },
+    {
+      "id": 2,
+      "name": "Gula Aren",
+      "unit": "kg",
+      "opening": 25.5,
+      "movedIn": 0,
+      "movedOut": 0,
+      "processed": 5.25,
+      "closing": 25.5
+    },
+    {
+      "id": 1,
+      "name": "Kopi Arabika",
+      "unit": "kg",
+      "opening": 7.625,
+      "movedIn": 4.875,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 12.5
+    },
+    {
+      "id": 4,
+      "name": "Kopi Arabika",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 7,
+      "movedOut": 7,
+      "processed": 0,
+      "closing": 0
+    },
+    {
+      "id": 6,
+      "name": "Lada Hitam",
+      "unit": null,
+      "opening": 0,
+      "movedIn": 0.3,
+      "movedOut": 0.3,
+      "processed": 0,
+      "closing": 0
+    },
+    {
+      "id": 7,
+      "name": "Minyak Kelapa",
+      "unit": "L",
+      "opening": 0,
+      "movedIn": 2,
+      "movedOut": 5.5,
+      "processed": 0,
+      "closing": -3.5
+    },
+    {
+      "id": 3,
+      "name": "Teh Hijau",
+      "unit": "",
+      "opening": 1.25,
+      "movedIn": 0,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 1.25
+    },
+    {
+      "id": 14,
+      "name": "Vanili",
+      "unit": "g",
+      "opening": 0,
+      "movedIn": 4,
+      "movedOut": 1,
+      "processed": 0,
+      "closing": 3
+    }
+  ],
+  "totalOpening": 34.375,
+  "totalIn": 168.175,
+  "totalOut": 68.3,
+  "totalProcessed": 5.25,
+  "totalClosing": 134.25,
+  "hasProcess": true,
+  "dormantCount": 5
+}

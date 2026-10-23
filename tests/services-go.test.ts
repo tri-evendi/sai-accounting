@@ -170,17 +170,49 @@ describe("invarian I-2: pintu posting tunggal, dan ia TypeScript", () => {
    * Dan ia bukan tabel buku: nol angka akuntansi, dan menghapus seluruh isinya
    * tidak mengubah satu laporan pun. Invarian I-2 tidak tersentuh.
    *
+   * `conformance_runs` masuk 23 Okt 2026 (sapuan kesesuaian data pindah ke
+   * jalur `tenant` Go di belakang sakelar `runner:`), dan alasannya SAMA
+   * dengan `backup_runs`, diuji ulang terhadap jalan lainnya:
+   *
+   *   • Jalan yang DITOLAK: Go memulangkan temuan sebagai hasil pekerjaan, lalu
+   *     handler Node menulis barisnya. Itu Go MENITIPKAN jejaknya ke layanan
+   *     kedua — persis yang I-3 larang, dengan bentuk gagal yang sudah dikenal:
+   *     jejak yang hanya ada bila `svc-worker` hidup. Sapuan Go yang berhasil
+   *     terbaca "tidak pernah jalan", `/api/health` → `conformance` berbunyi
+   *     `late` untuk pemeriksa yang bekerja sempurna — dan harganya satu `kind`
+   *     tambahan beserta pengklaimnya, hanya untuk memindahkan SATU baris.
+   *   • Jalan yang DIPILIH: Go menulis barisnya sendiri. Tabelnya jejak
+   *     putaran di basis data KENDALI (tetangga `backup_runs`), isinya label
+   *     temuan dan hitungan — nol angka akuntansi — dan menghapus seluruh
+   *     isinya tidak mengubah satu laporan pun. I-2 tidak tersentuh; buku PT
+   *     sendiri hanya DIBACA, di transaksi `READ ONLY` (`ledgerread`).
+   *
+   * Penulisnya satu berkas, `internal/trail/conformance.go`, dengan konvensi
+   * jam `backup_runs` (teks UTC `::timestamp`) — dijaga di bawah.
+   *
    * ⚠ MENAMBAH BARIS DI SINI ADALAH KEPUTUSAN. Setiap tambahan memperluas apa
    * yang bisa ditulis bahasa yang bukan pemilik pintu posting, dan alasannya
    * ditulis DI SINI — bukan di pesan commit yang tak akan dibaca orang
    * berikutnya.
    */
-  const BOLEH_DITULIS = ["backup_runs", "jobs"];
+  const BOLEH_DITULIS = ["backup_runs", "conformance_runs", "jobs"];
 
   it("pohon Go hanya menulis tabel yang ada di daftar-izin", () => {
     const ditulis = new Set<string>();
     for (const b of GO) for (const t of tulisan(b.isi)) ditulis.add(t.tabel);
     expect([...ditulis].sort()).toEqual(BOLEH_DITULIS);
+  });
+
+  it("jejak putaran ditulis HANYA dari `internal/trail` — satu berkas per tabel", () => {
+    /* Pengecualian yang DISEBUT tetap sempit: satu paket, satu berkas per
+       tabel. Tulisan `conformance_runs` dari paket sapuan sendiri akan
+       menyebar keputusan ini ke tempat yang tidak dibaca orang berikutnya. */
+    const penulis = (tabel: string) =>
+      GO.filter((b) => !b.rel.endsWith("_test.go") && tulisan(b.isi).some((t) => t.tabel === tabel)).map(
+        (b) => b.rel
+      );
+    expect(penulis("backup_runs")).toEqual(["services/integrator/internal/trail/backup.go"]);
+    expect(penulis("conformance_runs")).toEqual(["services/integrator/internal/trail/conformance.go"]);
   });
 
   it("tidak satu pun tabel di daftar-izin adalah tabel buku", () => {
@@ -387,7 +419,8 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
    * - `jobs`: jam `now()` sesi (DEFAULT `CURRENT_TIMESTAMP` + `now()` di kedua
    *   bahasa). Go hanya mengirim DURASI; nilai `$n` tidak pernah bersentuhan
    *   langsung dengan kolom waktunya (`internal/jobs/queue.go`).
-   * - `backup_runs`: UTC, sebab pembacanya Prisma. Instan dikirim sebagai teks
+   * - `backup_runs` dan `conformance_runs` (jejak putaran, 23 Okt 2026): UTC,
+   *   sebab pembacanya Prisma. Instan dikirim sebagai teks
    *   UTC `$n::timestamp`, dan `now()` hanya dalam bentuk `AT TIME ZONE 'UTC'`
    *   (`internal/trail/backup.go`).
    *
@@ -425,7 +458,7 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
   const periksa = (sql: string): string[] => {
     const pel: string[] = [];
     const jobs = /\bjobs\b/.test(sql);
-    const backup = /\bbackup_runs\b/.test(sql);
+    const backup = /\b(backup_runs|conformance_runs)\b/.test(sql);
     if (!jobs && !backup) return pel;
 
     const langsung = new RegExp(
@@ -438,7 +471,9 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
       if (!bolehUtc) pel.push(`${m[1] ?? m[4]} terikat langsung ke ${param}`);
     }
 
-    const ins = sql.match(/INSERT\s+INTO\s+(jobs|backup_runs)\s*\(([^)]*)\)\s*VALUES\s*\(([\s\S]*)\)/i);
+    const ins = sql.match(
+      /INSERT\s+INTO\s+(jobs|backup_runs|conformance_runs)\s*\(([^)]*)\)\s*VALUES\s*\(([\s\S]*)\)/i
+    );
     if (ins) {
       const kolom = pisah(ins[2]!);
       const nilai = pisah(ins[3]!.replace(/\)\s*(ON CONFLICT|RETURNING)[\s\S]*$/i, ""));
@@ -446,14 +481,14 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
         if (!new RegExp(`^(${KOLOM})$`).test(k)) return;
         const v = nilai[i] ?? "";
         if (ins[1] === "jobs" && v.includes("$")) pel.push(`INSERT jobs.${k} = ${v}`);
-        if (ins[1] === "backup_runs" && !/^\$\d+::timestamp$/.test(v) && !/AT TIME ZONE 'UTC'/.test(v)) {
-          pel.push(`INSERT backup_runs.${k} = ${v}`);
+        if (ins[1] !== "jobs" && !/^\$\d+::timestamp$/.test(v) && !/AT TIME ZONE 'UTC'/.test(v)) {
+          pel.push(`INSERT ${ins[1]}.${k} = ${v}`);
         }
       });
     }
 
     if (backup && /now\(\)(?!\s*AT TIME ZONE 'UTC')/.test(sql)) {
-      pel.push("backup_runs memakai now() zona sesi, bukan UTC");
+      pel.push("jejak putaran memakai now() zona sesi, bukan UTC");
     }
     return pel;
   };
@@ -475,6 +510,9 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
         "INSERT INTO backup_runs (started_at, finished_at, status, created_at, updated_at) VALUES ($1::timestamp, $2::timestamp, $3, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')"
       )
     ).toEqual([]);
+    expect(
+      periksa("INSERT INTO conformance_runs (started_at, finished_at, status, created_at, updated_at) VALUES ($1, $2, $3, now(), now())")
+    ).not.toEqual([]);
   });
 
   it("tidak ada SQL Go yang mengikat nilai `$n` langsung ke kolom waktu `jobs`/`backup_runs`", () => {
@@ -482,7 +520,7 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
     let dilihat = 0;
     for (const b of TANGAN_PRODUKSI) {
       for (const sql of literalSql(b.isi)) {
-        if (/\b(jobs|backup_runs)\b/.test(sql)) dilihat++;
+        if (/\b(jobs|backup_runs|conformance_runs)\b/.test(sql)) dilihat++;
         for (const p of periksa(sql)) pelanggar.push(`${b.rel}: ${p}`);
       }
     }
@@ -545,6 +583,19 @@ describe("kosakata lintas bahasa: yang DITULIS Go = yang DIBACA kesehatan", () =
     /* Satu kata ini yang menentukan apakah permukaan kesehatan berkata benar. */
     const jalankan = GO.find((b) => b.rel.endsWith("internal/backup/jalankan.go"))!.isi;
     expect(jalankan).toMatch(/status := "local"[\s\S]{0,200}LuarMesin\(\)[\s\S]{0,80}status = "ok"/);
+  });
+
+  it("`conformance_runs.status` dari Go = kosakata yang ditulis Node (ok | findings | error)", () => {
+    /* Sejak sakelar `runner:` satu tabel punya dua kemungkinan penulis. Status
+       yang hanya dikenal satu sisi membuat konsol `/conformance` mewarnai
+       putaran Go berbeda dari putaran Node yang hasilnya sama. */
+    const sapuan = GO.find((b) => b.rel.endsWith("internal/conformance/sweep.go"));
+    expect(sapuan, "internal/conformance/sweep.go").toBeDefined();
+    const literal = [...sapuan!.isi.matchAll(/[Ss]tatus\s*(?::=|=)\s*"([a-z_]+)"/g)].map((m) => m[1]!);
+    expect(literal.length).toBeGreaterThanOrEqual(3);
+    for (const nilai of literal) expect(["ok", "findings", "error"], nilai).toContain(nilai);
+    const node = readFileSync(join(AKAR_REPO, "scripts", "check-data-conformance.ts"), "utf8");
+    expect(node).toContain('status: "ok" | "findings" | "error"');
   });
 
   it("TypeScript membaca ketiga nilai itu juga", () => {

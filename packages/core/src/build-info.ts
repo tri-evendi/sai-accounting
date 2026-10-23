@@ -244,14 +244,22 @@ export function sightingFromRunDetails(
   role: string
 ): BuildSighting {
   let build: BuildStamp | null = null;
+  /* `service` di dalam jejaknya MENANG atas tebakan pemanggil: sejak sakelar
+     `runner:` (23 Okt 2026) `conformance_runs` bisa ditulis `svc-worker` ATAU
+     `svc-integrator`, dan build Go yang dicatat atas nama `svc-worker` akan
+     terbaca sebagai worker yang tertinggal versi. Jejak lama tanpa medan itu
+     memakai `service` pemanggil, seperti sebelumnya. */
+  let dariJejak: string | null = null;
   if (details) {
     try {
-      build = parseBuildLabel((JSON.parse(details) as { build?: unknown }).build);
+      const d = JSON.parse(details) as { build?: unknown; service?: unknown };
+      build = parseBuildLabel(d.build);
+      if (typeof d.service === "string" && /^[a-z][a-z0-9-]*$/.test(d.service)) dariJejak = d.service;
     } catch {
       build = null;
     }
   }
-  return { service, role, build, lastSeen };
+  return { service: dariJejak ?? service, role, build, lastSeen };
 }
 
 export interface ServiceBuildRow extends BuildSighting {

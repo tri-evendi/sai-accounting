@@ -256,7 +256,7 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     for (const id of GO_IDS) expect(gen, id).toContain(`"${id}"`);
   });
 
-  it("Arus Kas (`go-parity`): muatan berperiode TANPA pembanding, halaman sudah mengirim asalnya", () => {
+  it("Arus Kas (`go`, paritas produksi 23 Okt 2026): muatan berperiode TANPA pembanding", () => {
     const report = REPORTS.find((r) => r.id === "cash-flow")!;
     const now = new Date(2026, 9, 23, 10, 0, 0);
     const p = goExportPayloadShape(report, { from: "2026-01-01", to: "2026-03-31", compare: "previous_year" }, now);
@@ -267,8 +267,8 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     expect(p.fromInstant).toBe(r.from.toISOString());
     expect(p.toInstant).toBe(r.to.toISOString());
     expect(p.priorFromInstant).toBeUndefined();
-    /* Selagi `go-parity`, penerbit Go menolaknya — register yang memutuskan. */
-    expect(() => goExportPayload(report, {}, now)).toThrow(/bukan milik mesin Go/);
+    /* Sejak `go`, penerbit Go menerimanya — register yang memutuskan. */
+    expect(goExportPayload(report, {}, now).reportId).toBe("cash-flow");
     expect(COMPARABLE_REPORTS).not.toContain("cash-flow");
   });
 

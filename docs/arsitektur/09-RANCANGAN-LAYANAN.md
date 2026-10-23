@@ -1162,6 +1162,12 @@ Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
 
 #### Laporan keempat & kelima: Arus Kas dan Laporan Perubahan Ekuitas (`go-parity`, 23 Okt 2026)
 
+✅ **Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, sesudah perbaikan data
+pt-sai):** Arus Kas 51 setara + isi XLSX 51 setara; Perubahan Ekuitas 51 setara;
+Umur Piutang dan Umur Utang masing-masing 102 setara + isi XLSX 306 setara — 0
+berselisih, 0 gagal. **Arus Kas, Umur Piutang, dan Umur Utang kini `go`.**
+Perubahan Ekuitas tetap `go-parity` sampai ada berkasnya (keputusan produk).
+
 Pola Laba Rugi & Neraca, selangkah demi selangkah, dan BERHENTI di
 `go-parity`: berkas tetap TS sampai sesi utama menjalankan paritas atas buku
 produksi.

@@ -101,14 +101,15 @@ describe("ember umur dari kontrak", () => {
   });
 });
 
-describe("register: Umur Piutang & Umur Utang `go-parity`", () => {
+describe("register: Umur Piutang & Umur Utang `go`", () => {
   const baca = (...p: string[]) => readFileSync(join(AKAR_REPO, ...p), "utf8");
 
-  it("terdaftar `go-parity`, berkas masih TS", () => {
+  it("terdaftar `go` sesudah paritas produksi 23 Okt 2026 — berkasnya dari Go", () => {
     for (const id of ["receivables", "payables"] as const) {
-      expect(reportEngine(id), id).toBe("go-parity");
+      expect(reportEngine(id), id).toBe("go");
       expect(REPORT_ENGINES[id]!.goSource).toBe("services/integrator/internal/ledgerread/aging.go");
-      expect(exportJobKind(id), id).toBe("report.export");
+      expect(REPORT_ENGINES[id]!.parityProven, id).toEqual({ date: "2026-10-23", books: 17 });
+      expect(exportJobKind(id), id).toBe("report.export_go");
     }
   });
 

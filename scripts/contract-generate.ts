@@ -37,6 +37,12 @@
  *   • packages/db/src/generated/db-instances.ts
  *   • services/integrator/internal/contract/dbinstances_gen.go
  *
+ * 09 §3.5 menambah `contract/jobs.sql` + `contract/trail.sql` → `sqlc` →
+ * `services/integrator/internal/controlsql/` (kueri Go bertipe atas basis
+ * data kendali). Langkahnya di `scripts/contract-sqlc.ts`; `--cek`-nya
+ * membandingkan SIDIK, tidak menjalankan `sqlc` (gerbang tanpa Go/jaringan).
+ * `-- --sqlc` memaksa `sqlc` dijalankan walau masukannya tidak berubah.
+ *
  * Angka dipisahkan dari kosakata karena pembacanya berbeda: kosakata dibaca
  * penerbit dan pelari, angka dibaca pelari dan permukaan kesehatan. Di Go
  * keduanya satu berkas, sebab satu paket Go memang satu unit impor.
@@ -55,6 +61,7 @@
 import { load } from "js-yaml";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { sqlcCheck, sqlcGenerate } from "./contract-sqlc";
 
 import { COMPANY_NAME } from "@sai/core/constants";
 import { BUSINESS_TIME_ZONE } from "@sai/core/business-date";
@@ -2719,13 +2726,14 @@ if (CEK) {
     }
     if (readFileSync(jalur, "utf8") !== isi) basi.push(`${jalur} BASI`);
   }
+  basi.push(...sqlcCheck(AKAR));
   if (basi.length > 0) {
-    console.error("✗ berkas bangkitan tidak sinkron dengan contract/*.yaml:");
+    console.error("✗ berkas bangkitan tidak sinkron dengan contract/*:");
     for (const b of basi) console.error(`  • ${b}`);
     console.error("  Jalankan `bun run contract:gen` lalu commit hasilnya.");
     process.exit(1);
   }
-  console.log(`✓ kontrak dan ${berkas.length} berkas bangkitannya sinkron.`);
+  console.log(`✓ kontrak dan ${berkas.length} berkas bangkitannya sinkron (+ sidik sqlc).`);
   process.exit(0);
 }
 
@@ -2734,6 +2742,7 @@ for (const { jalur, isi } of berkas) {
   writeFileSync(jalur, isi);
   console.log(`✓ ${jalur}`);
 }
+console.log(sqlcGenerate(AKAR, process.argv.includes("--sqlc")));
 console.log(
   `  ${Object.keys(kontrak.kinds).length} kind · ${Object.keys(kontrak.lanes).length} jalur · ` +
     `${kontrak.statuses.length} status · ${KUNCI_ANGKA.length} angka · ` +

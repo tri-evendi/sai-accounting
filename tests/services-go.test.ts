@@ -50,8 +50,18 @@ const BANGKITAN = [
   GEN_INSTANS,
 ];
 
+/**
+ * Bangkitan `sqlc` (09 §3.5): `contract/jobs.sql` + `contract/trail.sql` →
+ * kueri Go bertipe atas basis data kendali. Satu paket, seluruhnya bangkitan.
+ */
+const CONTROLSQL = "services/integrator/internal/controlsql/";
+const GEN_SQLC = GO.filter((b) => b.rel.startsWith(CONTROLSQL));
+/** Sumber SQL-nya — yang DIBACA penjaga di bawah, bukan teks bangkitannya saja. */
+const SQL_ANTREAN = readFileSync(join(AKAR_REPO, "contract", "jobs.sql"), "utf8");
+const SQL_JEJAK = readFileSync(join(AKAR_REPO, "contract", "trail.sql"), "utf8");
+
 /** Berkas Go tulisan TANGAN — yang dibangkitkan tunduk pada aturan lain. */
-const TANGAN = GO.filter((b) => !BANGKITAN.includes(b.rel));
+const TANGAN = GO.filter((b) => !BANGKITAN.includes(b.rel) && !b.rel.startsWith(CONTROLSQL));
 
 /**
  * Tulisan tangan yang BUKAN tes, untuk aturan "jangan menulis kosakata".
@@ -239,13 +249,25 @@ describe("invarian I-2: pintu posting tunggal, dan ia TypeScript", () => {
   it("jejak putaran ditulis HANYA dari `internal/trail` — satu berkas per tabel", () => {
     /* Pengecualian yang DISEBUT tetap sempit: satu paket, satu berkas per
        tabel. Tulisan `conformance_runs` dari paket sapuan sendiri akan
-       menyebar keputusan ini ke tempat yang tidak dibaca orang berikutnya. */
+       menyebar keputusan ini ke tempat yang tidak dibaca orang berikutnya.
+
+       Sejak `sqlc` (09 §3.5) teks SQL-nya hidup di `contract/trail.sql` dan
+       bangkitannya `controlsql/trail.sql_gen.go`; yang dijaga kini dua lapis:
+       SQL tulisannya hanya di sana, dan PEMANGGIL fungsi bertipenya hanya
+       satu berkas `internal/trail` per tabel. */
     const penulis = (tabel: string) =>
       GO.filter((b) => !b.rel.endsWith("_test.go") && tulisan(b.isi).some((t) => t.tabel === tabel)).map(
         (b) => b.rel
       );
-    expect(penulis("backup_runs")).toEqual(["services/integrator/internal/trail/backup.go"]);
-    expect(penulis("conformance_runs")).toEqual(["services/integrator/internal/trail/conformance.go"]);
+    expect(penulis("backup_runs")).toEqual([`${CONTROLSQL}trail.sql_gen.go`]);
+    expect(penulis("conformance_runs")).toEqual([`${CONTROLSQL}trail.sql_gen.go`]);
+    expect([...new Set(tulisan(SQL_JEJAK).map((t) => t.tabel))].sort()).toEqual(["backup_runs", "conformance_runs"]);
+    expect([...new Set(tulisan(SQL_ANTREAN).map((t) => t.tabel))]).toEqual(["jobs"]);
+
+    const pemanggil = (fn: string) =>
+      TANGAN.filter((b) => !b.rel.endsWith("_test.go") && b.isi.includes(`.${fn}(`)).map((b) => b.rel);
+    expect(pemanggil("InsertBackupRun")).toEqual(["services/integrator/internal/trail/backup.go"]);
+    expect(pemanggil("InsertConformanceRun")).toEqual(["services/integrator/internal/trail/conformance.go"]);
   });
 
   it("tidak satu pun tabel di daftar-izin adalah tabel buku", () => {
@@ -357,41 +379,70 @@ describe("kontrak: Go tidak punya daftarnya sendiri", () => {
 });
 
 describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => {
+  /*
+   * Sejak `sqlc` (09 §3.5) teks kuerinya hidup di `contract/jobs.sql`, dan
+   * `internal/jobs/queue.go` memanggil fungsi bertipe bangkitannya. Penjaga
+   * membaca KEDUANYA: sifat SQL dari sumbernya (satu kueri = satu blok
+   * `-- name:`), dan dari `queue.go` bahwa aturan di sekitar kueri (kunci
+   * pemilik lease, makna nol baris) tetap dipakai pemanggilnya.
+   */
   const Q = GO.find((b) => b.rel.endsWith("internal/jobs/queue.go"))!.isi;
   const badan = (nama: string) => {
     const i = Q.indexOf(`func (q *Queue) ${nama}(`);
     expect(i, nama).toBeGreaterThan(-1);
     return Q.slice(i, Q.indexOf("\n}", i));
   };
+  /** Teks satu kueri bernama di `contract/jobs.sql`, sampai titik komanya. */
+  const kueri = (nama: string) => {
+    const blok = SQL_ANTREAN.split(/^-- name: /m).find((b) => b.startsWith(`${nama} `));
+    expect(blok, `kueri ${nama} di contract/jobs.sql`).toBeDefined();
+    return blok!.slice(0, blok!.indexOf(";"));
+  };
+  const GEN_ANTREAN = GEN_SQLC.find((b) => b.rel === `${CONTROLSQL}jobs.sql_gen.go`)?.isi ?? "";
 
   it("klaim adalah SATU pernyataan dengan `FOR UPDATE SKIP LOCKED`", () => {
     /* `SELECT … FOR UPDATE SKIP LOCKED` lalu `UPDATE` terpisah lolos setiap
        pengujian satu pekerja, dan gagal di produksi: dua pekerja memilih baris
        yang sama di celah antara dua pernyataan. Untuk `tenant.backup` itu dua
        dump menulis ke satu kunci objek, dan yang terakhir menang. */
+    const k = kueri("ClaimJob");
+    expect(k).toContain("FOR UPDATE SKIP LOCKED");
+    expect(k).toMatch(/UPDATE jobs SET status = 'claimed'[\s\S]*WHERE id = \(\s*SELECT id/);
     const b = badan("Claim");
-    expect(b).toContain("FOR UPDATE SKIP LOCKED");
-    expect(b).toMatch(/UPDATE jobs SET status = 'claimed'[\s\S]*WHERE id = \(\s*SELECT id/);
-    expect(b.match(/pool\.(Query|QueryRow|Exec)\(/g) ?? []).toHaveLength(1);
+    expect(b.match(/q\.sql\.\w+\(/g) ?? []).toEqual(["q.sql.ClaimJob("]);
+    expect(b).not.toMatch(/pool\.(Query|QueryRow|Exec)\(/);
   });
 
   it("setiap tulisan pekerja terkunci pada pemilik lease-nya", () => {
-    /* Tanpa `claimed_by = $2`, pekerja yang lease-nya sudah kedaluwarsa tetap
+    /* Tanpa `claimed_by = …`, pekerja yang lease-nya sudah kedaluwarsa tetap
        bisa menulis hasil ke pekerjaan yang kini milik pekerja lain — dua hasil
        untuk satu pekerjaan, dan yang terakhir menang. */
-    for (const fn of ["RenewLease", "ReportProgress", "Complete"]) {
-      const b = badan(fn);
-      expect(b, fn).toContain("claimed_by = $2");
-      expect(b, fn).toContain("status = 'claimed'");
+    const pasangan: [string, string][] = [
+      ["RenewLease", "RenewLease"],
+      ["ReportProgress", "ReportProgress"],
+      ["Complete", "CompleteJob"],
+    ];
+    for (const [fn, nama] of pasangan) {
+      const k = kueri(nama);
+      expect(k, nama).toContain("claimed_by = sqlc.arg(worker_id)");
+      expect(k, nama).toContain("status = 'claimed'");
+      expect(badan(fn), fn).toContain(`q.sql.${nama}(`);
     }
   });
 
   it("kegagalan yang barisnya bukan milik pekerja ini TIDAK ditulis", () => {
     /* Menulis kegagalan di sini akan menaikkan `attempts` milik pekerjaan orang
        lain, dan pekerjaan itu akan mati lebih cepat tanpa pernah gagal. */
+    const k = kueri("ClaimedAttempts");
+    expect(k).toContain("claimed_by = sqlc.arg(worker_id)");
+    expect(k).toContain("status = 'claimed'");
     const b = badan("Fail");
-    expect(b).toContain("claimed_by = $2");
     expect(b).toContain("pgx.ErrNoRows");
+    const baca = b.indexOf("q.sql.ClaimedAttempts(");
+    expect(baca).toBeGreaterThan(-1);
+    for (const tulis of ["q.sql.MarkDead(", "q.sql.Requeue("]) {
+      expect(b.indexOf(tulis), tulis).toBeGreaterThan(baca);
+    }
   });
 
   it("pengarsipan menyentuh `done` SAJA", () => {
@@ -399,16 +450,17 @@ describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => 
        berharga di tabel ini, dan ia justru yang dicari orang berbulan-bulan
        kemudian. Predikat yang melebar ke "sudah selesai" membuang justru baris
        yang paling dicari orang. */
-    const b = badan("ArchiveDone");
-    expect(b).toContain("status = 'done'");
-    expect(b).not.toMatch(/'dead'|'failed'|IN \(/);
+    const k = kueri("ArchiveDone");
+    expect(k).toContain("status = 'done'");
+    expect(k).not.toMatch(/'dead'|'failed'|IN \(/);
   });
 
   it("reclaim memakai ambang lease dari kontrak, bukan dugaan durasi", () => {
-    expect(Q).toContain("claimed_at < LOCALTIMESTAMP - $1::bigint * interval '1 microsecond'");
-    const b = badan("ReclaimStale");
-    expect(b).toContain("status = 'claimed'");
-    expect(b).toContain("attempts + 1");
+    const k = kueri("ReclaimStale");
+    expect(k).toContain("claimed_at < LOCALTIMESTAMP - sqlc.arg(stale_us)::bigint * interval '1 microsecond'");
+    expect(GEN_ANTREAN).toContain("claimed_at < LOCALTIMESTAMP - $1::bigint * interval '1 microsecond'");
+    expect(k).toContain("status = 'claimed'");
+    expect(k).toContain("attempts + 1");
     // Pemanggilnya menyuntik `contract.LeaseStale` — bukan angka di tempat.
     const runner = GO.find((x) => x.rel.endsWith("internal/jobs/runner.go"))!.isi;
     expect(runner).toContain("ReclaimStale(ctx, contract.LeaseStale)");
@@ -419,6 +471,39 @@ describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => 
        `fmt.Sprintf` ke dalam teks kueri. */
     const sprintfDiSql = /(?:Query|QueryRow|Exec)\(\s*ctx,\s*fmt\.Sprintf/;
     for (const b of GO) expect(sprintfDiSql.test(b.isi), b.rel).toBe(false);
+  });
+
+  it("SQL `jobs` dan jejak putaran HANYA di `contract/*.sql` — tidak ditulis tangan di Go", () => {
+    /* Kueri tulisan tangan kedua atas tabel yang sama adalah daftar kedua:
+       ia lolos dari pengetikan `sqlc` DAN dari penjaga di atas, yang membaca
+       `contract/jobs.sql`. Berkas tes boleh menanam baris (fikstur). */
+    const KUNCI = /\b(jobs|backup_runs|conformance_runs)\b/;
+    const literal = (isi: string) =>
+      [...isi.replace(/^\s*\/\/.*$/gm, "").matchAll(/`([^`]*)`/g)]
+        .map((m) => m[1]!)
+        .filter((t) => /\b(SELECT|INSERT|UPDATE|DELETE)\b/.test(t) && KUNCI.test(t));
+    const pelanggar = TANGAN_PRODUKSI.filter((b) => literal(b.isi).length > 0).map((b) => b.rel);
+    expect(pelanggar).toEqual([]);
+    // Bangkitannya memang memuat kueri itu — pemindai di atas tidak buta.
+    expect(GEN_ANTREAN).toContain("FOR UPDATE SKIP LOCKED");
+  });
+
+  it("bangkitan `sqlc` memakai versi yang dipatok perkakasnya, dan integrator tidak menariknya", () => {
+    /* Versi yang tercetak di kepala bangkitan = versi `require` di
+       `tools/sqlc/go.mod`; `sqlc.sum` mencatat `go.mod` itu sebagai masukan,
+       jadi menaikkan versi tanpa membangkitkan ulang ditolak `contract:gen
+       --cek`. `go.mod` integrator sendiri tidak boleh memuat `sqlc` — ratusan
+       modulnya akan ikut ke graf build image (lihat kepala `tools.go`). */
+    const alat = readFileSync(join(AKAR_REPO, "services/integrator/tools/sqlc/go.mod"), "utf8");
+    const versi = alat.match(/^require \S*sqlc-dev\/sqlc (v[\d.]+)$/m)?.[1];
+    expect(versi, "versi sqlc di tools/sqlc/go.mod").toBeDefined();
+    expect(GEN_SQLC.length).toBeGreaterThanOrEqual(3);
+    for (const b of GEN_SQLC) {
+      expect(b.isi, b.rel).toContain("// Code generated by sqlc. DO NOT EDIT.");
+      expect(b.isi, b.rel).toContain(`//   sqlc ${versi}`);
+    }
+    const integrator = readFileSync(join(AKAR_REPO, "services/integrator/go.mod"), "utf8");
+    expect(integrator).not.toContain("sqlc");
   });
 
   it("pagar jalur memakai nama kunci yang SAMA dengan sisi Node", () => {
@@ -457,8 +542,12 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
    *   langsung dengan kolom waktunya (`internal/jobs/queue.go`).
    * - `backup_runs` dan `conformance_runs` (jejak putaran, 23 Okt 2026): UTC,
    *   sebab pembacanya Prisma. Instan dikirim sebagai teks
-   *   UTC `$n::timestamp`, dan `now()` hanya dalam bentuk `AT TIME ZONE 'UTC'`
-   *   (`internal/trail/backup.go`).
+   *   UTC `$n::text::timestamp` (sebelum `sqlc`: `$n::timestamp` + string —
+   *   masukan `timestamp` yang sama), dan `now()` hanya dalam bentuk
+   *   `AT TIME ZONE 'UTC'` (`contract/trail.sql`).
+   *
+   * Yang dipindai: SQL di bangkitan `sqlc` (`internal/controlsql/`, dari
+   * `contract/*.sql`) DAN setiap literal SQL tulisan tangan yang tersisa.
    *
    * Perilakunya dibuktikan `internal/jobs/queue_tz_integration_test.go` (tiga
    * TZ proses × tiga zona sesi × dua mode pgx); yang di sini menjaga BENTUKNYA
@@ -503,7 +592,7 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
     );
     for (const m of sql.matchAll(langsung)) {
       const param = m[2] ?? m[3]!;
-      const bolehUtc = backup && !jobs && param.endsWith("::timestamp");
+      const bolehUtc = backup && !jobs && /^\$\d+(?:::text)?::timestamp$/.test(param);
       if (!bolehUtc) pel.push(`${m[1] ?? m[4]} terikat langsung ke ${param}`);
     }
 
@@ -521,7 +610,7 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
            di `Fail` (jeda putaran PJAP, jalur `integration`). */
         const durasi = /^now\(\) \+ \$\d+::bigint \* interval '1 (microsecond|millisecond)'$/.test(v);
         if (ins[1] === "jobs" && v.includes("$") && !durasi) pel.push(`INSERT jobs.${k} = ${v}`);
-        if (ins[1] !== "jobs" && !/^\$\d+::timestamp$/.test(v) && !/AT TIME ZONE 'UTC'/.test(v)) {
+        if (ins[1] !== "jobs" && !/^\$\d+(?:::text)?::timestamp$/.test(v) && !/AT TIME ZONE 'UTC'/.test(v)) {
           pel.push(`INSERT ${ins[1]}.${k} = ${v}`);
         }
       });
@@ -557,12 +646,19 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
     expect(
       periksa("INSERT INTO conformance_runs (started_at, finished_at, status, created_at, updated_at) VALUES ($1, $2, $3, now(), now())")
     ).not.toEqual([]);
+    // Bentuk bangkitan `sqlc`: teks UTC `::text::timestamp` sah untuk jejak, tidak untuk `jobs`.
+    expect(
+      periksa(
+        "INSERT INTO backup_runs (started_at, finished_at, status, created_at, updated_at) VALUES ($1::text::timestamp, $2::text::timestamp, $3, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')"
+      )
+    ).toEqual([]);
+    expect(periksa("INSERT INTO jobs (kind, run_after, updated_at) VALUES ($1, $2::text::timestamp, now())")).not.toEqual([]);
   });
 
   it("tidak ada SQL Go yang mengikat nilai `$n` langsung ke kolom waktu `jobs`/`backup_runs`", () => {
     const pelanggar: string[] = [];
     let dilihat = 0;
-    for (const b of TANGAN_PRODUKSI) {
+    for (const b of [...TANGAN_PRODUKSI, ...GEN_SQLC]) {
       for (const sql of literalSql(b.isi)) {
         if (/\b(jobs|backup_runs|conformance_runs)\b/.test(sql)) dilihat++;
         for (const p of periksa(sql)) pelanggar.push(`${b.rel}: ${p}`);
@@ -577,9 +673,12 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
     /* Jam proses tidak punya urusan di tabel yang jamnya `now()` server.
        Satu `time.Now()` di berkas antrean adalah awal dari instan yang
        berikutnya diikat ke kolomnya. */
-    const pelanggar = TANGAN_PRODUKSI.filter(
-      (b) => literalSql(b.isi).some((s) => /\bjobs\b/.test(s)) && /\btime\.Now\(/.test(b.isi)
-    ).map((b) => b.rel);
+    /* Sejak `sqlc`, "menulis SQL `jobs`" = memanggil kueri bangkitannya. */
+    const menulis = TANGAN_PRODUKSI.filter(
+      (b) => literalSql(b.isi).some((s) => /\bjobs\b/.test(s)) || /\bq\.sql\.\w+\(/.test(b.isi)
+    );
+    expect(menulis.map((b) => b.rel)).toContain("services/integrator/internal/jobs/queue.go");
+    const pelanggar = menulis.filter((b) => /\btime\.Now\(/.test(b.isi)).map((b) => b.rel);
     expect(pelanggar).toEqual([]);
   });
 });

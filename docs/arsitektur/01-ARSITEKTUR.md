@@ -351,21 +351,25 @@ services/integrator/                 # pelari jalur GO — membaca buku, tidak p
 ├── cmd/parity/                      # perkakas paritas TS ⇄ Go (bukan layanan)
 └── internal/
     ├── contract/  (DIBANGKITKAN)    # kosakata, angka antrean, akuntansi, tata letak berkas
+    ├── controlsql/ (DIBANGKITKAN)   # `sqlc` dari contract/jobs.sql + trail.sql — kueri bertipe basis data kendali
     ├── tenantlane/                  # jalur `tenant` — cadangan per basis data
     ├── interactivelane/             # jalur `interactive` sisi Go — `report.export_go` (1d)
     ├── schedulelane/                # jalur `schedule` — denyut penerbitan (hanya menulis `jobs`); fikstur bersama TS ⇄ Go
     ├── bulklane/                    # jalur `bulk` — KERANGKA, nol kind, tidak dijalankan (09 §3.2)
-    ├── jobs/                        # klaim · lease · reclaim — SQL antrean
+    ├── jobs/                        # klaim · lease · reclaim — aturan di sekitar kueri `controlsql`
     ├── db/                          # kolam koneksi kendali, pembersih DSN
     ├── registry/                    # `companies` (kendali) — company_id → buku PT
     ├── ledgerread/                  # pembaca buku READ ONLY — Neraca Saldo; Laba Rugi & Neraca (1d, go-parity)
     ├── document/                    # penulis XLSX pustaka baku + penyimpanan hasil (1d)
     ├── jscompat/                    # trim · Math.round · Intl id-ID — tepian JS yang ditiru teks laporan
     ├── backup/                      # dump · sandi · manifest · tujuan
-    └── trail/                       # `backup_runs` — satu-satunya tulisan di luar `jobs`
+    └── trail/                       # `backup_runs` · `conformance_runs` — satu-satunya tulisan di luar `jobs`
+services/integrator/tools/sqlc/      # modul TERPISAH: memaku versi `sqlc` (perkakas, tidak masuk image)
 contract/                            # SATU sumber untuk kontrak lintas bahasa
 ├── kinds.yaml                       # kind · status · angka antrean · pemilik berkas hasil
-└── accounting.yaml                  # skala uang · tipe akun · kategori · sisi laporan · band Laba Rugi · jurnal penutup
+├── accounting.yaml                  # skala uang · tipe akun · kategori · sisi laporan · band Laba Rugi · jurnal penutup
+├── jobs.sql · trail.sql             # kueri Go atas `jobs` / jejak putaran → `sqlc` → internal/controlsql
+└── sqlc.yaml                        # skema = migration kendali; gerbang = sidik di controlsql/sqlc.sum
 ```
 
 ### Poliglot: satu monorepo, dua bahasa, tiga workspace yang berbeda

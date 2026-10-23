@@ -30,6 +30,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/controlsql"
 )
 
 // PutaranCadangan adalah satu baris `backup_runs`.
@@ -73,7 +75,7 @@ type PutaranCadangan struct {
 // Prisma (`backupRun.findFirst` di `/api/health`, `watch:health`, konsol) —
 // yang membaca TIMESTAMP tanpa zona sebagai UTC. `record-backup-run.ts` juga
 // menulisnya lewat Prisma, jadi UTC. Maka nilainya dikirim sebagai teks UTC
-// yang di-cast `::timestamp`, bentuk yang sama dengan `asOf` di `ledgerread`:
+// yang di-cast `::text::timestamp`, bentuk yang sama dengan `asOf` di `ledgerread`:
 // `time.Time` yang diikat langsung bergantung pada mode koneksi pgx (mode
 // bawaan membuang zonanya → jam dinding proses; mode `exec` mengirim
 // `timestamptz` → dikonversi zona SESI, tujuh jam bergeser di server WIB).
@@ -81,12 +83,16 @@ type PutaranCadangan struct {
 // Prisma mengisi keduanya dengan UTC pada baris yang ia tulis; `now()` polos
 // akan menyimpan jam dinding zona sesi di tabel yang sama.
 func RekamCadangan(ctx context.Context, kendali *pgxpool.Pool, p PutaranCadangan) error {
-	_, err := kendali.Exec(ctx, `
-		INSERT INTO backup_runs (started_at, finished_at, status, error, artifact,
-		                         size_bytes, created_at, updated_at)
-		VALUES ($1::timestamp, $2::timestamp, $3, $4, $5, $6,
-		        now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')`,
-		TeksUTC(p.MulaiPada), TeksUTC(p.SelesaiPada), p.Status, p.Galat, p.Artifact, p.SizeBytes)
+	// SQL-nya `contract/trail.sql` → InsertBackupRun (bangkitan `sqlc`):
+	// instan dikirim sebagai teks UTC dan di-cast `::text::timestamp`.
+	err := controlsql.New(kendali).InsertBackupRun(ctx, controlsql.InsertBackupRunParams{
+		StartedAtUtc:  TeksUTC(p.MulaiPada),
+		FinishedAtUtc: TeksUTC(p.SelesaiPada),
+		Status:        p.Status,
+		Error:         p.Galat,
+		Artifact:      p.Artifact,
+		SizeBytes:     p.SizeBytes,
+	})
 	if err != nil {
 		return fmt.Errorf("rekam putaran cadangan: %w", err)
 	}

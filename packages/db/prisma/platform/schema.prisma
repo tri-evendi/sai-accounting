@@ -577,6 +577,13 @@ model BackupRun {
 /// halaman pendaratan yang mati (`lib/site-content-store.ts` gagal-lunak).
 ///
 /// `content_key`, bukan `key`: `KEY` kata kunci MySQL (lihat migration 0013).
+///
+/// ⚠ DIGANTIKAN `SiteContentEntry` sejak migration platform 0008 (draf → terbit
+/// + riwayat). Tabel ini tinggal sebagai paruh EXPAND: image lama masih
+/// membacanya, dan setiap penerbitan baru ditulis ulang ke sini (dual-write di
+/// `site-content-store.ts`) supaya rollback tetap menampilkan kalimat yang
+/// sama. Jangan membacanya dari kode baru. Dicabut di migration contract
+/// berikutnya.
 model SiteContent {
   id Int @id @default(autoincrement())
 
@@ -602,6 +609,111 @@ model SiteContent {
   @@unique([locale, key])
   @@index([locale])
   @@map("site_contents")
+}
+
+/// ISI HALAMAN DEPAN: keadaan sekarang (migration platform 0008).
+///
+/// Per kunci+bahasa paling banyak dua baris: `published` (yang tayang) dan
+/// `draft` (yang sedang disiapkan). Tidak ada baris = kalimat bawaan kamus.
+/// Draf ber-`value` NULL berarti "kembalikan ke bawaan saat diterbitkan".
+/// Kosakata, bentuk kunci, dan batas panjang dijaga CHECK di migration;
+/// batas per isian (lebih ketat) dihitung dari kamus di
+/// `@sai/core/site-content` (`contentFieldSpec`).
+model SiteContentEntry {
+  id Int @id @default(autoincrement())
+
+  /// `id` | `en` | `zh`. CHECK di migration.
+  locale String @db.VarChar(5)
+
+  /// `landing.<nama>`. CHECK bentuk di migration; keberadaannya di kamus
+  /// diperiksa aplikasi (`isEditableContentKey`).
+  key String @map("content_key") @db.VarChar(120)
+
+  /// `draft` | `published` — `SITE_CONTENT_STATUSES`. CHECK di migration.
+  status String @db.VarChar(20)
+
+  /// 1..4000 karakter. NULL hanya untuk draf (kembali ke bawaan).
+  value String? @db.Text
+
+  /// Operator yang terakhir menulis baris ini.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([locale, key, status])
+  @@index([status])
+  @@map("site_content_entries")
+}
+
+/// Satu penerbitan isi halaman depan (migration platform 0008). `kind`:
+/// `publish` (dari konsol) · `baseline` (salinan `site_contents` saat migration)
+/// · `purge` (pembersihan kunci yang dicabut dari kamus).
+model SiteContentPublication {
+  id Int @id @default(autoincrement())
+
+  /// publish | baseline | purge — `SITE_CONTENT_PUBLICATION_KINDS`. CHECK di migration.
+  kind String @db.VarChar(20)
+
+  /// Catatan opsional dari operator, mis. "ganti harga di FAQ".
+  note String? @db.VarChar(200)
+
+  /// Jumlah revisi di penerbitan ini.
+  changeCount Int @map("change_count")
+
+  publishedBy String @map("published_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  revisions SiteContentRevision[]
+
+  @@index([createdAt])
+  @@map("site_content_publications")
+}
+
+/// Satu kunci+bahasa yang berubah di sebuah penerbitan: nilai sebelum dan
+/// sesudah. NULL = kalimat bawaan. Dari baris ini versi lama dikembalikan
+/// sebagai draf ("kembalikan"), lalu diterbitkan seperti suntingan lain.
+model SiteContentRevision {
+  id Int @id @default(autoincrement())
+
+  publicationId Int                    @map("publication_id")
+  publication   SiteContentPublication @relation(fields: [publicationId], references: [id], onDelete: Restrict)
+
+  locale String @db.VarChar(5)
+  key    String @map("content_key") @db.VarChar(120)
+
+  previousValue String? @map("previous_value") @db.Text
+  value         String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([publicationId, locale, key])
+  @@index([locale, key])
+  @@map("site_content_revisions")
+}
+
+/// Token pratinjau draf (migration platform 0008), berumur
+/// `SITE_CONTENT_PREVIEW_TTL_MINUTES`. Hanya SHA-256-nya yang disimpan; token
+/// mentah hanya ada di tautan yang dibuka operator. Aplikasi customer memakai
+/// draf HANYA bila hash tokennya ada di sini dan belum kedaluwarsa.
+model SiteContentPreview {
+  id Int @id @default(autoincrement())
+
+  /// SHA-256 heks. CHECK bentuk di migration.
+  tokenHash String @unique @map("token_hash") @db.Char(64)
+
+  expiresAt DateTime @map("expires_at")
+
+  createdBy String @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("site_content_previews")
 }
 
 /// PENGATURAN SITUS yang bisa disetel operator (migration 0016) — menggantikan

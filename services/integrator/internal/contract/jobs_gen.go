@@ -35,21 +35,24 @@ var JobStatuses = []JobStatus{
 type JobKind string
 
 const (
-	KindCompanyProvision    JobKind = "company.provision"
-	KindDocumentGenerate    JobKind = "document.generate"
-	KindImportProcess       JobKind = "import.process"
-	KindIntegrationBankFeed JobKind = "integration.bank_feed"
-	KindIntegrationEfaktur  JobKind = "integration.efaktur"
-	KindLedgerDunning       JobKind = "ledger.dunning"
-	KindLedgerRecurring     JobKind = "ledger.recurring"
-	KindMailBatch           JobKind = "mail.batch"
-	KindReportExport        JobKind = "report.export"
-	KindReportExportGo      JobKind = "report.export_go"
-	KindReportPackage       JobKind = "report.package"
-	KindScheduleTick        JobKind = "schedule.tick"
-	KindSchemaMigrate       JobKind = "schema.migrate"
-	KindTenantBackup        JobKind = "tenant.backup"
-	KindTenantConformance   JobKind = "tenant.conformance"
+	KindCompanyProvision         JobKind = "company.provision"
+	KindDocumentGenerate         JobKind = "document.generate"
+	KindEfakturRecord            JobKind = "efaktur.record"
+	KindImportProcess            JobKind = "import.process"
+	KindIntegrationBankFeed      JobKind = "integration.bank_feed"
+	KindIntegrationEfakturCancel JobKind = "integration.efaktur_cancel"
+	KindIntegrationEfakturPoll   JobKind = "integration.efaktur_poll"
+	KindIntegrationEfakturSubmit JobKind = "integration.efaktur_submit"
+	KindLedgerDunning            JobKind = "ledger.dunning"
+	KindLedgerRecurring          JobKind = "ledger.recurring"
+	KindMailBatch                JobKind = "mail.batch"
+	KindReportExport             JobKind = "report.export"
+	KindReportExportGo           JobKind = "report.export_go"
+	KindReportPackage            JobKind = "report.package"
+	KindScheduleTick             JobKind = "schedule.tick"
+	KindSchemaMigrate            JobKind = "schema.migrate"
+	KindTenantBackup             JobKind = "tenant.backup"
+	KindTenantConformance        JobKind = "tenant.conformance"
 )
 
 // JobLane adalah satu PROSES pekerja. Isolasinya jalur, bukan layanan.
@@ -77,21 +80,24 @@ type KindSpec struct {
 
 // JobKinds memetakan setiap jenis ke sifatnya.
 var JobKinds = map[JobKind]KindSpec{
-	KindCompanyProvision:    {Lane: LaneInteractive, MaxAttempts: 1, WritesLedger: false},
-	KindDocumentGenerate:    {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
-	KindImportProcess:       {Lane: LaneBulk, MaxAttempts: 1, WritesLedger: false},
-	KindIntegrationBankFeed: {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
-	KindIntegrationEfaktur:  {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
-	KindLedgerDunning:       {Lane: LaneLedger, MaxAttempts: 3, WritesLedger: true},
-	KindLedgerRecurring:     {Lane: LaneLedger, MaxAttempts: 3, WritesLedger: true},
-	KindMailBatch:           {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
-	KindReportExport:        {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
-	KindReportExportGo:      {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
-	KindReportPackage:       {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
-	KindScheduleTick:        {Lane: LaneSchedule, MaxAttempts: 1, WritesLedger: false},
-	KindSchemaMigrate:       {Lane: LaneSchema, MaxAttempts: 1, WritesLedger: false},
-	KindTenantBackup:        {Lane: LaneTenant, MaxAttempts: 2, WritesLedger: false},
-	KindTenantConformance:   {Lane: LaneTenant, MaxAttempts: 2, WritesLedger: false},
+	KindCompanyProvision:         {Lane: LaneInteractive, MaxAttempts: 1, WritesLedger: false},
+	KindDocumentGenerate:         {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
+	KindEfakturRecord:            {Lane: LaneInteractive, MaxAttempts: 5, WritesLedger: false},
+	KindImportProcess:            {Lane: LaneBulk, MaxAttempts: 1, WritesLedger: false},
+	KindIntegrationBankFeed:      {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
+	KindIntegrationEfakturCancel: {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
+	KindIntegrationEfakturPoll:   {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
+	KindIntegrationEfakturSubmit: {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
+	KindLedgerDunning:            {Lane: LaneLedger, MaxAttempts: 3, WritesLedger: true},
+	KindLedgerRecurring:          {Lane: LaneLedger, MaxAttempts: 3, WritesLedger: true},
+	KindMailBatch:                {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
+	KindReportExport:             {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
+	KindReportExportGo:           {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
+	KindReportPackage:            {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
+	KindScheduleTick:             {Lane: LaneSchedule, MaxAttempts: 1, WritesLedger: false},
+	KindSchemaMigrate:            {Lane: LaneSchema, MaxAttempts: 1, WritesLedger: false},
+	KindTenantBackup:             {Lane: LaneTenant, MaxAttempts: 2, WritesLedger: false},
+	KindTenantConformance:        {Lane: LaneTenant, MaxAttempts: 2, WritesLedger: false},
 }
 
 // LaneSpec: lebih dari satu proses jalur ber-SingleInstance adalah kesalahan
@@ -116,8 +122,8 @@ var JobLanes = map[JobLane]LaneSpec{
 // KindsByLane adalah klausa WHERE kind = ANY(…) milik setiap pelari.
 var KindsByLane = map[JobLane][]JobKind{
 	LaneBulk:        {KindImportProcess, KindMailBatch, KindReportPackage},
-	LaneIntegration: {KindIntegrationBankFeed, KindIntegrationEfaktur},
-	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindReportExport, KindReportExportGo},
+	LaneIntegration: {KindIntegrationBankFeed, KindIntegrationEfakturCancel, KindIntegrationEfakturPoll, KindIntegrationEfakturSubmit},
+	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindEfakturRecord, KindReportExport, KindReportExportGo},
 	LaneLedger:      {KindLedgerDunning, KindLedgerRecurring},
 	LaneSchedule:    {KindScheduleTick},
 	LaneSchema:      {KindSchemaMigrate},
@@ -229,3 +235,39 @@ const (
 	ResultOwnerUID = 1000
 	ResultOwnerGID = 1000
 )
+
+// EfakturStatus adalah nilai `efaktur_submissions.status` di buku PT —
+// ditulis Node, DIBACA Go (docs/EFAKTUR.md).
+type EfakturStatus string
+
+const (
+	EfakturStatusQueued          EfakturStatus = "queued"
+	EfakturStatusSubmitted       EfakturStatus = "submitted"
+	EfakturStatusApproved        EfakturStatus = "approved"
+	EfakturStatusRejected        EfakturStatus = "rejected"
+	EfakturStatusFailed          EfakturStatus = "failed"
+	EfakturStatusCancelRequested EfakturStatus = "cancel_requested"
+	EfakturStatusCanceled        EfakturStatus = "canceled"
+)
+
+// EfakturOutcomes: hasil yang boleh dilaporkan jalur `integration` lewat
+// `efaktur.record` — himpunan bagian EfakturStatus, dijamin generator.
+var EfakturOutcomes = map[EfakturStatus]bool{
+	EfakturStatusSubmitted: true,
+	EfakturStatusApproved:  true,
+	EfakturStatusRejected:  true,
+	EfakturStatusFailed:    true,
+	EfakturStatusCanceled:  true,
+}
+
+// EfakturProvider adalah nilai `company_settings.efaktur_provider` — dipilih
+// pengguna (Node), dipetakan ke implementasi oleh `internal/efaktur` (Go).
+type EfakturProvider string
+
+const (
+	EfakturProviderMock EfakturProvider = "mock"
+	EfakturProviderPjap EfakturProvider = "pjap"
+)
+
+// EfakturPollMaxRounds: batas putaran `integration.efaktur_poll`.
+const EfakturPollMaxRounds = 24

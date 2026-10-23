@@ -187,6 +187,11 @@ type Publication struct {
 	// PELAKSANA kind itu, bukan milik antrean.
 	Payload   json.RawMessage
 	DedupeKey string
+	// Delay menunda klaim pertama sejauh ini dari `now()` SERVER — DURASI,
+	// bukan instan, persis `delayMs` sisi Node (`publishJob`). Nol = segera.
+	// Dipakai jalur `integration` untuk menjarakkan putaran tanya-status PJAP;
+	// denyut tetap nol.
+	Delay time.Duration
 }
 
 // Publish menerbitkan satu pekerjaan dan memulangkan id barisnya, atau
@@ -194,8 +199,8 @@ type Publication struct {
 // melakukan apa pun, dan justru itulah yang membuat denyut aman diulang.
 //
 // Padanan `publishJob` (Node), dengan SATU beda yang disengaja: `run_after`
-// TIDAK dikirim dari jam proses ini melainkan jatuh ke DEFAULT kolomnya
-// (`CURRENT_TIMESTAMP`, jam SERVER). Klaim di kedua bahasa membandingkan
+// TIDAK dikirim dari jam proses ini melainkan dihitung dari `now()` SERVER
+// (+ `Delay`, sebuah durasi). Klaim di kedua bahasa membandingkan
 // `run_after <= now()` — jam server juga — jadi baris terbitan Go langsung bisa
 // diklaim berapa pun selisih jam antara container ini dan basis data, dan
 // berapa pun zona sesi koneksinya (kolomnya `TIMESTAMP` tanpa zona).
@@ -220,12 +225,18 @@ func (q *Queue) Publish(ctx context.Context, p Publication) (int64, bool, error)
 	if !json.Valid(p.Payload) {
 		return 0, false, fmt.Errorf("muatan %q bukan JSON yang sah", p.Kind)
 	}
+	if p.Delay < 0 {
+		return 0, false, fmt.Errorf("penerbitan %q dengan jeda negatif", p.Kind)
+	}
+	// Jeda dikirim sebagai DURASI; `now()` server yang menjadikannya waktu —
+	// bentuk yang sama dengan `Fail` (lihat "JAM KOLOM `jobs`" di atas).
 	var id int64
 	err := q.pool.QueryRow(ctx, `
-		INSERT INTO jobs (kind, company_id, payload, status, dedupe_key, max_attempts, updated_at)
-		VALUES ($1, $2, $3::jsonb, 'queued', $4, $5, now())
+		INSERT INTO jobs (kind, company_id, payload, status, dedupe_key, max_attempts, run_after, updated_at)
+		VALUES ($1, $2, $3::jsonb, 'queued', $4, $5, now() + $6::bigint * interval '1 microsecond', now())
 		ON CONFLICT (dedupe_key) DO NOTHING
-		RETURNING id`, string(p.Kind), p.CompanyID, string(p.Payload), p.DedupeKey, spec.MaxAttempts).Scan(&id)
+		RETURNING id`, string(p.Kind), p.CompanyID, string(p.Payload), p.DedupeKey, spec.MaxAttempts,
+		p.Delay.Microseconds()).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, false, nil
 	}

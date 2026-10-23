@@ -202,6 +202,27 @@ describe("invarian I-2: pintu posting tunggal, dan ia TypeScript", () => {
    * Penulisnya satu berkas, `internal/trail/conformance.go`, dengan konvensi
    * jam `backup_runs` (teks UTC `::timestamp`) — dijaga di bawah.
    *
+   * `efaktur_submissions` (Okt 2026) TIDAK masuk, dan itu juga keputusan yang
+   * ditulis di sini. Status kiriman ke PJAP memang bukan buku (nol angka
+   * akuntansi), jadi ia LOLOS syarat yang sama dengan `backup_runs` — tetapi
+   * syarat kedua `backup_runs` (Go tidak punya jalan lain) TIDAK berlaku:
+   * jalur `integration` melaporkan setiap hasil PJAP sebagai pekerjaan
+   * `efaktur.record`, dan pelari `interactive` Node yang menuliskannya ke buku
+   * PT. Antrean adalah perantaranya, jadi I-3 tetap utuh dan daftar ini tidak
+   * bertambah karenanya.
+   *
+   * Kenapa jawabannya BERBEDA dari `conformance_runs` di atas, padahal jalan
+   * yang ditolak di sana (Node menulis hasil Go) adalah jalan yang dipilih di
+   * sini — dua perbedaan, keduanya soal tabelnya, bukan soal selera:
+   *   • `conformance_runs` adalah DENYUT kesehatan di basis data KENDALI: ia
+   *     harus ada justru saat hanya Go yang hidup. Status e-Faktur adalah DATA
+   *     PT di buku PT, yang seluruhnya dibaca penjaga di atas sebagai tabel
+   *     buku — memasukkannya berarti melubangi penjaga itu untuk satu tabel.
+   *   • Bila `svc-worker` mati, `efaktur.record` MENUNGGU sebagai `queued`
+   *     (retensi tidak memangkas `queued`) dan tercatat begitu ia hidup lagi:
+   *     yang tertunda tampilan status, bukan jejak yang hilang. Kiriman ke DJP
+   *     sendiri sudah terjadi di Go. docs/EFAKTUR.md §Keputusan.
+   *
    * ⚠ MENAMBAH BARIS DI SINI ADALAH KEPUTUSAN. Setiap tambahan memperluas apa
    * yang bisa ditulis bahasa yang bukan pemilik pintu posting, dan alasannya
    * ditulis DI SINI — bukan di pesan commit yang tak akan dibaca orang
@@ -495,7 +516,11 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
       kolom.forEach((k, i) => {
         if (!new RegExp(`^(${KOLOM})$`).test(k)) return;
         const v = nilai[i] ?? "";
-        if (ins[1] === "jobs" && v.includes("$")) pel.push(`INSERT jobs.${k} = ${v}`);
+        /* Satu bentuk ber-`$` yang SAH: DURASI dari `now()` server — konvensi
+           yang sama dengan `UPDATE … run_after = now() + $n::bigint * interval`
+           di `Fail` (jeda putaran PJAP, jalur `integration`). */
+        const durasi = /^now\(\) \+ \$\d+::bigint \* interval '1 (microsecond|millisecond)'$/.test(v);
+        if (ins[1] === "jobs" && v.includes("$") && !durasi) pel.push(`INSERT jobs.${k} = ${v}`);
         if (ins[1] !== "jobs" && !/^\$\d+::timestamp$/.test(v) && !/AT TIME ZONE 'UTC'/.test(v)) {
           pel.push(`INSERT ${ins[1]}.${k} = ${v}`);
         }
@@ -518,6 +543,10 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
       periksa("INSERT INTO backup_runs (started_at, finished_at, status, created_at, updated_at) VALUES ($1, $2, $3, now(), now())")
     ).not.toEqual([]);
     expect(periksa("INSERT INTO jobs (kind, run_after, updated_at) VALUES ($1, $2, now())")).not.toEqual([]);
+    expect(periksa("INSERT INTO jobs (kind, run_after, updated_at) VALUES ($1, $2::timestamp + interval '1 second', now())")).not.toEqual([]);
+    expect(
+      periksa("INSERT INTO jobs (kind, run_after, updated_at) VALUES ($1, now() + $2::bigint * interval '1 microsecond', now())")
+    ).toEqual([]);
     // …dan menerima bentuk yang benar.
     expect(periksa("UPDATE jobs SET run_after = now() + $4::bigint * interval '1 microsecond' WHERE id = $1")).toEqual([]);
     expect(

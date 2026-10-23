@@ -1,16 +1,22 @@
 /**
- * Ekspor e-Faktur (DJP/CTAS) — issue #17.
+ * e-Faktur (Coretax DJP) — issue #17, diperluas untuk Coretax (docs/EFAKTUR.md).
  *
- * A read-only reporting surface over output-VAT / export invoices: it does NOT
- * touch the ledger (#16 already posts the VAT). A Manager picks a period, reviews
- * the invoices that will be exported (and any held back for a missing required
- * field), sets the seller NPWP if needed, and downloads the CSV.
+ * Permukaan PELAPORAN di atas faktur keluaran: tidak menyentuh buku (#16 sudah
+ * memposting PPN-nya). Seorang Manajer memilih masa, melihat faktur mana yang
+ * siap dan mana yang kurang data, lalu:
  *
- * HONESTY: this is a DJP/CTAS-ORIENTED export with the standard faktur-keluaran
- * columns, not a byte-exact DJP import file. Validate against the current DJP
- * schema before production filing (see `@/lib/efaktur`).
+ *   1. mengunduh BERKAS IMPOR CORETAX (XML, templat resmi DJP) — aksi utama
+ *      layar ini, dan jalur yang bisa dipakai HARI INI lewat unggah manual;
+ *   2. bila PT-nya punya sambungan PJAP: mengirim per faktur / semuanya, dan
+ *      melihat statusnya (antre → diterima → disetujui + NSFP).
+ *
+ * CSV lama tetap ada sebagai ringkasan untuk diperiksa (tombol sekunder).
+ *
+ * Tetap SERVER component; pulau client: formulir identitas penjual, tombol
+ * kirim/batal, dan formulir sambungan PJAP.
  */
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
+import { canEffective } from "@/lib/authz-effective";
 import { tenantApiPath, type TenantScopedParams } from "@sai/core/tenant-routes";
 import { PageHeader } from "@sai/ui/page-header";
 import { Card } from "@sai/ui/card";
@@ -20,70 +26,188 @@ import { TextInput } from "@sai/ui/input";
 import { StaticTable } from "@sai/ui/static-table";
 import { moneyColumn } from "@sai/ui/money-column";
 import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
-import type { EfakturRow } from "@sai/core/efaktur";
 import { formatDateShort } from "@sai/core/utils";
 import { monthRange } from "@/lib/dashboard-summary";
 import { getEfakturExport } from "@/lib/efaktur-data";
+import { getCoretaxExport } from "@/lib/coretax-data";
+import { getEfakturConnection, latestSubmissions, type LatestSubmission } from "@/lib/efaktur-submissions";
+import { encryptionKeyAvailable } from "@sai/core/settings-crypto";
+import { canCancel, canSubmitAfter, type EfakturSubmissionStatus } from "@sai/core/efaktur-submission";
+import type { CoretaxProblemCode, CoretaxTrxCode, CoretaxWarningCode } from "@sai/core/coretax-xml";
 import { SellerIdentityForm } from "./seller-identity-form";
+import { PjapRowAction, PjapSendAll } from "./pjap-actions";
+import { PjapConnectionForm } from "./pjap-connection-form";
 import { EmptyState } from "@sai/ui/empty-state";
-import { DownloadOutlined, FileDoneOutlined, FileTextOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import {
+  DownloadOutlined,
+  FileDoneOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
+  WarningOutlined,
+} from "@ant-design/icons";
 import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Dikonversi ke `StaticTable` + token AntD pada issue #198. **Tetap server
- * component**; satu-satunya pulau client di halaman ini adalah formulir
- * identitas penjual, seperti sebelumnya.
- *
- * Nominalnya lewat `moneyColumn` dengan mata uang PER BARIS (`mata_uang`):
- * pratinjau e-Faktur memuat faktur lokal dan ekspor pada tabel yang sama, dan
- * mencetak "Rp" di atas nilai USD adalah kesalahan yang tak terlihat sampai
- * berkasnya disetorkan.
- */
-
-/** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
 const EMPTY_ICON_SIZE = 48;
 const ICON_SIZE = 16;
 const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
 
 const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
-const NUMERIC_MUTED: React.CSSProperties = {
-  ...MUTED,
-  fontVariantNumeric: "tabular-nums",
-};
+const NUMERIC: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
 
-/** Kepala kartu: judul di atas garis pemisah — pengganti `CardHeader`/`CardTitle`. */
-function CardTitleBar({ children }: { children: React.ReactNode }) {
+/** Kepala kartu: judul di atas garis pemisah, dengan aksi opsional di kanan. */
+function CardTitleBar({ children, actions }: { children: React.ReactNode; actions?: React.ReactNode }) {
   return (
     <div
       style={{
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
         padding: "var(--ant-padding-lg)",
         borderBottom: "1px solid var(--ant-color-border-secondary)",
       }}
     >
-      <h2 style={{ margin: 0, fontSize: "var(--ant-font-size-lg)", fontWeight: STRONG }}>
-        {children}
-      </h2>
+      <h2 style={{ margin: 0, fontSize: "var(--ant-font-size-lg)", fontWeight: STRONG }}>{children}</h2>
+      {actions}
     </div>
   );
 }
 
-/**
- * Hari pertama dan terakhir bulan berjalan menurut jam JAKARTA — bulan yang
- * sama dengan beranda (`monthRange`). Waktu lokal proses dulu dipakai di sini:
- * benar di produksi (`TZ=Asia/Jakarta`), tetapi bergeser di host berzona lain.
- */
 function currentMonthRange(): { from: string; to: string } {
   const { fromISO, toISO } = monthRange(new Date());
   return { from: fromISO, to: toISO };
 }
 
 function parseDate(value: string | undefined): Date | null {
-  if (!value) return null;
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/*
+ * Kunci kamus ditulis UTUH (bukan `tax.coretax.problem.${kode}`), supaya
+ * penjaga kunci yatim melihatnya; `Record` bertipe penuh membuat kode baru
+ * tanpa label ditolak `tsc`.
+ */
+const PROBLEM_KEY = {
+  seller_npwp: "tax.coretax.problem.seller_npwp",
+  seller_nitku: "tax.coretax.problem.seller_nitku",
+  seller_not_pkp: "tax.coretax.problem.seller_not_pkp",
+  before_coretax: "tax.coretax.problem.before_coretax",
+  buyer_id: "tax.coretax.problem.buyer_id",
+  buyer_nitku: "tax.coretax.problem.buyer_nitku",
+  buyer_address: "tax.coretax.problem.buyer_address",
+  no_lines: "tax.coretax.problem.no_lines",
+  line_quantity: "tax.coretax.problem.line_quantity",
+  rate_unsupported: "tax.coretax.problem.rate_unsupported",
+} as const satisfies Record<CoretaxProblemCode, string>;
+
+const WARNING_KEY = {
+  unit_other: "tax.coretax.warning.unit_other",
+  vat_rounding: "tax.coretax.warning.vat_rounding",
+  dpp_mismatch: "tax.coretax.warning.dpp_mismatch",
+} as const satisfies Record<CoretaxWarningCode, string>;
+
+const TRX_KEY = {
+  "01": "tax.coretax.trx.code01",
+  "02": "tax.coretax.trx.code02",
+  "03": "tax.coretax.trx.code03",
+  "04": "tax.coretax.trx.code04",
+} as const satisfies Record<CoretaxTrxCode, string>;
+
+const STATUS_KEY = {
+  queued: "tax.pjap.status.queued",
+  submitted: "tax.pjap.status.submitted",
+  approved: "tax.pjap.status.approved",
+  rejected: "tax.pjap.status.rejected",
+  failed: "tax.pjap.status.failed",
+  cancel_requested: "tax.pjap.status.cancel_requested",
+  canceled: "tax.pjap.status.canceled",
+} as const satisfies Record<EfakturSubmissionStatus, string>;
+
+/** Status kiriman → varian badge. Badge selalu berteks (MASTER §Badge). */
+const STATUS_BADGE: Record<EfakturSubmissionStatus, "default" | "success" | "warning" | "danger" | "outline"> = {
+  queued: "outline",
+  submitted: "warning",
+  approved: "success",
+  rejected: "danger",
+  failed: "danger",
+  cancel_requested: "warning",
+  canceled: "default",
+};
+
+interface ReadyRow {
+  invoiceId: number;
+  invoiceNo: string;
+  date: string;
+  buyerName: string;
+  trxCode: CoretaxTrxCode;
+  dpp: number;
+  vat: number;
+  submission: LatestSubmission | null;
+}
+
+/** Peringatan / masalah: satu kartu, satu gaya — beda hanya judul & warnanya. */
+function IssueCard({
+  title,
+  description,
+  items,
+  tone,
+}: {
+  title: string;
+  description: string;
+  items: { key: string; label: string; detail: string }[];
+  tone: "pending" | "neutral";
+}) {
+  const color = tone === "pending" ? "var(--ant-color-money-pending)" : "var(--ant-color-text)";
+  return (
+    <Card
+      style={{
+        marginBottom: SECTION_GAP,
+        borderColor: tone === "pending" ? "var(--ant-color-warning-border)" : undefined,
+      }}
+    >
+      <div style={{ padding: "var(--ant-padding-lg)", borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
+        <h2
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            margin: 0,
+            fontSize: "var(--ant-font-size-lg)",
+            fontWeight: STRONG,
+            color,
+          }}
+        >
+          {tone === "pending" ? (
+            <WarningOutlined aria-hidden="true" style={{ fontSize: 20 }} />
+          ) : (
+            <InfoCircleOutlined aria-hidden="true" style={{ fontSize: 20 }} />
+          )}
+          {title}
+        </h2>
+      </div>
+      <div style={{ padding: "var(--ant-padding-lg)" }}>
+        <p style={{ margin: 0, marginBottom: 12, ...MUTED }}>{description}</p>
+        <ul style={{ display: "grid", gap: 4, margin: 0, padding: 0, listStyle: "none" }}>
+          {items.map((it) => (
+            <li key={it.key} style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 8 }}>
+              <FileTextOutlined
+                aria-hidden="true"
+                style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 4, color: "var(--ant-color-text-secondary)" }}
+              />
+              <span style={NUMERIC}>{it.label}</span>
+              <span style={{ color }}>— {it.detail}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
+  );
 }
 
 export default async function EfakturPage({
@@ -94,76 +218,113 @@ export default async function EfakturPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   const session = await requirePagePermission("tax.read", params);
-  // issue #103 — "Buat tagihan pertama" menunjuk ke /invoices/new, milik modul
-  // `sales`. Pajak (`tax_id`) dan penjualan dua sakelar terpisah: perusahaan
-  // yang mematikan salah satunya tidak boleh diajak ke halaman yang memantul.
-  const canCreateInvoice = await canOpenPage(session.user, "invoice.write");
+  const [canCreateInvoice, canSubmit, canManage] = await Promise.all([
+    canOpenPage(session.user, "invoice.write"),
+    canEffective(session.user, "tax.submit"),
+    canEffective(session.user, "tax.manage"),
+  ]);
   const t = await getT();
   const filters = await searchParams;
 
   const defaults = currentMonthRange();
-  const fromStr = filters.from || defaults.from;
-  const toStr = filters.to || defaults.to;
-  const from = parseDate(fromStr) ?? new Date(defaults.from);
-  const to = parseDate(toStr) ?? new Date(defaults.to);
+  const from = parseDate(filters.from) ?? new Date(defaults.from);
+  const to = parseDate(filters.to) ?? new Date(defaults.to);
+  const fromStr = parseDate(filters.from) ? filters.from! : defaults.from;
+  const toStr = parseDate(filters.to) ? filters.to! : defaults.to;
 
-  const { seller, sellerNpwpMissing, result, matched } = await getEfakturExport(from, to);
-  const { rows, problems } = result;
+  const [legacy, coretax, connection] = await Promise.all([
+    getEfakturExport(from, to),
+    getCoretaxExport({ from, to }),
+    getEfakturConnection(),
+  ]);
+  const { seller, sellerNpwpMissing } = legacy;
+  const { result } = coretax;
+  const submissions = await latestSubmissions([...coretax.invoiceIds.values()]);
 
-  /*
-   * Alamat unduhan menyebut perusahaannya di JALUR (issue #158): berkasnya
-   * diambil lewat `<a href>` biasa, yang tidak melewati `apiFetch()` dan
-   * karenanya tidak bisa membawa header lingkup. Slugnya datang dari `params`
-   * halaman ini — alamat yang sedang dibuka, bukan sesi.
-   */
   const { tenantSlug, companySlug } = await params;
-  const downloadHref = `${tenantApiPath(tenantSlug, companySlug, "/tax/efaktur")}?from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}`;
+  const basePath = tenantApiPath(tenantSlug, companySlug, "/tax/efaktur");
+  const range = `from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}`;
+  const xmlHref = `${basePath}/coretax?${range}`;
+  const csvHref = `${basePath}?${range}`;
 
-  const columns: SaiColumns<EfakturRow> = [
+  const problemLabel = (c: CoretaxProblemCode) => t(PROBLEM_KEY[c]);
+  const warningLabel = (c: CoretaxWarningCode) => t(WARNING_KEY[c]);
+
+  const rows: ReadyRow[] = result.invoices.map((inv) => ({
+    invoiceId: coretax.invoiceIds.get(inv.invoiceNo)!,
+    invoiceNo: inv.invoiceNo,
+    date: inv.date,
+    buyerName: inv.buyerName,
+    trxCode: inv.trxCode,
+    dpp: inv.lines.reduce((s, l) => s + l.taxBaseCents, 0) / 100,
+    vat: inv.lines.reduce((s, l) => s + l.vatCents, 0) / 100,
+    submission: submissions.get(coretax.invoiceIds.get(inv.invoiceNo)!) ?? null,
+  }));
+  const pjapOn = connection.provider !== null;
+  const sendable = rows.filter((r) => canSubmitAfter(r.submission?.status ?? null)).map((r) => r.invoiceId);
+
+  const columns: SaiColumns<ReadyRow> = [
     {
-      ...textColumn<EfakturRow>({ dataIndex: "tanggal_dokumen", title: t("common.date") }),
+      ...textColumn<ReadyRow>({ dataIndex: "date", title: t("common.date") }),
       render: (raw) => <span style={MUTED}>{formatDateShort(String(raw))}</span>,
     },
+    textColumn<ReadyRow>({ dataIndex: "invoiceNo", title: t("tax.colDocNo") }),
     {
-      ...textColumn<EfakturRow>({ dataIndex: "jenis", title: t("tax.colKind") }),
-      render: (raw) => (
-        <Badge variant={raw === "ekspor" ? "default" : "outline"}>{String(raw)}</Badge>
+      ...textColumn<ReadyRow>({ dataIndex: "buyerName", title: t("tax.colBuyer") }),
+      render: (raw) => (raw ? String(raw) : "—"),
+    },
+    {
+      ...textColumn<ReadyRow>({ dataIndex: "trxCode", title: t("tax.coretax.colTrxCode") }),
+      render: (_raw, row) => (
+        <span title={t(TRX_KEY[row.trxCode])} style={NUMERIC}>
+          {row.trxCode}
+        </span>
       ),
     },
-    textColumn<EfakturRow>({ dataIndex: "nomor_dokumen", title: t("tax.colDocNo") }),
-    {
-      ...textColumn<EfakturRow>({ dataIndex: "nama_pembeli", title: t("tax.colBuyer") }),
-      render: (raw) => (raw ? String(raw) : "-"),
-    },
-    {
-      ...textColumn<EfakturRow>({ dataIndex: "mata_uang", title: t("common.currency") }),
-      render: (raw) => <span style={NUMERIC_MUTED}>{String(raw)}</span>,
-    },
-    moneyColumn<EfakturRow>({
-      dataIndex: "dpp",
-      title: t("tax.colDpp"),
-      currency: (row) => row.mata_uang,
-    }),
-    moneyColumn<EfakturRow>({
-      dataIndex: "ppn",
-      title: t("common.vat"),
-      currency: (row) => row.mata_uang,
-    }),
-    {
-      ...textColumn<EfakturRow>({ dataIndex: "nomor_peb", title: t("tax.colPebNo") }),
-      render: (raw) => <span style={NUMERIC_MUTED}>{raw ? String(raw) : "-"}</span>,
-    },
+    moneyColumn<ReadyRow>({ dataIndex: "dpp", title: t("tax.colDpp"), currency: "IDR" }),
+    moneyColumn<ReadyRow>({ dataIndex: "vat", title: t("common.vat"), currency: "IDR" }),
   ];
+  if (pjapOn) {
+    columns.push({
+      key: "status",
+      dataIndex: "submission",
+      title: t("tax.pjap.colStatus"),
+      render: (_raw, row) => {
+        const s = row.submission;
+        if (!s) return <span style={MUTED}>{t("tax.pjap.notSent")}</span>;
+        return (
+          <div style={{ display: "grid", gap: 2 }}>
+            <span style={{ display: "inline-flex", gap: SPACE_XS, flexWrap: "wrap" }}>
+              <Badge variant={STATUS_BADGE[s.status]}>{t(STATUS_KEY[s.status])}</Badge>
+              {s.provider === "mock" && <Badge variant="outline">{t("tax.pjap.mockBadge")}</Badge>}
+            </span>
+            {s.taxInvoiceNumber && <span style={{ ...NUMERIC, ...MUTED }}>{s.taxInvoiceNumber}</span>}
+            {s.statusMessage && <span style={MUTED}>{s.statusMessage}</span>}
+          </div>
+        );
+      },
+    });
+    if (canSubmit) {
+      columns.push({
+        key: "action",
+        dataIndex: "invoiceId",
+        title: t("common.actions"),
+        render: (_raw, row) => {
+          const s = row.submission;
+          const mode = !s ? "send" : canSubmitAfter(s.status) ? "resend" : canCancel(s.status) ? "cancel" : "none";
+          return <PjapRowAction basePath={basePath} invoiceId={row.invoiceId} submissionId={s?.id ?? null} mode={mode} />;
+        },
+      });
+    }
+  }
 
   return (
     <div style={{ width: "100%" }}>
-      <PageHeader
-        title={t("tax.title")}
-        description={t("tax.description")}
-      />
+      <PageHeader title={t("tax.title")} description={t("tax.description")} />
 
-      {/* Honesty / disclaimer */}
+      {/* Apa berkas ini, dan apa yang TIDAK — ditulis terus terang. */}
       <div
+        role="note"
         style={{
           display: "flex",
           alignItems: "flex-start",
@@ -171,19 +332,14 @@ export default async function EfakturPage({
           marginBottom: SECTION_GAP,
           padding: "12px 16px",
           borderRadius: "var(--ant-border-radius)",
-          border: "1px solid var(--ant-color-warning-border)",
-          background: "var(--ant-color-warning-bg)",
-          color: "var(--ant-color-money-pending)",
+          border: "1px solid var(--ant-color-info-border)",
+          background: "var(--ant-color-info-bg)",
         }}
       >
         <InfoCircleOutlined aria-hidden="true" style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }} />
-        <span>
-          {t("tax.disclaimerBefore")} <strong>{t("tax.disclaimerStrong")}</strong>{" "}
-          {t("tax.disclaimerAfter")}
-        </span>
+        <span>{t("tax.coretax.notice")}</span>
       </div>
 
-      {/* Seller tax identity */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardTitleBar>{t("tax.sellerTitle")}</CardTitleBar>
         <div style={{ padding: "var(--ant-padding-lg)" }}>
@@ -202,49 +358,36 @@ export default async function EfakturPage({
               }}
             >
               <WarningOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
-              <span>
-                {t("tax.npwpMissing")}
-              </span>
+              <span>{t("tax.npwpMissing")}</span>
             </div>
           )}
           <SellerIdentityForm
-            initial={{ npwp: seller.npwp, taxName: seller.name, taxAddress: seller.address }}
+            initial={{
+              npwp: seller.npwp,
+              taxName: seller.name,
+              taxAddress: seller.address,
+              nitku: coretax.seller.nitku,
+            }}
             identityIncomplete={sellerNpwpMissing}
           />
         </div>
       </Card>
 
-      {/* Period filter */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardTitleBar>{t("tax.periodTitle")}</CardTitleBar>
         <div style={{ padding: "var(--ant-padding-lg)" }}>
-          <form
-            method="get"
-            style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}
-          >
+          <form method="get" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}>
             <div>
               <label htmlFor="from" style={{ display: "block", fontWeight: STRONG }}>
                 {t("tax.fromDate")}
               </label>
-              <TextInput
-                id="from"
-                name="from"
-                type="date"
-                defaultValue={fromStr}
-                style={{ marginTop: 4 }}
-              />
+              <TextInput id="from" name="from" type="date" defaultValue={fromStr} style={{ marginTop: 4 }} />
             </div>
             <div>
               <label htmlFor="to" style={{ display: "block", fontWeight: STRONG }}>
                 {t("tax.toDate")}
               </label>
-              <TextInput
-                id="to"
-                name="to"
-                type="date"
-                defaultValue={toStr}
-                style={{ marginTop: 4 }}
-              />
+              <TextInput id="to" name="to" type="date" defaultValue={toStr} style={{ marginTop: 4 }} />
             </div>
             <Button type="submit" variant="secondary">
               {t("tax.apply")}
@@ -253,7 +396,7 @@ export default async function EfakturPage({
         </div>
       </Card>
 
-      {/* Summary + download */}
+      {/* Ringkasan + unduhan */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <div
           style={{
@@ -265,34 +408,29 @@ export default async function EfakturPage({
             padding: "var(--ant-padding)",
           }}
         >
-          <div style={MUTED}>
-            <span style={{ ...NUMERIC_MUTED, fontWeight: STRONG, color: "var(--ant-color-text)" }}>
-              {matched}
-            </span>{" "}
+          <div role="status" style={MUTED}>
+            <span style={{ ...NUMERIC, fontWeight: STRONG, color: "var(--ant-color-text)" }}>{coretax.matched}</span>{" "}
             {t("tax.summaryMatched")} ·{" "}
-            <span
-              style={{
-                fontVariantNumeric: "tabular-nums",
-                fontWeight: STRONG,
-                color: "var(--ant-color-money-positive)",
-              }}
-            >
-              {rows.length}
+            <span style={{ ...NUMERIC, fontWeight: STRONG, color: "var(--ant-color-money-positive)" }}>
+              {result.invoices.length}
             </span>{" "}
             {t("tax.summaryReady")}
-            {problems.length > 0 && (
+            {result.problems.length > 0 && (
               <>
                 {" "}·{" "}
-                <span
-                  style={{
-                    fontVariantNumeric: "tabular-nums",
-                    fontWeight: STRONG,
-                    color: "var(--ant-color-money-pending)",
-                  }}
-                >
-                  {problems.length}
+                <span style={{ ...NUMERIC, fontWeight: STRONG, color: "var(--ant-color-money-pending)" }}>
+                  {result.problems.length}
                 </span>{" "}
                 {t("tax.summaryNeedsWork")}
+              </>
+            )}
+            {result.exports.length > 0 && (
+              <>
+                {" "}·{" "}
+                <span style={{ ...NUMERIC, fontWeight: STRONG, color: "var(--ant-color-text)" }}>
+                  {result.exports.length}
+                </span>{" "}
+                {t("tax.coretax.summaryExport")}
               </>
             )}
           </div>
@@ -312,89 +450,81 @@ export default async function EfakturPage({
               {t("tax.npwpNeededToDownload")}
             </span>
           ) : (
-            /* Aksi utama layar ini (#267) — dan hanya pada cabang ini ia ada.
-               Cabang sebelahnya (NPWP kosong) tidak punya tombol sama sekali;
-               di sana yang primer adalah simpan identitas di kartu atas, lewat
-               eskalasi berkondisi.
-
-               `<Button href download>`, BUKAN `<ButtonLink>`: tujuannya sebuah
-               route API yang mengalirkan CSV, dan unduhan harus jatuh ke
-               peramban. `tautanDicegat()` pun menolak mencegat `download`, jadi
-               `<ButtonLink>` di sini hanya menjanjikan navigasi sisi-klien yang
-               tidak akan pernah terjadi. `downloadHref` diawali `/api/…`, yang
-               bukan segmen bertenant, jadi `scopedHref()` melewatkannya utuh.
-
-               `disabled` sekarang benar-benar menonaktifkan TAUTANNYA: AntD
-               melepas `href` dan memasang `aria-disabled` pada cabang anchornya.
-               Sebelumnya atribut itu hanya melumpuhkan elemen di dalam anchor,
-               sementara anchornya sendiri tetap bisa difokus dan diaktifkan
-               dengan Enter — unduhan kosong yang hanya bisa dicapai papan tik. */
-            <Button href={downloadHref} download variant="primary" disabled={rows.length === 0}>
-              <DownloadOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 6 }} />
-              {t("tax.downloadCsv")}
-            </Button>
+            <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
+              {/* Aksi utama layar ini (#267): berkas impor Coretax. `<Button
+                  href download>`, bukan `<ButtonLink>` — tujuannya route API
+                  yang mengalirkan berkas. CSV turun ke sekunder: ringkasan
+                  untuk diperiksa, bukan berkas untuk DJP. */}
+              <Button href={xmlHref} download variant="primary" disabled={result.invoices.length === 0}>
+                <DownloadOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, marginInlineEnd: 6 }} />
+                {t("tax.coretax.downloadXml")}
+              </Button>
+              <Button href={csvHref} download variant="secondary" disabled={legacy.result.rows.length === 0}>
+                {t("tax.downloadCsv")}
+              </Button>
+            </span>
           )}
         </div>
       </Card>
 
-      {/* Problems — invoices held back for a missing required field */}
-      {problems.length > 0 && (
-        <Card
-          style={{
-            marginBottom: SECTION_GAP,
-            borderColor: "var(--ant-color-warning-border)",
-          }}
-        >
-          <div
-            style={{
-              padding: "var(--ant-padding-lg)",
-              borderBottom: "1px solid var(--ant-color-border-secondary)",
-            }}
-          >
-            <h2
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                margin: 0,
-                fontSize: "var(--ant-font-size-lg)",
-                fontWeight: STRONG,
-                color: "var(--ant-color-money-pending)",
-              }}
-            >
-              <WarningOutlined aria-hidden="true" style={{ fontSize: 20 }} />
-              {t("tax.problemsTitle", { count: problems.length })}
-            </h2>
-          </div>
-          <div style={{ padding: "var(--ant-padding-lg)" }}>
-            <p style={{ margin: 0, marginBottom: 12, ...MUTED }}>
-              {t("tax.problemsDescription")}
-            </p>
-            <ul style={{ display: "grid", gap: 4, margin: 0, padding: 0, listStyle: "none" }}>
-              {problems.map((p) => (
-                <li
-                  key={p.invoiceNo}
-                  style={{ display: "flex", alignItems: "flex-start", gap: 8 }}
-                >
-                  <FileTextOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2, color: "var(--ant-color-text-secondary)" }} />
-                  <span>{p.invoiceNo}</span>
-                  <span style={{ color: "var(--ant-color-money-pending)" }}>
-                    {t("tax.missingFields", { fields: p.missing.join(", ") })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Card>
+      {result.problems.length > 0 && (
+        <IssueCard
+          tone="pending"
+          title={t("tax.problemsTitle", { count: result.problems.length })}
+          description={t("tax.coretax.problemsDescription")}
+          items={result.problems.map((p) => ({
+            key: p.invoiceNo,
+            label: p.invoiceNo,
+            detail: p.codes.map(problemLabel).join("; "),
+          }))}
+        />
       )}
 
-      {/* Preview of the exportable rows */}
-      <Card>
-        <CardTitleBar>{t("tax.previewTitle")}</CardTitleBar>
-        <StaticTable<EfakturRow>
+      {result.warnings.length > 0 && (
+        <IssueCard
+          tone="neutral"
+          title={t("tax.coretax.warningsTitle", { count: result.warnings.length })}
+          description={t("tax.coretax.warningsDescription")}
+          items={result.warnings.map((w) => ({
+            key: w.invoiceNo,
+            label: w.invoiceNo,
+            detail: w.codes.map(warningLabel).join("; "),
+          }))}
+        />
+      )}
+
+      {result.exports.length > 0 && (
+        <IssueCard
+          tone="neutral"
+          title={t("tax.coretax.exportsTitle", { count: result.exports.length })}
+          description={t("tax.coretax.exportsDescription")}
+          items={result.exports.map((e) => ({
+            key: e.invoiceNo,
+            label: e.invoiceNo,
+            detail: e.pebNumber ? `PEB ${e.pebNumber}` : t("tax.coretax.pebMissing"),
+          }))}
+        />
+      )}
+
+      <Card style={{ marginBottom: SECTION_GAP }}>
+        <CardTitleBar
+          actions={
+            pjapOn && canSubmit && sendable.length > 0 ? (
+              <PjapSendAll basePath={basePath} invoiceIds={sendable} />
+            ) : undefined
+          }
+        >
+          {t("tax.coretax.readyTitle")}
+        </CardTitleBar>
+        {!pjapOn && (
+          <p style={{ margin: 0, padding: "var(--ant-padding) var(--ant-padding-lg) 0", ...MUTED }}>
+            {t("tax.pjap.offNote")}
+          </p>
+        )}
+        <StaticTable<ReadyRow>
           columns={columns}
           rows={rows}
-          rowKey={(row, index) => `${row.nomor_dokumen}-${index}`}
+          rowKey={(row) => String(row.invoiceId)}
           empty={
             <EmptyState
               icon={<FileDoneOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
@@ -406,6 +536,21 @@ export default async function EfakturPage({
           }
         />
       </Card>
+
+      {canManage && (
+        <Card>
+          <CardTitleBar>{t("tax.pjap.connectionTitle")}</CardTitleBar>
+          <div style={{ padding: "var(--ant-padding-lg)", display: "grid", gap: 16 }}>
+            <p style={{ margin: 0, ...MUTED }}>{t("tax.pjap.connectionDescription")}</p>
+            {!encryptionKeyAvailable() && (
+              <p role="alert" style={{ margin: 0, color: "var(--ant-color-money-negative)" }}>
+                {t("tax.pjap.encryptionKeyMissing")}
+              </p>
+            )}
+            <PjapConnectionForm basePath={basePath} initial={connection} />
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

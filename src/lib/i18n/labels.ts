@@ -358,6 +358,8 @@ export function permissionLabels(
     "report.export": p.report_export,
     "budget.manage": p.budget_manage,
     "tax.read": p.tax_read,
+    "tax.submit": p.tax_submit,
+    "tax.manage": p.tax_manage,
     "account.read": p.account_read,
     "account.manage": p.account_manage,
     "cost_center.read": p.cost_center_read,

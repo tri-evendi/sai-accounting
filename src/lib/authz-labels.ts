@@ -121,6 +121,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "report.export": "Mengekspor laporan (PDF / Excel)",
   "budget.manage": "Mengelola rencana & target",
   "tax.read": "Membuka ekspor e-Faktur",
+  "tax.submit": "Mengirim & membatalkan faktur pajak di DJP (lewat PJAP)",
+  "tax.manage": "Mengatur sambungan PJAP e-Faktur",
 
   "account.read": "Melihat daftar akun (pemilih akun di form kas)",
   "account.manage": "Mengelola daftar akun",

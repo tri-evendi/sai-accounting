@@ -34,6 +34,7 @@ import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@sai/ui/app-link";
 import { Button } from "@sai/ui/button";
 import { TextInput } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
 import { Checkbox } from "@sai/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import {
@@ -71,6 +72,9 @@ export function NewCustomerForm() {
       email: "",
       pic: "",
       npwp: "",
+      nik: "",
+      nitku: "",
+      efakturTrxCode: "",
       taxExempt: false,
     },
   });
@@ -203,6 +207,59 @@ export function NewCustomerForm() {
                         <FormLabel>{t("customers.npwp")}</FormLabel>
                         <FormControl>
                           <TextInput {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="nik"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("customers.nik")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} value={field.value ?? ""} inputMode="numeric" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="nitku"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("customers.nitku")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} value={field.value ?? ""} inputMode="numeric" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Col>
+                <Col xs={24} sm={12}>
+                  <FormField
+                    control={form.control}
+                    name="efakturTrxCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Select
+                            label={t("customers.efakturTrxCode")}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            options={[
+                              { value: "", label: t("customers.efakturTrxCodeNone") },
+                              { value: "02", label: t("customers.efakturTrxCode02") },
+                              { value: "03", label: t("customers.efakturTrxCode03") },
+                            ]}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

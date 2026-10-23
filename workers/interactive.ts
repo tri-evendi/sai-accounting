@@ -53,6 +53,7 @@ import { STATEMENT_TITLES } from "../src/lib/statement-layout";
 import { buildWorkbookBuffer } from "../src/lib/xlsx";
 import { getCompanyIdentity } from "../src/lib/company-identity";
 import { runReadOnly } from "../src/lib/read-replica";
+import { applyEfakturRecord } from "../src/lib/efaktur-record";
 
 /** Muatan `report.export` — PARAMETER saja. */
 interface MuatanEkspor {
@@ -156,6 +157,25 @@ async function eksporLaporan(ctx: JobContext): Promise<string | null> {
   return writeJobResult(ctx.job.kind, ctx.job.id, namaBerkas(report.payloadKind), bytes);
 }
 
+/**
+ * `efaktur.record` — hasil PJAP dari jalur `integration` Go ke buku PT
+ * (docs/EFAKTUR.md). Di sini karena hanya Node yang menulis basis data
+ * perusahaan; jalur `interactive` karena orang di layar Pajak menunggu
+ * statusnya berubah, dan penulisannya satu baris — bukan jalur `ledger`
+ * (tunggal-instans, untuk posting).
+ */
+async function catatEfaktur(ctx: JobContext): Promise<null> {
+  /* `false`: perusahaan NONAKTIF tetap dicatat — kiriman ke DJP sudah terjadi,
+     dan jejaknya yang hilang lebih buruk daripada baris di buku nonaktif. */
+  const hasil = await dalamKonteksPerusahaan(ctx.job.companyId, false, () =>
+    applyEfakturRecord(ctx.job.payload)
+  );
+  if (hasil === "ignored") {
+    console.log(`[interactive] #${ctx.job.id} efaktur.record diabaikan (terlambat / transisi tidak sah)`);
+  }
+  return null;
+}
+
 void runLane({
   lane: "interactive",
   handlers: {
@@ -175,5 +195,6 @@ void runLane({
      * yang hidup terus dengan `PROVISION_DATABASE_URL` (kredensial PEMILIK).
      */
     "company.provision": provisionCompanyJob,
+    "efaktur.record": catatEfaktur,
   },
 });

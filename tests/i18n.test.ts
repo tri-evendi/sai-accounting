@@ -86,6 +86,12 @@ const TRANSLATED_LOCALES = LOCALES.filter((locale) => locale !== DEFAULT_LOCALE)
  */
 const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
   en: new Set([
+    /* e-Faktur PJAP (docs/EFAKTUR.md): "PJAP" singkatan resmi DJP, dan
+       "Client ID"/"Client secret" adalah nama kolom yang tertulis apa adanya
+       di dasbor penyedia — terjemahan membuat orang tidak menemukannya. */
+    "tax.pjap.providerPjap",
+    "tax.pjap.clientId",
+    "tax.pjap.secret",
     /* "Margin" adalah kata yang sama di Indonesia dan Inggris — ia serapan
        langsung, dan menerjemahkannya jadi sesuatu yang lain justru membuat
        judul kolomnya salah (issue #495). */
@@ -302,6 +308,12 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "landing.compareRow",
   ]),
   zh: new Set([
+    /* e-Faktur PJAP (docs/EFAKTUR.md): "PJAP" singkatan resmi DJP, dan
+       "Client ID"/"Client secret" adalah nama kolom yang tertulis apa adanya
+       di dasbor penyedia — terjemahan membuat orang tidak menemukannya. */
+    "tax.pjap.providerPjap",
+    "tax.pjap.clientId",
+    "tax.pjap.secret",
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).
     "landing.contactChannelWhatsapp",
     // Nama produk yang dibandingkan — lihat catatan di daftar `en`.

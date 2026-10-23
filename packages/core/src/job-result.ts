@@ -79,7 +79,10 @@ export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, Permission | null>>
   "ledger.dunning": null,
 
   /* Integrasi luar mengirim berkas KELUAR; tanda terimanya bukan unduhan. */
-  "integration.efaktur": null,
+  "integration.efaktur_submit": null,
+  "integration.efaktur_poll": null,
+  "integration.efaktur_cancel": null,
+  "efaktur.record": null,
   "integration.bank_feed": null,
 };
 

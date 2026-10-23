@@ -877,6 +877,12 @@ services:
       TZ:
       PG_DUMP_BIN:
       PG_DUMPALL_BIN:
+      # Jalur `integration` SAJA (e-Faktur lewat PJAP, docs/EFAKTUR.md): kunci
+      # yang SAMA dengan `app-customer` — Node menyegel kredensial PJAP milik PT,
+      # pelari ini membukanya tepat sebelum mengirim. Tanpa kunci ini kiriman
+      # ke penyedia `pjap` gagal `failed` dengan pesan yang terbaca; `mock` dan
+      # unggah XML manual tidak terpengaruh.
+      SETTINGS_ENCRYPTION_KEY:
       # Sapuan kesesuaian data jalur `tenant` (bila `runner: go` untuk
       # `tenant.conformance`): buku dibaca dari template di atas, batas
       # serentaknya env yang SAMA dengan peran `conformance` di `svc-worker`

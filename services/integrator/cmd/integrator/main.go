@@ -1,5 +1,6 @@
-// SVC-INTEGRATOR — jalur `tenant`, jalur `interactive` sisi Go, dan jalur
-// `schedule` (denyut penerbitan) dalam SATU proses (keputusan pemilik 22 Okt
+// SVC-INTEGRATOR — jalur `tenant`, jalur `interactive` sisi Go, jalur
+// `schedule` (denyut penerbitan), dan jalur `integration` (e-Faktur lewat
+// PJAP) dalam SATU proses (keputusan pemilik 22 Okt
 // 2026: "1 image = 1 container"); jalur `bulk` ikut begitu ia punya kind.
 //
 //	svc-integrator   # di compose; `go run ./cmd/integrator` saat mengembangkan
@@ -42,6 +43,7 @@ import (
 
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/buildinfo"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/bulklane"
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/integrationlane"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/interactivelane"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/schedulelane"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/tenantlane"
@@ -78,6 +80,9 @@ func daftarJalur(bulkAktif bool) []pelari {
 		{"tenant", tenantlane.Run},
 		{"interactive-go", interactivelane.Run},
 		{"schedule", schedulelane.Run},
+		// e-Faktur lewat PJAP (docs/EFAKTUR.md). Diam bila tak satu PT pun
+		// mengirim: pelari hanya menunggu baris `integration.efaktur_*`.
+		{"integration", integrationlane.Run},
 	}
 	if bulkAktif {
 		daftar = append(daftar, pelari{"bulk", bulklane.Run})

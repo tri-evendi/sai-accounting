@@ -233,10 +233,45 @@ kinds:
     writes_ledger: true
     description: dunning yang membuat catatan di buku
 
-  integration.efaktur:
+  # ── e-Faktur lewat PJAP (docs/EFAKTUR.md) ─────────────────────────────────
+  # Empat kind, DUA bahasa, dan tidak satu pun pengklaim ganda:
+  #   • `integration.efaktur_*` — Go (`internal/integrationlane`): bicara dengan
+  #     PJAP. TIDAK menulis apa pun selain baris `jobs`.
+  #   • `efaktur.record` — Node (`workers/interactive.ts`): menuliskan hasil PJAP
+  #     ke `efaktur_submissions` di buku PT. Itulah jalan hasil kembali ke buku
+  #     tanpa menambah daftar-izin tulisan Go (`tests/services-go.test.ts`) dan
+  #     tanpa satu layanan memanggil layanan lain (I-3): antreanlah perantaranya.
+  # `max_attempts: 5` untuk ketiga kind Go — layanan pihak lain memang kadang
+  # mati sebentar, dan backoff kontrak (30 s → 1 jam) yang menjarakkannya.
+  # Pengulangan AMAN karena `idempotency_key` per upaya ikut dikirim ke PJAP.
+  integration.efaktur_submit:
     lane: integration
     max_attempts: 5
-    description: berkas e-faktur ke sistem pajak
+    description: kirim satu faktur keluaran (XML Coretax yang dibekukan) ke PJAP
+
+  integration.efaktur_poll:
+    lane: integration
+    max_attempts: 5
+    description: >
+      tanyakan status satu kiriman ke PJAP. Selama DJP belum memutuskan, pelari
+      menerbitkan putaran berikutnya dengan jeda bertambah (`round` di muatan,
+      jeda dari backoff kontrak) sampai batas putaran — lalu berhenti dan
+      meminta orang memeriksa di Coretax. Bukan `failed` yang diulang: "masih
+      diproses" bukan kegagalan.
+
+  integration.efaktur_cancel:
+    lane: integration
+    max_attempts: 5
+    description: minta PJAP membatalkan faktur pajak yang sudah disetujui
+
+  efaktur.record:
+    lane: interactive
+    max_attempts: 5
+    description: >
+      catat satu hasil PJAP (status, NSFP, pesan) ke `efaktur_submissions` di
+      buku PT. Diterbitkan jalur `integration` Go, diklaim Node — hanya Node
+      yang menulis basis data perusahaan. Muatannya status kiriman, bukan
+      angka akuntansi (basis data kendali tidak memuat satu pun).
 
   integration.bank_feed:
     lane: integration
@@ -319,3 +354,48 @@ numbers:
   lane_lock_probe_ms: 15000
   lane_lock_query_timeout_ms: 10000
   lane_lock_idle_session_ms: 90000
+
+# ── e-Faktur (docs/EFAKTUR.md) ─────────────────────────────────────────────
+#
+# Kosakata status kiriman e-Faktur dibaca DUA bahasa: Node menulis
+# `efaktur_submissions.status` di buku PT; Go membacanya (kiriman yang sudah
+# dibatalkan pengguna tidak dikirim) dan MELAPORKAN `outcomes` lewat
+# `efaktur.record`. Daftar status wajib SAMA dengan CHECK di
+# `prisma/postgresql/company/0004_efaktur_coretax/migration.sql` — dijaga
+# `tests/efaktur-submission.test.ts`. Generator menolak `outcomes` di luar
+# `submission_statuses`.
+#
+#   queued            → antre, belum dikirim
+#   submitted         → diterima PJAP, menunggu keputusan DJP
+#   approved          → disetujui; NSFP terbit
+#   rejected          → ditolak DJP (pesan dari PJAP) — perbaiki, kirim ulang
+#   failed            → tidak bisa dikirim (kredensial, penyedia, batas putaran)
+#   cancel_requested  → pembatalan diminta pengguna, menunggu PJAP
+#   canceled          → dibatalkan di DJP
+#
+# `poll_max_rounds`: putaran `integration.efaktur_poll` paling banyak. Jedanya
+# backoff kontrak (`backoff_base_ms` × 2^putaran, plafon `backoff_max_ms`), jadi
+# 24 putaran ≈ 19 jam — lebih dari cukup untuk persetujuan yang lazimnya
+# hitungan menit; sesudahnya kiriman `failed` dengan pesan "periksa di Coretax".
+efaktur:
+  submission_statuses:
+    - queued
+    - submitted
+    - approved
+    - rejected
+    - failed
+    - cancel_requested
+    - canceled
+  outcomes:
+    - submitted
+    - approved
+    - rejected
+    - failed
+    - canceled
+  # `company_settings.efaktur_provider`: `mock` = uji tanpa jaringan (hasil
+  # ditentukan isi XML, lihat `internal/efaktur/mock.go`); `pjap` = penyedia
+  # sungguhan — KERANGKA sampai pemilik memilih PJAP (docs/EFAKTUR.md).
+  providers:
+    - mock
+    - pjap
+  poll_max_rounds: 24

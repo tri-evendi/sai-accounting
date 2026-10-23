@@ -1,0 +1,27 @@
+[
+  {
+    "submissionId": 1,
+    "outcome": "submitted",
+    "providerRef": "MOCK-sai-3-inv1-r1",
+    "observedAt": "2026-10-23T03:00:00Z"
+  },
+  {
+    "submissionId": 2,
+    "outcome": "rejected",
+    "message": "Mock: ditolak (nama pembeli diawali TOLAK)",
+    "observedAt": "2026-10-23T03:00:00Z"
+  },
+  {
+    "submissionId": 1,
+    "outcome": "approved",
+    "providerRef": "MOCK-sai-3-inv1-r1",
+    "taxInvoiceNumber": "99668871021251580",
+    "observedAt": "2026-10-23T03:00:00Z"
+  },
+  {
+    "submissionId": 1,
+    "outcome": "canceled",
+    "providerRef": "MOCK-sai-3-inv1-r1",
+    "observedAt": "2026-10-23T03:00:00Z"
+  }
+]

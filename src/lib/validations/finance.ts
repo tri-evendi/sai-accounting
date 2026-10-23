@@ -5,6 +5,7 @@ import { normalizeConsigneeName } from "@/lib/consignee";
 import { CASH_TYPES } from "@sai/core/constants";
 import { cashTypeField, requireBankForForeignCash } from "./payment";
 import { vissue, vmsg } from "@sai/core/i18n/validation";
+import { CUSTOMER_TRX_CODE_OVERRIDES } from "@sai/core/coretax-xml";
 
 export const cashTransactionSchema = z
   .object({
@@ -257,6 +258,14 @@ export const customerSchema = z.object({
    * (an export buyer has none); free text, not check-digit validated.
    */
   npwp: z.string().max(30).trim().optional(),
+  /**
+   * Coretax (docs/EFAKTUR.md): NIK 16 digit untuk pembeli TANPA NPWP, dan
+   * NITKU 22 digit untuk cabang. Kosong boleh — NITKU kosong = kantor pusat.
+   */
+  nik: z.string().trim().regex(/^(\d{16})?$/, vmsg("validation.nikInvalid")).optional(),
+  nitku: z.string().trim().regex(/^(\d{22})?$/, vmsg("validation.nitkuInvalid")).optional(),
+  /** Pemungut PPN: `02` instansi pemerintah, `03` selainnya; kosong = biasa. */
+  efakturTrxCode: z.enum(["", ...CUSTOMER_TRX_CODE_OVERRIDES]).optional(),
   /** Lihat catatan `supplierSchema.isActive` — tanpa ini nonaktif = permanen. */
   isActive: z.boolean().optional(),
 });

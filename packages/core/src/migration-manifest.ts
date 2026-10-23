@@ -14,7 +14,7 @@
 export const MIGRATION_TERAKHIR = {
   control: "0011_schema_migration_runs",
   platform: "0009_cache_signals",
-  company: "0003_contracts_status_check",
+  company: "0004_efaktur_coretax",
 } as const;
 
 export type JenisBasisData = keyof typeof MIGRATION_TERAKHIR;

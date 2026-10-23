@@ -19,9 +19,17 @@
  * *dual-write* yang hendak ditutup, hanya dipindah satu langkah: tulisan domain
  * gagal sesudahnya, peristiwanya tetap terbit, dan surel berangkat untuk faktur
  * yang tidak pernah ada. Jadi pintunya menolak klien yang bukan klien
- * transaksi. Ujinya `$transaction`: klien transaksi interaktif Prisma TIDAK
- * memilikinya (ia ada di daftar-tolak klien transaksi), klien biasa — termasuk
- * proksi `prisma` per perusahaan — memilikinya. Tipe saja tidak cukup:
+ * transaksi. Ujinya `$disconnect`: klien transaksi interaktif Prisma TIDAK
+ * memilikinya (daftar-tolak klien transaksi), klien biasa — termasuk proksi
+ * `prisma` per perusahaan — memilikinya.
+ *
+ * ⚠ BUKAN `$transaction`, dan itu diukur, bukan ditebak: di Prisma 7 klien
+ * transaksi MEMILIKI `$transaction` (transaksi bersarang diizinkan), jadi uji
+ * `$transaction` menolak SETIAP pemanggil yang sah. Versi pertama pintu ini
+ * memakainya, lulus semua tes unit (yang memakai tiruan), dan baru jatuh di
+ * `tests/outbox.integration.test.ts` terhadap PostgreSQL sungguhan.
+ * (`runInTx` di `lib/ledger.ts` masih menguji `$transaction` — di sana
+ * akibatnya hanya transaksi bersarang, bukan penolakan.) Tipe saja tidak cukup:
  * `PrismaClient` secara struktural memenuhi `Prisma.TransactionClient`, jadi
  * `tsc` meloloskan `emitOutboxEvent(prisma, …)` tanpa satu keluhan.
  *
@@ -79,12 +87,12 @@ export class OutboxOutsideTransactionError extends Error {
   }
 }
 
-/** `true` bila `client` adalah klien transaksi interaktif (tanpa `$transaction`). */
+/** `true` bila `client` adalah klien transaksi interaktif (tanpa `$disconnect`). */
 export function isTransactionClient(client: unknown): boolean {
   return (
     typeof client === "object" &&
     client !== null &&
-    typeof (client as { $transaction?: unknown }).$transaction !== "function"
+    typeof (client as { $disconnect?: unknown }).$disconnect !== "function"
   );
 }
 

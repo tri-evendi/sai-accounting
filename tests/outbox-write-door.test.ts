@@ -124,9 +124,9 @@ describe("pintu tulis outbox — tidak ada penulis lain", () => {
 });
 
 describe("emitOutboxEvent — perilaku", () => {
-  it("MELEMPAR untuk klien yang punya $transaction (klien biasa, termasuk proksi per perusahaan)", async () => {
+  it("MELEMPAR untuk klien yang punya $disconnect (klien biasa, termasuk proksi per perusahaan)", async () => {
     const createMany = vi.fn();
-    const klienBiasa = { $transaction: vi.fn(), outbox: { createMany } };
+    const klienBiasa = { $transaction: vi.fn(), $disconnect: vi.fn(), outbox: { createMany } };
     await expect(
       emitOutboxEvent(klienBiasa as never, {
         type: "invoice.posted",
@@ -140,7 +140,8 @@ describe("emitOutboxEvent — perilaku", () => {
 
   it("menulis lewat createMany + skipDuplicates di klien transaksi", async () => {
     const createMany = vi.fn().mockResolvedValue({ count: 1 });
-    const tx = { outbox: { createMany } };
+    /* Prisma 7: klien transaksi PUNYA $transaction (bersarang), tanpa $disconnect. */
+    const tx = { $transaction: vi.fn(), outbox: { createMany } };
     expect(isTransactionClient(tx)).toBe(true);
     const lahir = await emitOutboxEvent(tx as never, {
       type: "invoice.posted",

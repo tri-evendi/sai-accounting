@@ -19,6 +19,7 @@ import type { PartyRecapResult } from "@/lib/party-recap";
 import type { BudgetReport, VarianceStatus } from "@/lib/budget";
 import type { SalesTargetRealizationResult } from "@/lib/budget-report";
 import { compareAmount } from "@/lib/cash-flow-parity";
+import { SERI_FLOAT } from "@/lib/aging-parity";
 
 type Money = string;
 
@@ -38,6 +39,8 @@ export interface GoPartyRecap {
     returnBase: Money;
     netBase: Money;
     unratedCount: number;
+    /** Pembulatan sen pihak ini jatuh TEPAT di setengah sen (lihat `aging-parity.ts`). */
+    halfCentTie: boolean;
   }[];
   totals: {
     docCount: number;
@@ -65,9 +68,11 @@ export function comparePartyRecap(ts: PartyRecapResult, go: GoPartyRecap): strin
   }
   const byKey = new Map(go.rows.map((r) => [partyKey(r.partyId), r]));
   for (const t of ts.rows) {
-    const k = partyKey(t.partyId);
-    const g = byKey.get(k);
+    const g = byKey.get(partyKey(t.partyId));
     if (!g) continue;
+    /* Seri setengah sen: TETAP selisih (gerbang tidak dilonggarkan), tetapi
+       diberi nama — pola `aging-parity.ts`. */
+    const k = `${partyKey(t.partyId)}${g.halfCentTie ? ` ${SERI_FLOAT}` : ""}`;
     if ((t.partyName ?? null) !== (g.partyName ?? null)) {
       diffs.push(`pihak ${k} nama: TS ${JSON.stringify(t.partyName)} ⇄ Go ${JSON.stringify(g.partyName)}`);
     }
@@ -81,8 +86,11 @@ export function comparePartyRecap(ts: PartyRecapResult, go: GoPartyRecap): strin
   for (const f of ["docCount", "returnCount", "unratedCount"] as const) {
     if (ts.totals[f] !== go.totals[f]) diffs.push(`total ${f}: TS ${ts.totals[f]} ⇄ Go ${go.totals[f]}`);
   }
+  /* Total = jumlah baris yang sudah dibulatkan; selisihnya bergema dari baris
+     seri, atau dari float TS yang kehilangan sen di atas ~10^13 rupiah. */
+  const seri = go.rows.some((r) => r.halfCentTie) ? ` ${SERI_FLOAT}` : "";
   for (const f of ["grossBase", "returnBase", "netBase"] as const) {
-    compareAmount(diffs, `total ${f}`, ts.totals[f], go.totals[f]);
+    compareAmount(diffs, `total ${f}${seri}`, ts.totals[f], go.totals[f]);
   }
   return diffs;
 }

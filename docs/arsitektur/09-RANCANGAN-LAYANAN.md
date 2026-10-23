@@ -1330,6 +1330,54 @@ saringan (semua, hanya jatuh tempo); `-xlsx` juga × tiga pilihan kolom
 (bawaan, `party` saja, sebagian). Lulus keempatnya → `parityProven` di entri
 register, lalu `go-parity` → `go` + `bun run contract:gen`.
 
+#### Gelombang A: Rekap per Pihak, Laporan Kas & Bank, Realisasi vs Anggaran (`go-parity`, 23 Okt 2026)
+
+Empat laporan berberkas berikutnya, satu cabang. Ketiga bentuknya berbeda, dan
+yang dipindah hanya yang belum dimiliki Go:
+
+| Laporan | Pembaca Go | Yang baru |
+|---|---|---|
+| Penjualan per Pelanggan · Pembelian per Pemasok | `ledgerread/party_recap.go` | pembaca DOKUMEN (faktur + item, retur penjualan, transaksi pemasok `purchase`, retur pembelian), nilai IDR lewat `toBase` Umur Piutang, rasional eksak → sen di titik `round2` TS; urut bersih ↓ lalu `localeCompare` nama |
+| Laporan Kas & Bank | `ledgerread/cash_bank.go` | TIDAK ada pembaca baru: TS sendiri membentuknya dari `getCashFlow`, dan Go dari pembaca Arus Kas (sudah `go`). Totalnya `netChange` arus kas — bukan selisih saldo — persis TS |
+| Realisasi vs Anggaran | `ledgerread/budget.go` | anggaran & target per (tahun, bulan), realisasi dari pembaca Laba Rugi Go (`BuildIncomeStatement`, jurnal penutup dikecualikan) di transaksi yang SAMA; persen selisih ditiru dalam float JS langkah demi langkah (sel ANGKA di berkas) |
+
+| Bagian | Di mana |
+|---|---|
+| Kalimat cetak yang sebelumnya sebaris (`"Total"`, `budgetAlertNote`, nama bulan, `VARIANCE_STATUS_TEXT`) pindah ke `statement-layout.ts` — bunyi TIDAK berubah — dan lebar kolom diekspor dari `report-export.ts` | `statement-layout.ts` · `report-export.ts` · `report-payload.ts` |
+| Kalimat, kolom katalog (`?cols=`), lebar, nama bulan, kosakata status, dan ambang variansi DIBANGKITKAN | `internal/contract/recap_layout_gen.go` (`contract:gen`, berkas tersendiri — laporan yang dipindah paralel tidak menyunting fungsi pembangkit yang sama) |
+| Penerbit Go mengenal `period_month`: `?year=&month=` diselesaikan `resolveBudgetPeriod`, batas Laba Rugi dikirim sebagai INSTAN `budgetPeriodRange` | `report-export-go.ts` · `budget-report.ts` |
+| Penghasil di pelari `interactive` — DITOLAK selama `go-parity`; muatan pembanding dan tahun/bulan di luar bentuk penerbit DITOLAK sebelum buku dibuka | `internal/interactivelane` (`rekapPihak`, `kasBank`, `anggaran`) |
+| Halaman mengirim `sumber` (`from`/`to`/`cols`; anggaran `year`/`month`) | `reports/{sales-by-customer,purchases-by-supplier,cash-bank}/page.tsx` · `budget/report/page.tsx` |
+| Klien buku diteruskan `buildReportPayload` ke keempat pembaca TS — skrip paritas menyerahkan transaksi READ ONLY | `report-payload.ts` |
+| Berkas emas lintas bahasa: rekap pihak dari dokumen fixture sendiri, anggaran dari jurnal `statement_books.json` + baris anggaran/target, Kas & Bank dari setiap kasus Arus Kas | `ledgerread/testdata/recap_books.json` → `go test -update` → `tests/recap-golden.test.ts` |
+| Paritas atas buku sungguhan, READ ONLY di kedua sisi, angka DAN isi berkas | `bun run parity:{sales-by-customer,purchases-by-supplier,cash-bank,budget-realization}[-xlsx]` |
+
+PARITAS_LOKAL_GELOMBANG_A
+
+Perintah paritas produksi (sesi utama, buku PRODUKSI, hanya baca; biner dan
+skrip dari checkout yang sama):
+
+```bash
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+for s in parity:sales-by-customer parity:sales-by-customer-xlsx \
+         parity:purchases-by-supplier parity:purchases-by-supplier-xlsx \
+         parity:cash-bank parity:cash-bank-xlsx \
+         parity:budget-realization parity:budget-realization-xlsx; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    -v $PWD/scripts:/app/scripts:ro -v $PWD/src:/app/src:ro -v $PWD/package.json:/app/package.json:ro \
+    -v $PWD/packages/core:/app/packages/core:ro -v $PWD/packages/billing:/app/packages/billing:ro \
+    -v $PWD/packages/platform:/app/packages/platform:ro -v $PWD/contract:/app/contract:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity
+done
+```
+
+Bawaan periodenya: rekap pihak & Kas & Bank sama dengan Laba Rugi (tahun
+berjalan s.d. hari ini, tahun lalu penuh, Juli–Juni), `-xlsx` juga × tiga
+pilihan kolom; anggaran lima (tahun berjalan, bulan berjalan, Januari, tahun
+lalu, Desember tahun lalu; `-- --budget-period 2026-0,2026-3`). Lulus
+kedelapannya → `parityProven` di entri register, lalu `go-parity` → `go` +
+`bun run contract:gen`.
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
 | **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus); Arus Kas, Laporan Perubahan Ekuitas, Umur Piutang & Umur Utang `go-parity` (23 Okt 2026, menunggu paritas produksi) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |

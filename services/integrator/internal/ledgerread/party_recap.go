@@ -55,6 +55,11 @@ type PartyRecapRow struct {
 	ReturnBase   Cents   `json:"returnBase"`
 	NetBase      Cents   `json:"netBase"`
 	UnratedCount int     `json:"unratedCount"`
+	// HalfCentTie: salah satu pembulatan sen pihak ini (kotor, retur, bersih)
+	// jatuh TEPAT di setengah sen — titik di mana float TS bisa jatuh ke sisi
+	// lain. Informasi untuk paritas (`SERI_FLOAT`); angka Go tidak bergantung
+	// padanya.
+	HalfCentTie bool `json:"halfCentTie"`
 }
 
 // PartyRecapTotals: kaki laporan — `PartyRecapResult.totals` TS.
@@ -134,16 +139,18 @@ func SummarizeParties(kind string, docs, returns []PartyDoc) *PartyRecap {
 	rep := &PartyRecap{Kind: kind, Rows: []PartyRecapRow{}}
 	for _, k := range order {
 		a := byParty[k]
+		rd := &rounder{}
 		rep.Rows = append(rep.Rows, PartyRecapRow{
 			PartyID:      a.id,
 			PartyName:    a.name,
 			DocCount:     a.docs,
-			GrossBase:    roundCents(a.gross),
+			GrossBase:    rd.cents(a.gross),
 			ReturnCount:  a.returns,
-			ReturnBase:   roundCents(a.ret),
-			NetBase:      roundCents(subRat(a.gross, a.ret)),
+			ReturnBase:   rd.cents(a.ret),
+			NetBase:      rd.cents(subRat(a.gross, a.ret)),
 			UnratedCount: a.unrated,
 		})
+		rep.Rows[len(rep.Rows)-1].HalfCentTie = rd.tie
 	}
 	name := func(r PartyRecapRow) string {
 		if r.PartyName == nil {

@@ -11,7 +11,8 @@
       "returnCount": 0,
       "returnBase": "0.00",
       "netBase": "1.00",
-      "unratedCount": 0
+      "unratedCount": 0,
+      "halfCentTie": false
     }
   ],
   "totals": {

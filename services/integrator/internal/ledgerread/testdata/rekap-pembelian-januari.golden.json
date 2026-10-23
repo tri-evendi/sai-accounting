@@ -11,7 +11,8 @@
       "returnCount": 1,
       "returnBase": "0.00",
       "netBase": "19259444.64",
-      "unratedCount": 2
+      "unratedCount": 2,
+      "halfCentTie": false
     },
     {
       "partyId": 1,
@@ -21,7 +22,8 @@
       "returnCount": 1,
       "returnBase": "222000.00",
       "netBase": "1998000.00",
-      "unratedCount": 0
+      "unratedCount": 0,
+      "halfCentTie": false
     },
     {
       "partyId": 2,
@@ -31,7 +33,8 @@
       "returnCount": 1,
       "returnBase": "2500000.00",
       "netBase": "-499950.00",
-      "unratedCount": 0
+      "unratedCount": 0,
+      "halfCentTie": false
     }
   ],
   "totals": {

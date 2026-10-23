@@ -168,7 +168,7 @@ kinds:
     schedule:
       grain: day
       per_company: false
-      publisher: node
+      publisher: go
 
   tenant.conformance:
     lane: tenant

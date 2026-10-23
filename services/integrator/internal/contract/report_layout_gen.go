@@ -141,8 +141,11 @@ var GoEngineReports = map[string]bool{
 	ReportCashFlow:        true,
 	ReportEquityChanges:   true,
 	ReportIncomeStatement: true,
+	ReportOpnameHistory:   true,
 	ReportPayables:        true,
 	ReportReceivables:     true,
+	ReportStockMovement:   true,
+	ReportStockValue:      true,
 	ReportTrialBalance:    true,
 }
 

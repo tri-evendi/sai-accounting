@@ -79,6 +79,11 @@ import {
   AGING_UNDATED_NOTE,
   unratedNote,
   unresolvedNote,
+  opnameSessionLabel,
+  opnameSummaryLabel,
+  stockMovementDormantNote,
+  stockValueUncostedNote,
+  STOCK_SHEET_LABELS,
 } from "@/lib/statement-layout";
 import { BUSINESS_TIME_ZONE, businessDayStart } from "@sai/core/business-date";
 
@@ -428,6 +433,20 @@ function buildCashFlowSheet(
   };
 }
 
+/**
+ * Lebar kolom lembar sebar Riwayat Stok — diekspor karena DIBANGKITKAN ke Go
+ * (`bun run contract:gen` → `stock_layout_gen.go`), seperti `CASH_FLOW_WIDTHS`.
+ */
+export const STOCK_MOVEMENT_WIDTHS: Record<StockMovementColumnId, number> = {
+  name: 34,
+  unit: 12,
+  opening: 14,
+  movedIn: 14,
+  movedOut: 14,
+  processed: 14,
+  closing: 14,
+};
+
 function buildStockMovementSheet(
   p: Extract<StatementPayload, { kind: "stock-movement" }>
 ): SheetModel {
@@ -442,30 +461,21 @@ function buildStockMovementSheet(
   // The same helper the screen and the PDF ask, so all three have identical
   // columns — including when the user narrowed them in the parameter dialog.
   const cols = stockMovementColumns(p);
-  const WIDTHS: Record<StockMovementColumnId, number> = {
-    name: 34,
-    unit: 12,
-    opening: 14,
-    movedIn: 14,
-    movedOut: 14,
-    processed: 14,
-    closing: 14,
-  };
   const columns: SheetColumn[] = cols.map((c) => ({
     header: STOCK_MOVEMENT_HEADERS[c],
-    width: WIDTHS[c],
+    width: STOCK_MOVEMENT_WIDTHS[c],
   }));
 
   const rows: SheetCell[][] = p.rows.length
     ? p.rows.map((r) =>
         cols.map((c) =>
-          c === "name" ? text(r.name) : c === "unit" ? text(r.unit || "-") : q(r[c])
+          c === "name" ? text(r.name) : c === "unit" ? text(r.unit || STOCK_SHEET_LABELS.noUnit) : q(r[c])
         )
       )
     : [[text(EXPORT_EMPTY.stockMovement), ...columns.slice(1).map(() => text(null))]];
 
   const totals: Record<StockMovementColumnId, SheetCell> = {
-    name: text("Total", true),
+    name: text(STOCK_SHEET_LABELS.movementTotal, true),
     unit: text(null),
     opening: q(p.totalOpening, true),
     movedIn: q(p.totalIn, true),
@@ -477,13 +487,24 @@ function buildStockMovementSheet(
 
   if (p.dormantCount > 0) {
     rows.push([
-      text(`Catatan: ${p.dormantCount} barang tanpa saldo awal dan tanpa mutasi tidak ditampilkan.`),
+      text(stockMovementDormantNote(p.dormantCount)),
       ...columns.slice(1).map(() => text(null)),
     ]);
   }
 
   return { name: SHEET_NAMES[p.kind], title: STATEMENT_TITLES[p.kind], period: p.period, columns, rows };
 }
+
+/**
+ * Kolom lembar sebar Riwayat Hitung Ulang Stok (judul + lebar) — diekspor
+ * karena DIBANGKITKAN ke Go (`stock_layout_gen.go`).
+ */
+export const OPNAME_HISTORY_COLUMNS: readonly SheetColumn[] = [
+  { header: STOCK_SHEET_LABELS.opnameItem, width: 40 },
+  { header: STOCK_SHEET_LABELS.opnameUnit, width: 12 },
+  { header: STOCK_SHEET_LABELS.opnameIncrease, width: 16 },
+  { header: STOCK_SHEET_LABELS.opnameDecrease, width: 16 },
+];
 
 function buildOpnameHistorySheet(
   p: Extract<StatementPayload, { kind: "opname-history" }>
@@ -502,11 +523,11 @@ function buildOpnameHistorySheet(
     // terbaca begitu. Kolom "Lebih"/"Susut" masing-masing SATU arti — angka
     // positif, arah dari kolomnya (audit 2026-07: dua jenis baris dulu memakai
     // kolom yang sama untuk makna berbeda).
-    rows.push([text(`Hitung ulang ${opnameSheetDate(s.dateISO)}`, true), text(null), q(s.increase, true), q(s.decrease, true)]);
+    rows.push([text(opnameSessionLabel(opnameSheetDate(s.dateISO)), true), text(null), q(s.increase, true), q(s.decrease, true)]);
     for (const a of s.adjustments) {
       rows.push([
         text(`   ${a.itemName}`),
-        text(a.unit || "-"),
+        text(a.unit || STOCK_SHEET_LABELS.noUnit),
         a.variance > 0 ? q(a.variance) : text(null),
         a.variance < 0 ? q(-a.variance) : text(null),
       ]);
@@ -516,10 +537,7 @@ function buildOpnameHistorySheet(
     rows.push([text(EXPORT_EMPTY.opnameHistory), text(null), text(null), text(null)]);
   }
   rows.push([
-    text(
-      `${p.sessionCount} kali hitung ulang · ${p.adjustmentCount} penyesuaian · Selisih bersih`,
-      true
-    ),
+    text(opnameSummaryLabel(p.sessionCount, p.adjustmentCount), true),
     text(null),
     p.netVariance >= 0 ? q(p.netVariance, true) : text(null),
     p.netVariance < 0 ? q(-p.netVariance, true) : text(null),
@@ -529,12 +547,7 @@ function buildOpnameHistorySheet(
     name: SHEET_NAMES[p.kind],
     title: STATEMENT_TITLES[p.kind],
     period: p.period,
-    columns: [
-      { header: "Tanggal / Barang", width: 40 },
-      { header: "Satuan", width: 12 },
-      { header: "Lebih", width: 16 },
-      { header: "Susut", width: 16 },
-    ],
+    columns: OPNAME_HISTORY_COLUMNS.map((c) => ({ ...c })),
     rows,
   };
 }
@@ -711,23 +724,25 @@ function buildAgingSheet(
   };
 }
 
+/** Lebar kolom lembar sebar Nilai Persediaan — DIBANGKITKAN ke Go (`stock_layout_gen.go`). */
+export const STOCK_VALUE_WIDTHS: Record<StockValueColumnId, number> = {
+  code: 14,
+  name: 34,
+  unit: 12,
+  openingQty: 14,
+  openingValue: 20,
+  inQty: 14,
+  inValue: 20,
+  outQty: 14,
+  outValue: 20,
+  closingQty: 14,
+  closingValue: 22,
+};
+
 function buildStockValueSheet(
   p: Extract<StatementPayload, { kind: "stock-value" }>
 ): SheetModel {
   const cols = stockValueColumns(p);
-  const WIDTHS: Record<StockValueColumnId, number> = {
-    code: 14,
-    name: 34,
-    unit: 12,
-    openingQty: 14,
-    openingValue: 20,
-    inQty: 14,
-    inValue: 20,
-    outQty: 14,
-    outValue: 20,
-    closingQty: 14,
-    closingValue: 22,
-  };
   // Saldo adalah KUANTITAS `Decimal(15,3)`; biaya & nilai adalah uang. Dua
   // format berbeda di satu tabel, dan meminjamkan topeng rupiah ke saldo akan
   // membulatkan 12,5 kg menjadi Rp 13.
@@ -749,7 +764,7 @@ function buildStockValueSheet(
   const cell = (r: (typeof p.rows)[number], c: StockValueColumnId): SheetCell => {
     if (c === "code") return text(r.code);
     if (c === "name") return text(r.name);
-    if (c === "unit") return text(r.unit || "-");
+    if (c === "unit") return text(r.unit || STOCK_SHEET_LABELS.noUnit);
     const q = qtyOf[c];
     if (q) return { value: q(r), format: "quantity", align: "right" };
     // Tanpa dasar biaya: sel KOSONG, bukan nol — nol menyatakan "tidak
@@ -774,9 +789,7 @@ function buildStockValueSheet(
 
   if (p.uncostedCount > 0) {
     rows.push([
-      text(
-        `Catatan: ${p.uncostedCount} barang bersaldo belum punya dasar biaya, jadi nilainya tidak ikut dijumlahkan.`
-      ),
+      text(stockValueUncostedNote(p.uncostedCount)),
       ...cols.slice(1).map(() => text(null)),
     ]);
   }
@@ -785,7 +798,7 @@ function buildStockValueSheet(
     name: SHEET_NAMES[p.kind],
     title: STATEMENT_TITLES[p.kind],
     period: p.period,
-    columns: cols.map((c) => ({ header: STOCK_VALUE_HEADERS[c], width: WIDTHS[c] })),
+    columns: cols.map((c) => ({ header: STOCK_VALUE_HEADERS[c], width: STOCK_VALUE_WIDTHS[c] })),
     rows,
   };
 }

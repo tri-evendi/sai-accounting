@@ -65,7 +65,10 @@ export async function getStockMovementReport(
   const [items, openingTotals, periodTotals] = await Promise.all([
     client.item.findMany({
       select: { id: true, name: true, unit: true },
-      orderBy: { name: "asc" },
+      /* `id` memecah seri: nama boleh kembar sejak #493, dan tanpa pemecah
+         urutan dua barang senama diserahkan pada rencana kueri PostgreSQL —
+         layar, berkas TS, dan berkas Go (tahap 1d) bisa berbeda urutan. */
+      orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
     stockTotals({ date: { lt: from } }, client),
     stockTotals({ date: { gte: from, lte: to } }, client),
@@ -168,6 +171,13 @@ export async function getStockValuePeriodReport(
            menjumlahkan `undefined` sebagai nol — yaitu diam-diam membuang
            seluruh biaya impor yang menempel. Dijaga `tests/landed-cost-costing`. */
         select: { quantity: true, type: true, date: true, unitCost: true, valueAdjustment: true },
+        /* Urutan PENJUMLAHAN ditentukan (tahap 1d). Aritmetikanya float, dan
+           penjumlahan float tidak asosiatif: tanpa `orderBy` urutan gerakan
+           diserahkan pada rencana kueri PostgreSQL, sehingga dua pembacaan
+           buku yang sama bisa berbeda di digit terakhir — dan di titik
+           `round2` yang tepat setengah sen, berbeda satu sen. Go
+           (`ledgerread/stock.go`) menjumlahkan dalam urutan yang SAMA. */
+        orderBy: { id: "asc" },
       },
     },
     orderBy: [{ name: "asc" }, { code: "asc" }],

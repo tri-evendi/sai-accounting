@@ -170,6 +170,37 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
        51 setara (angka, 3 periode) · isi XLSX 51 setara (3 periode) — 0 berselisih · 0 gagal. */
     parityProven: { date: "2026-10-23", books: 17 },
   },
+  /*
+   * Laporan STOK tahap 1d (23 Okt 2026): Nilai Persediaan, Riwayat Stok
+   * (Kartu Stok), dan Riwayat Hitung Ulang Stok. Ketiganya membaca
+   * `stock_movements`, bukan jurnal; Go menghitungnya (`stock.go`) dan menulis
+   * lembar sebarnya (`internal/document/stock.go`), tetapi BERKAS masih TS
+   * sampai sesi utama menjalankan paritas atas buku PRODUKSI — angka DAN isi:
+   *   bun run parity:stock-value    · parity:stock-value-xlsx
+   *   bun run parity:stock-movement · parity:stock-movement-xlsx
+   *   bun run parity:opname-history · parity:opname-history-xlsx
+   *
+   * Aritmetika TS di ketiganya FLOAT (kuantitas Decimal(15,3) dijumlah
+   * sebagai Number, rata-rata tertimbang `round2`); Go meniru float64 dalam
+   * urutan operasi yang SAMA, jadi paritasnya EKSAK, bukan bertoleransi sen.
+   * Halaman ketiganya SUDAH mengirim `sumber`; peralihan ke `go` = sunting
+   * entri di bawah + `bun run contract:gen`.
+   */
+  "stock-value": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/stock.go",
+    parityScript: "parity:stock-value",
+  },
+  "stock-movement": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/stock.go",
+    parityScript: "parity:stock-movement",
+  },
+  "opname-history": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/stock.go",
+    parityScript: "parity:opname-history",
+  },
 };
 
 /** Mesin yang menghasilkan BERKAS laporan ini hari ini. */

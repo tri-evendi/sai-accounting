@@ -42,6 +42,8 @@ const ONPREM = baca("docker-compose.onprem.yml")
   .filter((l) => !/^\s*#/.test(l))
   .join("\n");
 const PENERBIT = kode(baca("scripts", "publish-recurring.ts"));
+/** Aturan penerbitan (butir, kunci, muatan) — dipanggil penerbit, kembarannya di Go. */
+const ATURAN_TERBIT = kode(baca("packages", "core", "src", "schedule-due.ts"));
 const PELAKSANA = kode(baca("workers", "ledger.ts"));
 const LANGSUNG = kode(baca("scripts", "run-recurring.ts"));
 const PKG = JSON.parse(baca("package.json")) as {
@@ -106,7 +108,10 @@ describe("penerbit tidak menyentuh satu pun buku", () => {
 
 describe("penerbit & pelaksana sepakat", () => {
   it("payload-nya bentuk yang sama", () => {
-    expect(PENERBIT).toContain("payload: { companyId: company.id, today }");
+    /* Muatannya dirakit `@sai/core/schedule-due` (kembarannya di Go dibuktikan
+       fikstur bersama), dan penerbit menyerahkannya apa adanya. */
+    expect(ATURAN_TERBIT).toContain("return { companyId, today: at.toISOString() };");
+    expect(PENERBIT).toContain("payload: p.payload,");
     expect(PELAKSANA).toContain("companyId?: number; today?: string");
   });
 
@@ -138,28 +143,36 @@ describe("penerbit & pelaksana sepakat", () => {
 });
 
 describe("kunci idempotensi: berbutir JAM, di UTC", () => {
+  /* Sejak jalur `schedule` Go, aturannya di `@sai/core/schedule-due` dan
+     butirnya di kontrak (`schedule.grain`) — angka hasilnya dibuktikan per
+     kasus oleh `tests/schedule-due.test.ts` (fikstur bersama dengan Go). Yang
+     dijaga di sini: penerbit MEMAKAI aturan itu, dan aturannya tetap UTC. */
   it("butirnya jam, bukan hari", () => {
     // Butir HARI membuat putaran pertama hari itu satu-satunya yang pernah
     // menerbitkan — templat yang diaktifkan tengah hari menunggu sampai besok.
-    expect(PENERBIT).toContain("toISOString().slice(0, 13)");
+    expect(baca("contract", "kinds.yaml")).toMatch(
+      /ledger\.recurring:[\s\S]{0,400}schedule:\s*\n\s*grain: hour/
+    );
+    expect(ATURAN_TERBIT).toContain("toISOString().slice(0, 13)");
   });
 
   it("kuncinya memuat kind, perusahaan, dan butir waktunya", () => {
-    expect(PENERBIT).toContain("dedupeKey: `ledger.recurring:${company.id}:${butir}`");
+    expect(ATURAN_TERBIT).toContain("return `${kind}:${companyId}:${butir}`;");
+    expect(PENERBIT).toContain("dedupeKey: p.dedupeKey,");
   });
 
   it("UTC, sama seperti mesin berulangnya sendiri", () => {
     // `src/lib/recurring.ts` menghitung batas hari di UTC; kunci berbutir waktu
     // lokal akan menyimpang tepat di batas hari.
     expect(baca("src", "lib", "recurring.ts")).toContain("Date.UTC(");
-    expect(PENERBIT).toContain("jamUtc");
+    expect(ATURAN_TERBIT).not.toMatch(/businessISODate|Asia\/Jakarta/);
   });
 
   it("satu stempel waktu untuk seluruh putaran", () => {
     // Putaran yang melewati tengah malam di tengah daftar akan memberi separuh
     // daftar tanggal berikutnya.
     expect(PENERBIT).toContain("const saat = new Date();");
-    expect(PENERBIT).toContain("const today = saat.toISOString();");
+    expect(PENERBIT).toContain('duePublications("ledger.recurring", saat, companies)');
   });
 });
 

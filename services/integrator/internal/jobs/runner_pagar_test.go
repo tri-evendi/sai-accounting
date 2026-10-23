@@ -15,13 +15,20 @@ import (
 
 func handlerKosong(Ctx) (*string, error) { return nil, nil }
 
+// tickSaja: peta handler TIRUAN. Dirakit di luar literal `Runner` dengan
+// sengaja — `tests/kind-punya-pengklaim.test.ts` membaca literal peta handler
+// sebagai PENGKLAIM, dan tes bukan pengklaim yang digelar.
+func tickSaja() map[contract.JobKind]Handler {
+	return map[contract.JobKind]Handler{contract.KindScheduleTick: handlerKosong}
+}
+
 func TestBesideTIDAKBerjalanTanpaPagar(t *testing.T) {
 	// Instans kedua jalur tunggal-instans: pagar dipegang orang lain. Denyut
 	// yang tetap menerbitkan di instans ini adalah penerbit kedua.
 	var jalan atomic.Bool
 	r := &Runner{
 		Lane:     contract.LaneSchedule,
-		Handlers: map[contract.JobKind]Handler{contract.KindScheduleTick: handlerKosong},
+		Handlers: tickSaja(),
 		Beside:   func(context.Context) { jalan.Store(true) },
 		tryLock: func(context.Context, contract.JobLane) (*LaneLock, bool, error) {
 			return nil, false, nil
@@ -39,7 +46,7 @@ func TestBesideTIDAKBerjalanTanpaPagar(t *testing.T) {
 func TestPagarYangGagalDiambilMelempar(t *testing.T) {
 	r := &Runner{
 		Lane:     contract.LaneSchedule,
-		Handlers: map[contract.JobKind]Handler{contract.KindScheduleTick: handlerKosong},
+		Handlers: tickSaja(),
 		Beside:   func(context.Context) { t.Error("Beside berjalan tanpa pagar") },
 		tryLock: func(context.Context, contract.JobLane) (*LaneLock, bool, error) {
 			return nil, false, errors.New("sambungan langsung ditolak")

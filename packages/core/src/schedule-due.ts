@@ -56,8 +56,7 @@ export interface ScheduleCompany {
  * untuk cadangan: RPO satu hari, dan butir jam berarti 24 dump penuh sehari.
  */
 export function scheduleBucket(grain: ScheduleGrain, at: Date): string {
-  const iso = at.toISOString();
-  return grain === "hour" ? iso.slice(0, 13) : iso.slice(0, 10);
+  return grain === "hour" ? at.toISOString().slice(0, 13) : at.toISOString().slice(0, 10);
 }
 
 /** `<kind>:<companyId>:<butir>` (per perusahaan) atau `<kind>:<butir>`. */

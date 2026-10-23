@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.18.0",
+    tanggal: "2026-10-23",
+    ringkas: "Teks halaman depan kini disunting sebagai draf, dipratinjau, lalu diterbitkan dengan riwayat yang bisa dikembalikan.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Perubahan teks halaman depan tampil di situs dalam 30 detik setelah diterbitkan.",
+      },
+    ],
+  },
+  {
     versi: "0.17.0",
     tanggal: "2026-10-23",
+    sha: "42c3b1a",
     ringkas: "Konsol operator kini mewajibkan aplikasi authenticator saat masuk.",
     butir: [
       {

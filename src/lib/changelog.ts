@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.17.0",
+    tanggal: "2026-10-23",
+    ringkas: "Konsol operator kini mewajibkan aplikasi authenticator saat masuk.",
+    butir: [
+      {
+        jenis: "baru",
+        teks: "Operator yang belum memasang authenticator dipandu memindai kode QR saat masuk; sesudahnya setiap login memakai kode 6 digit.",
+      },
+    ],
+  },
+  {
     versi: "0.16.3",
     tanggal: "2026-10-23",
+    sha: "e7ea52d",
     ringkas: "Perusahaan baru yang berhasil dibuat tidak lagi dilaporkan gagal, dan pekerjaan latar yang gagal kini menunggu sebelum dicoba ulang.",
     butir: [
       {

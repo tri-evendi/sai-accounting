@@ -24,11 +24,14 @@
 //	parity cash-flow-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
 //	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> -registry-name <nama registry> -out <berkas.xlsx>
 //	parity equity-changes -database <nama> -from <RFC3339> -to <RFC3339>
+//	parity equity-changes-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
+//	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> -registry-name <nama registry> -out <berkas.xlsx>
 //
 // Arus Kas dan Laporan Perubahan Ekuitas (tahap 1d, 23 Okt 2026) membuka
 // bukunya lewat registry kendali (`openFromRegistry`) seperti Neraca Saldo —
-// instans tempat buku itu hidup, bukan instans bawaan. Laporan Perubahan
-// Ekuitas tidak punya varian -xlsx: laporan itu tidak punya berkas di TS.
+// instans tempat buku itu hidup, bukan instans bawaan. Varian -xlsx Laporan
+// Perubahan Ekuitas lahir bersama berkasnya di TS (keputusan pemilik 23 Okt
+// 2026); pembandingnya `scripts/parity-equity-changes-xlsx.ts`.
 //
 // `-compare` (#557, kolom pembanding): mode `?compare=` dan instan pembanding
 // yang dihitung PENERBIT TS (`goExportPayloadShape` → `comparisonRange` /
@@ -146,7 +149,7 @@ func main() {
 func run(args []string) error {
 	if len(args) == 0 {
 		return errors.New("pakai: parity trial-balance|trial-balance-xlsx|balance-sheet|balance-sheet-xlsx|" +
-			"income-statement|income-statement-xlsx|cash-flow|cash-flow-xlsx|equity-changes|" +
+			"income-statement|income-statement-xlsx|cash-flow|cash-flow-xlsx|equity-changes|equity-changes-xlsx|" +
 			"receivables|receivables-xlsx|payables|payables-xlsx -database <nama> …")
 	}
 	switch args[0] {
@@ -167,7 +170,9 @@ func run(args []string) error {
 	case "cash-flow-xlsx":
 		return cashFlow(args[1:], true)
 	case "equity-changes":
-		return equityChanges(args[1:])
+		return equityChanges(args[1:], false)
+	case "equity-changes-xlsx":
+		return equityChanges(args[1:], true)
 	case "receivables", "payables":
 		return aging(args[0], args[1:], false)
 	case "receivables-xlsx":
@@ -550,13 +555,18 @@ func cashFlow(args []string, xlsx bool) error {
 	return os.WriteFile(*out, data, 0o600)
 }
 
-// equityChanges: Laporan Perubahan Ekuitas sebagai JSON. Angka saja — laporan
-// ini tidak punya berkas di TS (src/lib/report-engine.ts).
-func equityChanges(args []string) error {
+// equityChanges: Laporan Perubahan Ekuitas sebagai JSON, atau (xlsx) lembar
+// sebarnya lewat `internal/document` — kode yang sama dengan pelari jalur
+// `interactive`.
+func equityChanges(args []string, xlsx bool) error {
 	fs := flag.NewFlagSet("equity-changes", flag.ContinueOnError)
 	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
 	fromRaw := fs.String("from", "", "awal periode INKLUSIF sebagai instan RFC3339")
 	toRaw := fs.String("to", "", "akhir periode INKLUSIF sebagai instan RFC3339")
+	fromDate := fs.String("from-date", "", "xlsx: awal periode YYYY-MM-DD (label)")
+	toDate := fs.String("to-date", "", "xlsx: akhir periode YYYY-MM-DD (label)")
+	registryName := fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong")
+	out := fs.String("out", "", "xlsx: berkas .xlsx keluaran")
 	timeout := fs.Duration("timeout", 2*time.Minute, "batas waktu satu laporan")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -569,10 +579,13 @@ func equityChanges(args []string) error {
 	if err != nil {
 		return err
 	}
+	if xlsx && (*fromDate == "" || *toDate == "" || *out == "") {
+		return errors.New("-from-date, -to-date, dan -out wajib")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	r, _, err := openFromRegistry(ctx, *database)
+	r, company, err := openFromRegistry(ctx, *database)
 	if err != nil {
 		return err
 	}
@@ -582,7 +595,26 @@ func equityChanges(args []string) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(es)
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(es)
+	}
+	period, err := document.PeriodRange(*fromDate, *toDate, "")
+	if err != nil {
+		return err
+	}
+	reg := *registryName
+	if strings.TrimSpace(reg) == "" {
+		reg = company.Name
+	}
+	name, err := headerName(ctx, r, reg)
+	if err != nil {
+		return err
+	}
+	data, err := document.EquityStatementWorkbook(es, name, period, time.Now())
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(*out, data, 0o600)
 }
 
 // aging: Umur Piutang / Umur Utang sebagai JSON, atau (xlsx) lembar sebarnya

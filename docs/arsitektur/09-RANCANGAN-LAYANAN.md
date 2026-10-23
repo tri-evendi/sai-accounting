@@ -1166,7 +1166,8 @@ Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
 pt-sai):** Arus Kas 51 setara + isi XLSX 51 setara; Perubahan Ekuitas 51 setara;
 Umur Piutang dan Umur Utang masing-masing 102 setara + isi XLSX 306 setara — 0
 berselisih, 0 gagal. **Arus Kas, Umur Piutang, dan Umur Utang kini `go`.**
-Perubahan Ekuitas tetap `go-parity` sampai ada berkasnya (keputusan produk).
+Perubahan Ekuitas tetap `go-parity`; berkasnya dibangun sesudahnya (keputusan
+pemilik 23 Okt 2026, di bawah) dan menunggu paritas produksi isi berkasnya.
 
 Pola Laba Rugi & Neraca, selangkah demi selangkah, dan BERHENTI di
 `go-parity`: berkas tetap TS sampai sesi utama menjalankan paritas atas buku
@@ -1183,13 +1184,6 @@ produksi.
 | Pembanding angka | `src/lib/cash-flow-parity.ts` · `src/lib/equity-statement-parity.ts` |
 | Paritas atas buku sungguhan, READ ONLY di KEDUA sisi; Go membuka buku lewat registry (instans sungguhan PT) | `bun run parity:cash-flow` · `parity:cash-flow-xlsx` · `parity:equity-changes` |
 | Berkas emas lintas bahasa atas buku fixture bersama (+ buku `buku-arus-kas`: pindah antarakun kas, satu akun masuk DAN keluar, akun netral, baris nol, valas ber-base & berkurs 1, tipe asing, batas hari WIB di kedua ujung, penutup, setoran + prive, akun ekuitas diam) | `statement_books.json` → `go test -update` → `tests/cash-flow-equity-golden.test.ts` (angka, instan penerbit, DAN isi lembar) |
-
-**Laporan Perubahan Ekuitas TIDAK punya berkas** — katalog tanpa `payloadKind`,
-layar saja. Entri `go-parity`-nya karena itu hanya tentang ANGKA, dan penjaga
-register kini menolak `go` untuk laporan tanpa berkas (sebelumnya penjaga
-menolak SEMUA entri tanpa berkas — padahal implementasi Go kedua yang
-disembunyikan dari register adalah kelas kegagalan yang register ini cegah).
-Membangun berkasnya keputusan produk tersendiri.
 
 Paritas lokal (23 Okt 2026, Postgres 17 sekali pakai, 2 buku: 3.068 jurnal
 berpecahan sen dengan valas ber-`base_*`, baris valas berkurs 1, pindah
@@ -1215,6 +1209,49 @@ done
 Lulus `parity:cash-flow` + `parity:cash-flow-xlsx` → `parityProven` di entri
 `cash-flow`, lalu `go-parity` → `go` (register + `bun run contract:gen`).
 
+**Laporan Perubahan Ekuitas BERBERKAS sejak keputusan pemilik 23 Okt 2026**
+(Excel + PDF seperti laporan keuangan lain). Sebelumnya katalog tanpa
+`payloadKind` dan entri `go-parity`-nya hanya tentang ANGKA; penjaga register
+menolak `go` untuk laporan tanpa berkas, dan itu tetap berlaku — yang berubah,
+laporan ini kini punya berkas. Bagian-bagiannya, pola Arus Kas langkah demi
+langkah:
+
+| Bagian | Di mana |
+|---|---|
+| Bentuk SATU untuk layar, PDF, lembar sebar: komponen urut kode, "Laba/Rugi Belum Ditutup" SELALU (arah gerak memilih kolom tambah/kurang), Total tanpa tambah/kurang (sel kosong) | `equityStatementLayout()` · `statement-layout.ts` · `tests/equity-statement-shape.test.ts` |
+| Muatan `equity-changes` (halaman & jalur berkas memakai `equityChangesPayload`), lembar TS, PDF (+ kalimat rekonsiliasi di bawah tabel, PDF saja) | `report-payload.ts` · `report-export.ts` · `pdf/statement-pdf.ts` |
+| Lembar sebar Go — kalimat, kolom & lebar DIBANGKITKAN dari `EQUITY_STATEMENT_*` (`contract:gen`) | `internal/document/equity_statement.go` · `report_layout_gen.go` |
+| Penghasil di pelari `interactive` — DITOLAK selama `go-parity`; muatan pembanding DITOLAK sebelum buku dibuka | `internal/interactivelane` (`perubahanEkuitas`) |
+| Halaman mengirim `sumber` (`from`/`to`); penjaga register kini menuntut cabang penghasil Go untuk SETIAP laporan berberkas di register (dan tidak ada untuk yang tanpa berkas) | `reports/equity-changes/page.tsx` · `tests/report-engine.test.ts` |
+| Paritas isi berkas atas buku sungguhan | `bun run parity:equity-changes-xlsx` (`cmd/parity equity-changes-xlsx`) |
+| Berkas emas: 10 lembar ekuitas Go ⇄ jalur berkas TS (isi), atas buku fixture bersama | `go test ./internal/document -update` → `tests/cash-flow-equity-golden.test.ts` |
+
+Paritas lokal berkasnya (23 Okt 2026, Postgres 17 sekali pakai, 3 buku: 1.847
+jurnal bertahun buku Januari dengan dua jurnal penutup, valas ber-`base_*`,
+setoran + prive + tarik setoran di periode yang sama, akun ekuitas diam dan
+yang hanya bersaldo awal, tipe akun asing, baris nol, jurnal tepat di
+`T17:00:00.000Z`/`T16:59:59.999Z` pada setiap batas; 940 jurnal bertahun buku
+April dengan penutup Maret; buku tanpa wizard timpang satu sen):
+`parity:equity-changes` 21/21 setara dan `parity:equity-changes-xlsx` 21/21
+setara (3 buku × 7 periode: tiga bawaan, Des–Mar melintasi penutup, tahun buku
+April, satu hari, periode yang belum berjalan penuh).
+
+Perintah paritas produksi berkasnya (sesi utama, biner dari checkout yang
+sama):
+
+```bash
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+for s in parity:equity-changes parity:equity-changes-xlsx; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity \
+      --period "$(date +%Y)-01-01..$(date +%F),$(( $(date +%Y)-1 ))-01-01..$(( $(date +%Y)-1 ))-12-31,$(( $(date +%Y)-1 ))-07-01..$(date +%Y)-06-30"
+done
+```
+
+Lulus keduanya → `parityProven` di entri `equity-changes`, lalu `go-parity` →
+`go` (register + `bun run contract:gen`). Image `migrate` harus dari checkout
+yang memuat `scripts/parity-equity-changes-xlsx.ts`.
+
 #### Laporan keenam & ketujuh: Umur Piutang dan Umur Utang (`go-parity`, 23 Okt 2026)
 
 Laporan tahap 1d PERTAMA yang tidak membaca baris jurnal, melainkan DOKUMEN
@@ -1224,7 +1261,7 @@ transaksi pemasok beserta alokasinya. Aturannya disalin dari
 
 | Bagian | Di mana |
 |---|---|
-| Pembaca: rupiah dasar (`base_amount` → `amount` IDR → `amount × rate` → TIDAK ADA), status turunan, umur hari kalender Jakarta, potret historis, bagian kontrak yang sudah difakturkan (penjodohan NAMA, #15), alokasi tercatat lalu FIFO (#37), urutan tanggal ↓ id ↓ | `ledgerread/aging.go` |
+| Pembaca: rupiah dasar (`base_amount` → `amount` IDR → `amount × rate` → TIDAK ADA), status turunan, umur hari kalender Jakarta, potret historis, bagian kontrak yang sudah difakturkan (penjodohan `item_id` lalu nama tunggal, #15 · #491/#503), alokasi tercatat lalu FIFO (#37), urutan tanggal ↓ id ↓ | `ledgerread/aging.go` |
 | Lembar sebar (kolom `?cols=`, saringan `?overdue=1`, ringkasan ember, catatan kaki) | `document/aging.go` |
 | Ember umur (batas atas inklusif 30/60/90) | `contract/accounting.yaml` → `aging` — dibaca `receivables.ts` DAN Go |
 | Kalimat, judul, lebar, label ember & status, kolom katalog | `statement-layout.ts` / `report-export.ts` / `report-catalog.ts` → `contract/aging_layout_gen.go` (berkas bangkitan tersendiri) |
@@ -1253,7 +1290,13 @@ Keputusan & temuan yang lahir di jalan:
 4. **Penjodohan bagian kontrak yang difakturkan memakai NAMA saja** — receivables
    tidak meneruskan `itemId` ke `buildContractOutstanding`, berbeda dengan
    halaman detail kontrak (#491). Disalin apa adanya ke Go; dilaporkan, tidak
-   diubah.
+   diubah. **Diperbaiki sesudahnya** (keputusan pemilik 23 Okt 2026, cabang
+   `fix/aging-contract-item-id`): TS dan Go kini meneruskan `item_id` di kedua
+   kaki — `chainLineKey` untuk baris kontrak, `resolveChainKey` untuk baris
+   faktur (id → nama yang menunjuk TEPAT SATU baris → tak berjodoh). Halaman
+   detail kontrak dan pagar faktur (`contractOutstandingForInvoice`) ikut
+   meneruskan `itemId` hilirnya, yang dulu dipilih tetapi tak pernah sampai.
+   Fikstur bersama: `ledgerread/testdata/aging-contract-matching.json`.
 
 Paritas LOKAL (23 Okt 2026, PostgreSQL 17 sekali pakai, buku sintetis +
 buku kosong; tepi ember 30/31/60/61/90/91, jatuh tempo hari ini, jatuh tempo

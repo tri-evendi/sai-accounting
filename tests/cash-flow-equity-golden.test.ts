@@ -1,7 +1,8 @@
 /**
  * PARITAS Arus Kas & Laporan Perubahan Ekuitas, TS ⇄ Go — ANGKA, dan ISI
- * LEMBAR SEBAR Arus Kas — di gerbang yang tak pernah dilewati (`bun run
- * verify`), tanpa toolchain Go.
+ * LEMBAR SEBAR keduanya (Perubahan Ekuitas berberkas sejak keputusan pemilik
+ * 23 Okt 2026) — di gerbang yang tak pernah dilewati (`bun run verify`), tanpa
+ * toolchain Go.
  *
  * Keduanya `engine: "go-parity"` (`src/lib/report-engine.ts`, 23 Okt 2026). Pola
  * yang sama dengan `tests/statements-golden.test.ts` dan buku fixture yang
@@ -9,11 +10,11 @@
  * kunci `cashFlows` / `equityStatements`):
  *
  *   • Go menulis berkas emas angka (`go test ./internal/ledgerread -update`) dan
- *     lembar sebar Arus Kas (`go test ./internal/document -update`);
+ *     lembar sebar keduanya (`go test ./internal/document -update`);
  *   • sisi ini menjalankan `getCashFlow` / `getEquityStatement` atas klien
  *     palsu berisi buku yang sama dan membandingkannya memakai pembanding
  *     paritas PRODUKSI (`cash-flow-parity.ts`, `equity-statement-parity.ts`),
- *     lalu merakit lembar Arus Kas lewat jalur berkas TS (`buildReportPayload`
+ *     lalu merakit lembar keduanya lewat jalur berkas TS (`buildReportPayload`
  *     → `buildReportSheet` → ExcelJS) dan membandingkan ISI-nya dengan berkas
  *     emas Go;
  *   • instan periode yang ditulis Go = `resolvePeriod` TS = muatan penerbit Go
@@ -43,6 +44,8 @@ import { BOOKS, client, goNumbers, goSheet } from "./statement-books";
 
 const CASH_FLOW = reportById("cash-flow")!;
 if (!isExportable(CASH_FLOW)) throw new Error("Arus Kas tak dapat diekspor?");
+const EQUITY = reportById("equity-changes")!;
+if (!isExportable(EQUITY)) throw new Error("Laporan Perubahan Ekuitas tak dapat diekspor?");
 
 /** Instan yang sama? Go menulis RFC3339 tanpa milidetik nol, JS selalu `.000Z`. */
 const sameInstant = (a: string | Date | undefined, b: string | null) =>
@@ -100,6 +103,23 @@ for (const book of BOOKS) {
         const ts = await getEquityStatement(from, to, client(book) as never);
         expect(compareEquityStatement(ts, g), "selisih angka").toEqual([]);
       });
+
+      it(`${c.case}: instan periode Go = penerbit Go`, () => {
+        const g = goNumbers<GoEquityStatement>(c.case);
+        const muatan = goExportPayloadShape(EQUITY, { from: c.from, to: c.to });
+        expect(sameInstant(muatan.fromInstant, g.from)).toBe(true);
+        expect(sameInstant(muatan.toInstant, g.to)).toBe(true);
+        expect(muatan.params).toEqual({ from: c.from, to: c.to });
+      });
+
+      it(`${c.case}: isi lembar sebar setara — jalur berkas DAN jalur sinkron`, async () => {
+        const payload = await buildReportPayload(EQUITY as never, { from: c.from, to: c.to }, client(book) as never);
+        const ts = await buildWorkbookBuffer([buildReportSheet(payload)], { name: book.companyName });
+        expect(await compareWorkbookContent(new Uint8Array(ts), goSheet(c.case)), "berkas ⇄ Go").toEqual([]);
+        /* Jalur sinkron halaman: muatan yang SAMA melewati skema rute ekspor. */
+        const sinkron = statementPayloadSchema.parse(JSON.parse(JSON.stringify(payload)));
+        expect(buildReportSheet(sinkron)).toEqual(buildReportSheet(payload));
+      });
     }
   });
 }
@@ -132,6 +152,15 @@ describe("pembanding Arus Kas & Ekuitas MELIHAT selisih — bukan selalu hijau",
     const ts = await getCashFlow(r.from, r.to, client(timpang) as never);
     expect(ts.reconciled).toBe(false);
     expect(goNumbers<GoCashFlow>("arus-kas-timpang").reconciled).toBe(false);
+  });
+
+  it("Ekuitas: lembar sebar yang berbeda satu sen TERTANGKAP pembanding isi", async () => {
+    const r = { from: "2025-12-01", to: "2026-03-31" };
+    const payload = await buildReportPayload(EQUITY as never, r, client(book) as never);
+    if (payload.kind !== "equity-changes") throw new Error(payload.kind);
+    payload.components[0]!.closing += 0.01;
+    const ts = await buildWorkbookBuffer([buildReportSheet(payload)], { name: book.companyName });
+    expect((await compareWorkbookContent(new Uint8Array(ts), goSheet("ekuitas-lintas-tutup"))).length).toBeGreaterThan(0);
   });
 
   it("Ekuitas: setoran dan prive tidak saling meniadakan; penutup ikut", async () => {

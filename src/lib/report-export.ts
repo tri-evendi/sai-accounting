@@ -31,6 +31,7 @@ import {
   cashFlowLayout,
   cashFlowReconciliationNote,
   comparePercentText,
+  equityStatementLayout,
   incomeStatementLayout,
   partyRecapColumns,
   splitBalanceSheetRows,
@@ -46,6 +47,8 @@ import {
   CASH_BANK_HEADERS,
   CASH_FLOW_COLUMNS,
   CASH_FLOW_HEADERS,
+  EQUITY_STATEMENT_COLUMNS,
+  EQUITY_STATEMENT_HEADERS,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   PARTY_RECAP_HEADERS,
@@ -63,6 +66,7 @@ import {
   type BudgetColumnId,
   type CashBankColumnId,
   type CashFlowColumnId,
+  type EquityStatementColumnId,
   type IncomeStatementColumnId,
   type IncomeStatementLayoutRow,
   type PartyRecapColumnId,
@@ -914,6 +918,51 @@ function buildBudgetSheet(
   };
 }
 
+/**
+ * Lebar kolom Laporan Perubahan Ekuitas, sejajar dengan
+ * `EQUITY_STATEMENT_COLUMNS`. Dibangkitkan ke Go (`report_layout_gen.go`);
+ * judulnya datang dari `EQUITY_STATEMENT_HEADERS` bersama cetakan.
+ */
+export const EQUITY_STATEMENT_WIDTHS: Record<EquityStatementColumnId, number> = {
+  component: 44,
+  opening: 20,
+  additions: 20,
+  reductions: 20,
+  closing: 20,
+};
+
+function buildEquityStatementSheet(
+  p: Extract<StatementPayload, { kind: "equity-changes" }>
+): SheetModel {
+  // Bentuknya seluruhnya milik `equityStatementLayout()` — komponen, baris laba
+  // belum ditutup (arah geraknya menentukan kolom), dan Total.
+  const rows = equityStatementLayout(p).map((r): SheetCell[] => {
+    /* Tebal hanya baris Total; baris laba belum ditutup adalah komponen. */
+    const bold = r.kind === "total";
+    /* Nol tetap ANGKA nol (kolomnya harus bisa dijumlah); yang TIDAK BERLAKU
+       (tambah/kurang di baris Total) sel kosong, bukan nol. */
+    const amount = (value: number | null): SheetCell =>
+      value === null ? text(null) : money(value, bold);
+    return [
+      text(r.label, bold),
+      amount(r.opening),
+      amount(r.additions),
+      amount(r.reductions),
+      amount(r.closing),
+    ];
+  });
+  return {
+    name: SHEET_NAMES[p.kind],
+    title: STATEMENT_TITLES[p.kind],
+    period: p.period,
+    columns: EQUITY_STATEMENT_COLUMNS.map((c) => ({
+      header: EQUITY_STATEMENT_HEADERS[c],
+      width: EQUITY_STATEMENT_WIDTHS[c],
+    })),
+    rows,
+  };
+}
+
 /** Map any statement payload to its sheet model. One entry point, one mapping. */
 export function buildReportSheet(payload: StatementPayload): SheetModel {
   switch (payload.kind) {
@@ -929,6 +978,8 @@ export function buildReportSheet(payload: StatementPayload): SheetModel {
       return buildTrialBalanceSheet(payload);
     case "cash-flow":
       return buildCashFlowSheet(payload);
+    case "equity-changes":
+      return buildEquityStatementSheet(payload);
     case "sales-by-customer":
     case "purchases-by-supplier":
       return buildPartyRecapSheet(payload);

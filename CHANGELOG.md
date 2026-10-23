@@ -20,7 +20,21 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.15.2 — 2026-10-23 — belum digelar
+## 0.16.0 — 2026-10-23 — belum digelar
+
+Laporan Perubahan Ekuitas bisa diunduh, dan pencocokan barang kontrak di Umur Piutang kini sama dengan halaman kontrak.
+
+### Baru
+
+- Laporan Perubahan Ekuitas kini bisa diunduh sebagai Excel dan PDF.
+
+### Perbaikan
+
+- Umur Piutang, halaman detail kontrak, dan batas penagihan faktur kini mencocokkan barang kontrak berdasarkan barangnya, bukan hanya namanya — dua barang bernama sama tidak lagi tertukar.
+
+---
+
+## 0.15.2 — 2026-10-23 (ef6b7b7)
 
 Penjadwalan cadangan harian kini dijalankan layanan latar yang baru; tidak ada perubahan pada tampilan.
 

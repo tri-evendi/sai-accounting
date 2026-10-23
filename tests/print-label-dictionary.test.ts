@@ -138,6 +138,8 @@ import {
   CASH_BANK_HEADERS,
   CASH_FLOW_HEADERS,
   CASH_FLOW_PRINT_LABELS,
+  EQUITY_STATEMENT_HEADERS,
+  EQUITY_STATEMENT_PRINT_LABELS,
   INCOME_STATEMENT_HEADERS,
   INCOME_STATEMENT_PRINT_LABELS,
   PARTY_RECAP_HEADERS,
@@ -203,6 +205,16 @@ const PADANAN: Padanan[] = [
   { di: "CASH_FLOW_HEADERS.inflow", cetak: CASH_FLOW_HEADERS.inflow, kunci: "reports.colCashIn", bentuk: "kamus+IDR" },
   { di: "CASH_FLOW_HEADERS.outflow", cetak: CASH_FLOW_HEADERS.outflow, kunci: "reports.colCashOut", bentuk: "kamus+IDR" },
   { di: "CASH_FLOW_HEADERS.net", cetak: CASH_FLOW_HEADERS.net, kunci: "reports.colCashNet", bentuk: "kamus+IDR" },
+
+  // ── Laporan Perubahan Ekuitas (berkas sejak 23 Okt 2026) ─────────────────
+  { di: "EQUITY_STATEMENT_PRINT_LABELS.unclosed", cetak: EQUITY_STATEMENT_PRINT_LABELS.unclosed, kunci: "reports.unclosedIncomeRow" },
+  { di: "EQUITY_STATEMENT_PRINT_LABELS.total", cetak: EQUITY_STATEMENT_PRINT_LABELS.total, kunci: "common.total" },
+  { di: "EQUITY_STATEMENT_PRINT_LABELS.note", cetak: EQUITY_STATEMENT_PRINT_LABELS.note, kunci: "reports.equityReconcileNote" },
+  { di: "EQUITY_STATEMENT_HEADERS.component", cetak: EQUITY_STATEMENT_HEADERS.component, kunci: "reports.colEquityComponent" },
+  { di: "EQUITY_STATEMENT_HEADERS.opening", cetak: EQUITY_STATEMENT_HEADERS.opening, kunci: "reports.colOpening", bentuk: "kamus+IDR" },
+  { di: "EQUITY_STATEMENT_HEADERS.additions", cetak: EQUITY_STATEMENT_HEADERS.additions, kunci: "reports.colAdditions", bentuk: "kamus+IDR" },
+  { di: "EQUITY_STATEMENT_HEADERS.reductions", cetak: EQUITY_STATEMENT_HEADERS.reductions, kunci: "reports.colReductions", bentuk: "kamus+IDR" },
+  { di: "EQUITY_STATEMENT_HEADERS.closing", cetak: EQUITY_STATEMENT_HEADERS.closing, kunci: "reports.colClosing", bentuk: "kamus+IDR" },
 
   // ── Neraca (#258) ─────────────────────────────────────────────────────────
   { di: "BALANCE_SHEET_PRINT_LABELS.assets", cetak: BALANCE_SHEET_PRINT_LABELS.assets, kunci: "reports.sectionAssets" },
@@ -500,6 +512,8 @@ const TABEL: Record<string, object> = {
   CASH_FLOW_PRINT_LABELS,
   CASH_FLOW_HEADERS,
   CASH_FLOW_CATEGORY_LABELS,
+  EQUITY_STATEMENT_PRINT_LABELS,
+  EQUITY_STATEMENT_HEADERS,
   BALANCE_SHEET_PRINT_LABELS,
   BALANCE_SHEET_HEADERS,
   TRIAL_BALANCE_PRINT_LABELS,

@@ -102,9 +102,9 @@ export function SiteSettingsForm({
   const gateOptions = (envValue: boolean) => [
     {
       value: "env",
-      label: `${t("operator.settings.gateEnv")} — ${
+      label: `${t("operator.settings.gateEnv")} (${
         envValue ? t("operator.settings.gateOn") : t("operator.settings.gateOff")
-      }`,
+      })`,
     },
     { value: "on", label: t("operator.settings.gateOn") },
     { value: "off", label: t("operator.settings.gateOff") },

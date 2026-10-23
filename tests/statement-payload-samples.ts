@@ -85,6 +85,17 @@ export const CONTOH_PAYLOAD: StatementPayload[] = [
     suspectUnrated: 0,
   },
   {
+    kind: "equity-changes",
+    period: PERIODE,
+    components: [
+      { code: "3-100", name: "Modal Disetor", opening: 5_000_000, additions: 1_000_000, reductions: 0, closing: 6_000_000 },
+      { code: "3-200", name: "Prive", opening: 0, additions: 0, reductions: 250_000, closing: -250_000 },
+    ],
+    unclosedIncome: { opening: 2_000_000, movement: -500_000, closing: 1_500_000 },
+    totalOpening: 7_000_000,
+    totalClosing: 7_250_000,
+  },
+  {
     kind: "stock-movement",
     period: PERIODE,
     rows: [

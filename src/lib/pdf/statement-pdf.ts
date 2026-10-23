@@ -28,6 +28,7 @@ import {
   cashFlowLayout,
   cashFlowPrintAmount,
   cashFlowReconciliationNote,
+  equityStatementLayout,
   partyRecapColumns,
   splitBalanceSheetRows,
   splitIncomeStatementRows,
@@ -43,6 +44,9 @@ import {
   CASH_BANK_HEADERS,
   CASH_FLOW_COLUMNS,
   CASH_FLOW_HEADERS,
+  EQUITY_STATEMENT_COLUMNS,
+  EQUITY_STATEMENT_HEADERS,
+  EQUITY_STATEMENT_PRINT_LABELS,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   PARTY_RECAP_HEADERS,
@@ -369,6 +373,27 @@ export type StatementPayload =
       closingCash: number;
       reconciled: boolean;
       suspectUnrated: number;
+    }
+  /**
+   * Laporan Perubahan Ekuitas (#555; berkas sejak keputusan pemilik 23 Okt
+   * 2026). Bentuk `EquityStatement` (`@/lib/equity-statement`) apa adanya —
+   * baris laba belum ditutup dan Total disusun `equityStatementLayout()`, bukan
+   * dikirim, supaya ketiga permukaan tak bisa berselisih tentang arahnya.
+   */
+  | {
+      kind: "equity-changes";
+      period: string;
+      components: {
+        code: string;
+        name: string;
+        opening: number;
+        additions: number;
+        reductions: number;
+        closing: number;
+      }[];
+      unclosedIncome: { opening: number; movement: number; closing: number };
+      totalOpening: number;
+      totalClosing: number;
     };
 
 /*
@@ -475,6 +500,27 @@ export function cashFlowPrintRows(payload: Extract<StatementPayload, { kind: "ca
   const foot = rows[rows.length - 1];
   foot[0] = `${foot[0]} ${cashFlowReconciliationNote(payload.reconciled)}`;
   return { body: rows.slice(0, -1), foot };
+}
+
+/**
+ * Badan + kaki tabel Laporan Perubahan Ekuitas sebagai teks — dipisah dari
+ * penggambarnya supaya bisa DIBANDINGKAN dengan lembar sebar dan layar tanpa
+ * satu byte PDF pun (pola `cashFlowPrintRows`). Bentuknya seluruhnya milik
+ * `equityStatementLayout()`; baris terakhirnya selalu Total — kakinya.
+ */
+export function equityStatementPrintRows(
+  payload: Extract<StatementPayload, { kind: "equity-changes" }>
+): { body: string[][]; foot: string[] } {
+  const rows = equityStatementLayout(payload).map((r) => [
+    r.label,
+    // Kolom yang tidak berlaku tetap KOSONG; nol yang memang nol ditulis
+    // rupiah — saldo ekuitas nol adalah pernyataan posisi, seperti Neraca.
+    rp(r.opening),
+    r.additions === null ? "" : rp(r.additions),
+    r.reductions === null ? "" : rp(r.reductions),
+    rp(r.closing),
+  ]);
+  return { body: rows.slice(0, -1), foot: rows[rows.length - 1] };
 }
 
 /**
@@ -1069,6 +1115,30 @@ export function generateStatementPDF(payload: StatementPayload, company: PdfComp
         noteY += 5;
       }
     }
+  }
+
+  if (payload.kind === "equity-changes") {
+    const { body, foot } = equityStatementPrintRows(payload);
+    autoTable(doc, {
+      startY: y,
+      head: [EQUITY_STATEMENT_COLUMNS.map((c) => EQUITY_STATEMENT_HEADERS[c])],
+      body,
+      foot: [foot],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: BRAND },
+      footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+      columnStyles: {
+        1: { halign: "right" },
+        2: { halign: "right" },
+        3: { halign: "right" },
+        4: { halign: "right" },
+      },
+    });
+
+    // Janji rekonsiliasi — kalimat yang sama dengan di bawah tabel layar.
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(EQUITY_STATEMENT_PRINT_LABELS.note, 14, afterTable(doc) + 6);
   }
 
   if (payload.kind === "cash-flow") {

@@ -19,7 +19,13 @@
  * yang lupa diberi pembaca ditolak `tsc` di sini — bukan muncul sebagai tombol
  * unduh yang menjawab 500.
  */
-import { getBalanceSheet, getCashFlow, getIncomeStatement, getTrialBalance } from "@/lib/reports";
+import {
+  getBalanceSheet,
+  getCashFlow,
+  getEquityStatement,
+  getIncomeStatement,
+  getTrialBalance,
+} from "@/lib/reports";
 import { getOpnameHistory, getStockMovementReport, getStockValuePeriodReport } from "@/lib/stock-report";
 import { getPurchasesBySupplier, getSalesByCustomer } from "@/lib/party-recap";
 import { getBudgetReport, getSalesTargetRealization } from "@/lib/budget-report";
@@ -334,12 +340,56 @@ export function budgetPayload(
   };
 }
 
+/**
+ * Muatan Laporan Perubahan Ekuitas dari hasil `getEquityStatement` — MURNI,
+ * dipakai halaman laporannya DAN jalur berkas, supaya keduanya tidak menyusun
+ * bentuk yang hanya kebetulan sama.
+ */
+export function equityChangesPayload(
+  from: Date,
+  to: Date,
+  statement: {
+    components: readonly {
+      code: string;
+      name: string;
+      opening: number;
+      additions: number;
+      reductions: number;
+      closing: number;
+    }[];
+    unclosedIncome: { opening: number; movement: number; closing: number };
+    totalOpening: number;
+    totalClosing: number;
+  }
+): Extract<StatementPayload, { kind: "equity-changes" }> {
+  return {
+    kind: "equity-changes",
+    // Ekuitas milik perusahaan — tidak ada saringan pusat biaya.
+    period: periodLabel(from, to, null),
+    components: statement.components.map(({ code, name, opening, additions, reductions, closing }) => ({
+      code,
+      name,
+      opening,
+      additions,
+      reductions,
+      closing,
+    })),
+    unclosedIncome: {
+      opening: statement.unclosedIncome.opening,
+      movement: statement.unclosedIncome.movement,
+      closing: statement.unclosedIncome.closing,
+    },
+    totalOpening: statement.totalOpening,
+    totalClosing: statement.totalClosing,
+  };
+}
+
 export async function buildReportPayload(
   report: ExportableReport,
   params: ReportPayloadParams,
   /**
    * Klien buku untuk laporan yang punya padanan Go (Neraca Saldo, Neraca, Laba
-   * Rugi, Arus Kas, Umur Piutang, Umur Utang).
+   * Rugi, Arus Kas, Perubahan Ekuitas, Umur Piutang, Umur Utang).
    * Bawaannya klien perusahaan biasa; skrip paritas tahap 1d menyerahkan klien
    * transaksi READ ONLY supaya perbandingan atas buku produksi terbukti hanya
    * membaca. Laporan lain mengabaikannya.
@@ -455,6 +505,13 @@ export async function buildReportPayload(
         reconciled: cf.reconciled,
         suspectUnrated: cf.suspectUnrated,
       };
+    }
+
+    case "equity-changes": {
+      const { from, to } = resolvePeriod(params.from, params.to);
+      /* Klien diteruskan: Laporan Perubahan Ekuitas `go-parity` — skrip
+         paritas menyerahkan transaksi READ ONLY, berkas emas klien palsu. */
+      return equityChangesPayload(from, to, await getEquityStatement(from, to, client));
     }
 
     case "stock-movement": {

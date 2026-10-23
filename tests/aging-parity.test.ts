@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { SERI_FLOAT, compareAging, type GoAgingReport, type TsAgingResult } from "@/lib/aging-parity";
 import { REPORT_ENGINES, exportJobKind, reportEngine } from "@/lib/report-engine";
 import { agingBucket } from "@/lib/receivables";
+import { buildContractOutstanding } from "@/lib/document-chain";
 import { AGING_BUCKETS, AGING_BUCKET_MAX_DAYS } from "@sai/core/generated/accounting";
 import { AKAR_REPO } from "./akar-sumber";
 
@@ -130,5 +131,75 @@ describe("register: Umur Piutang & Umur Utang `go`", () => {
     /* Muatan membawa `cols` & `overdue` — dibaca dengan bunyi yang sama dengan TS. */
     expect(runner).toContain('m.Params["overdue"] == "1"');
     expect(runner).toContain('m.Params["cols"]');
+  });
+});
+
+describe("bagian kontrak yang difakturkan: penjodohan #491/#503, sama dengan Go", () => {
+  /*
+   * Fikstur BERSAMA dengan `aging_contract_test.go`. `getReceivables` memanggil
+   * `buildContractOutstanding(...).totals.invoicedValue` dengan `itemId` di
+   * KEDUA kaki — aturan halaman detail kontrak (`loadContractChain`) — dan Go
+   * wajib menghasilkan sen yang sama. `oldNameOnly` = aturan LAMA (nama saja),
+   * dijaga juga supaya angka dampak di badan PR tidak bisa keliru.
+   */
+  type Fx = {
+    cases: {
+      name: string;
+      lines: { itemId: number | null; itemName: string; bags: string; kgPerBag: string; pricePerKg: string }[];
+      invoiced: { itemId: number | null; itemName: string; quantity: string; price: string }[];
+      invoicedValue: string;
+      oldNameOnly: string;
+    }[];
+  };
+  const fx = JSON.parse(
+    readFileSync(
+      join(AKAR_REPO, "services", "integrator", "internal", "ledgerread", "testdata", "aging-contract-matching.json"),
+      "utf8"
+    )
+  ) as Fx;
+  const lines = (c: Fx["cases"][number], ids: boolean) =>
+    c.lines.map((l) => ({
+      itemId: ids ? l.itemId : null,
+      itemName: l.itemName,
+      bags: Number(l.bags),
+      kgPerBag: Number(l.kgPerBag),
+      pricePerKg: Number(l.pricePerKg),
+    }));
+  const invoiced = (c: Fx["cases"][number], ids: boolean) =>
+    c.invoiced.map((l) => ({
+      itemId: ids ? l.itemId : null,
+      itemName: l.itemName,
+      quantity: Number(l.quantity),
+      price: Number(l.price),
+    }));
+
+  it("fikstur memuat kasus yang diminta", () => {
+    expect(fx.cases.length).toBeGreaterThanOrEqual(8);
+  });
+
+  for (const c of fx.cases) {
+    it(c.name, () => {
+      const now = buildContractOutstanding({ lines: lines(c, true), invoiced: invoiced(c, true) });
+      expect(now.totals.invoicedValue.toFixed(2)).toBe(c.invoicedValue);
+      const old = buildContractOutstanding({ lines: lines(c, false), invoiced: invoiced(c, false) });
+      expect(old.totals.invoicedValue.toFixed(2)).toBe(c.oldNameOnly);
+    });
+  }
+
+  it("getReceivables, halaman kontrak, dan pagar faktur meneruskan itemId di setiap kaki", () => {
+    const rec = readFileSync(join(AKAR_REPO, "src", "lib", "receivables.ts"), "utf8");
+    const call = rec.slice(rec.indexOf("buildContractOutstanding({"), rec.indexOf("}).totals.invoicedValue"));
+    expect(call.match(/itemId: i\.itemId/g)?.length, "receivables.ts").toBe(2);
+
+    const chain = readFileSync(join(AKAR_REPO, "src", "lib", "document-chain.ts"), "utf8");
+    for (const fn of ["export async function loadContractChain", "export async function contractOutstandingForInvoice"]) {
+      const body = chain.slice(chain.indexOf(fn));
+      const call2 = body.slice(body.indexOf("buildContractOutstanding({"), body.indexOf("\n  });"));
+      expect(call2.match(/itemId: i\.itemId/g)?.length, fn).toBe(3);
+    }
+
+    const go = readFileSync(join(AKAR_REPO, "services", "integrator", "internal", "ledgerread", "aging.go"), "utf8");
+    expect(go).toContain("SELECT ci.contract_id, ci.item_id, ci.item_name");
+    expect(go).toContain("SELECT i.contract_id, ii.item_id, ii.item_name");
   });
 });

@@ -18,6 +18,13 @@
  * yang sama diikuti prive Rp 500 juta sebagai NOL — dua peristiwa yang sangat
  * berbeda artinya, terbaca seperti tidak ada yang terjadi. Laporan perubahan
  * ekuitas yang tidak menunjukkan keduanya tidak menjelaskan perubahan apa pun.
+ *
+ * ── Bentuknya milik `equityStatementLayout()` (berkas sejak 23 Okt 2026) ───
+ * Sejak laporan ini punya Excel & PDF, barisnya — termasuk arah baris laba
+ * belum ditutup dan kolom yang tak berlaku di baris Total — disusun di
+ * `statement-layout.ts`, satu penentu untuk layar, kertas, dan lembar sebar.
+ * Halaman ini tinggal menggambarnya dengan label kamus, dari `payload` yang
+ * SAMA dengan yang diterima kedua tombol unduh.
  */
 import { notFound } from "next/navigation";
 import { LayoutOutlined } from "@ant-design/icons";
@@ -33,7 +40,10 @@ import type { SaiColumns } from "@sai/ui/table-columns";
 import { EmptyState } from "@sai/ui/empty-state";
 import { PageHeader } from "@sai/ui/page-header";
 import { PeriodFilter } from "../report-filters";
+import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { reportById, resolvePeriod } from "@/lib/report-catalog";
+import { equityChangesPayload } from "@/lib/report-payload";
+import { equityStatementLayout } from "@/lib/statement-layout";
 import { formatDate } from "@sai/core/utils";
 import { getT } from "@sai/platform/i18n/server";
 
@@ -70,34 +80,29 @@ export default async function EquityChangesReportPage({
   const definition = reportById("equity-changes");
   if (!definition) notFound();
 
-  const rows: EquityRow[] = statement.components.map((c) => ({
-    key: c.code,
-    name: c.name,
-    code: c.code,
-    opening: c.opening,
-    additions: c.additions,
-    reductions: c.reductions,
-    closing: c.closing,
-  }));
-
   /*
-   * Laba belum ditutup ditambahkan sebagai baris TANPA kode akun — ia memang
-   * tidak punya akun, dan itulah keadaan yang membuat laporan ini perlu ada.
-   * Menyembunyikannya membuat saldo akhir tidak berjumlah ekuitas di Neraca.
-   *
-   * Satu pergerakan, dua kolom: arahnya yang menentukan kolom mana yang
-   * memikulnya, supaya rugi tidak tampil sebagai "penambahan negatif".
+   * SATU payload untuk tiga permukaan: tabel di layar, tombol PDF, dan tombol
+   * Excel. Barisnya dari `equityStatementLayout()` dengan label kamus — laba
+   * belum ditutup (baris TANPA kode akun; arah geraknya yang menentukan kolom
+   * tambah/kurang, supaya rugi tidak tampil sebagai "penambahan negatif"), lalu
+   * Total sebagai baris terakhir.
    */
-  const gerak = statement.unclosedIncome.movement;
-  rows.push({
-    key: "unclosed",
-    name: t("reports.unclosedIncomeRow"),
-    code: null,
-    opening: statement.unclosedIncome.opening,
-    additions: gerak > 0 ? gerak : 0,
-    reductions: gerak < 0 ? -gerak : 0,
-    closing: statement.unclosedIncome.closing,
+  const payload = equityChangesPayload(from, to, statement);
+  const layout = equityStatementLayout(payload, {
+    unclosed: t("reports.unclosedIncomeRow"),
+    total: t("common.total"),
+    note: t("reports.equityReconcileNote"),
   });
+  const total = layout[layout.length - 1]!;
+  const rows: EquityRow[] = layout.slice(0, -1).map((r) => ({
+    key: r.code ?? "unclosed",
+    name: r.kind === "line" ? r.name! : r.label,
+    code: r.kind === "line" ? r.code! : null,
+    opening: r.opening,
+    additions: r.additions ?? 0,
+    reductions: r.reductions ?? 0,
+    closing: r.closing,
+  }));
 
   const money = (id: "opening" | "additions" | "reductions" | "closing", title: string) =>
     moneyColumn<EquityRow>({ dataIndex: id, title, currency: () => "IDR" });
@@ -143,11 +148,11 @@ export default async function EquityChangesReportPage({
   const summary: SummaryRow[] = [
     {
       cells: {
-        component: { content: t("common.total"), scope: "row" },
-        opening: <Money value={statement.totalOpening} currency="IDR" />,
+        component: { content: total.label, scope: "row" },
+        opening: <Money value={total.opening} currency="IDR" />,
         additions: "",
         reductions: "",
-        closing: <Money value={statement.totalClosing} currency="IDR" />,
+        closing: <Money value={total.closing} currency="IDR" />,
       },
     },
   ];
@@ -164,6 +169,19 @@ export default async function EquityChangesReportPage({
           from: formatDate(from),
           to: formatDate(to),
         })}
+        actions={
+          <>
+            <StatementPDFButton payload={payload} />
+            {/* `sumber` ikut SELALU: laporan ini `go-parity`
+                (src/lib/report-engine.ts), dan begitu register beralih ke
+                `go` lembar sebarnya dihitung pelari Go dari PARAMETER —
+                tanpa `sumber` rute ekspor menjawab 400. */}
+            <StatementExcelButton
+              payload={payload}
+              sumber={{ reportId: "equity-changes", params: { from: fromISO, to: toISO } }}
+            />
+          </>
+        }
       />
 
       <PeriodFilter basePath="/reports/equity-changes" from={fromISO} to={toISO} />

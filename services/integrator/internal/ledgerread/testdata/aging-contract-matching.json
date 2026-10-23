@@ -1,0 +1,104 @@
+{
+  "_note": "Fikstur BERSAMA penjodohan baris kontrak ⇄ baris faktur tarikan di Umur Piutang (#491/#503). Dibaca DUA sisi: tests/aging-parity.test.ts (buildContractOutstanding TS) dan aging_test.go (contractInvoicedValue Go). invoicedValue = totals.invoicedValue, sen. oldNameOnly = nilai di bawah aturan LAMA (nama saja) — hanya dokumentasi dampak, tidak diuji.",
+  "cases": [
+    {
+      "name": "dua barang senama (LONG PEPPER #6 & #10), faktur tertaut — tiap baris ke barangnya",
+      "lines": [
+        { "itemId": 6, "itemName": "LONG PEPPER", "bags": "10", "kgPerBag": "100", "pricePerKg": "50000" },
+        { "itemId": 10, "itemName": "LONG PEPPER", "bags": "10", "kgPerBag": "100", "pricePerKg": "13500" }
+      ],
+      "invoiced": [
+        { "itemId": 6, "itemName": "LONG PEPPER", "quantity": "400", "price": "50000" },
+        { "itemId": 10, "itemName": "LONG PEPPER", "quantity": "300", "price": "13500" }
+      ],
+      "invoicedValue": "24050000.00",
+      "oldNameOnly": "24050000.00"
+    },
+    {
+      "name": "dua barang senama, faktur LAMA tanpa item_id — nama bercabang tidak ditebak",
+      "lines": [
+        { "itemId": 6, "itemName": "LONG PEPPER", "bags": "10", "kgPerBag": "100", "pricePerKg": "50000" },
+        { "itemId": 10, "itemName": "LONG PEPPER", "bags": "10", "kgPerBag": "100", "pricePerKg": "13500" }
+      ],
+      "invoiced": [
+        { "itemId": null, "itemName": "Long  Pepper", "quantity": "100", "price": "20000" },
+        { "itemId": 10, "itemName": "LONG PEPPER", "quantity": "200", "price": "13500" }
+      ],
+      "invoicedValue": "2700000.00",
+      "oldNameOnly": "4700000.00"
+    },
+    {
+      "name": "barang berganti nama — item_id tetap berjodoh, ongkos kirim tidak",
+      "lines": [
+        { "itemId": 7, "itemName": "CLOVE", "bags": "10", "kgPerBag": "100", "pricePerKg": "85000" }
+      ],
+      "invoiced": [
+        { "itemId": 7, "itemName": "Cloves (grade A)", "quantity": "250", "price": "85000" },
+        { "itemId": null, "itemName": "Ongkos kirim", "quantity": "1", "price": "500000" }
+      ],
+      "invoicedValue": "21250000.00",
+      "oldNameOnly": "0.00"
+    },
+    {
+      "name": "baris lama ber-item_id NULL di kedua kaki — nama dinormalkan, persis aturan lama",
+      "lines": [
+        { "itemId": null, "itemName": "Nutmeg", "bags": "4", "kgPerBag": "25", "pricePerKg": "7.1" },
+        { "itemId": null, "itemName": "Mace", "bags": "2", "kgPerBag": "10", "pricePerKg": "1.25" }
+      ],
+      "invoiced": [
+        { "itemId": null, "itemName": " nutmeg ", "quantity": "10.5", "price": "7.1" },
+        { "itemId": null, "itemName": "MACE", "quantity": "3", "price": "1.25" }
+      ],
+      "invoicedValue": "78.30",
+      "oldNameOnly": "78.30"
+    },
+    {
+      "name": "kontrak tertaut + faktur lama hanya bernama, difakturkan sebagian (#502)",
+      "lines": [
+        { "itemId": 6, "itemName": "CLOVE", "bags": "10", "kgPerBag": "100", "pricePerKg": "85000" },
+        { "itemId": 8, "itemName": "PEPPER", "bags": "5", "kgPerBag": "50", "pricePerKg": "60000" }
+      ],
+      "invoiced": [
+        { "itemId": null, "itemName": "clove", "quantity": "400", "price": "85000" }
+      ],
+      "invoicedValue": "34000000.00",
+      "oldNameOnly": "34000000.00"
+    },
+    {
+      "name": "item_id faktur tidak ada di kontrak, namanya menunjuk satu baris — berjodoh lewat nama",
+      "lines": [
+        { "itemId": 8, "itemName": "Pepper", "bags": "5", "kgPerBag": "50", "pricePerKg": "60000" }
+      ],
+      "invoiced": [
+        { "itemId": 99, "itemName": "PEPPER", "quantity": "100", "price": "60000" }
+      ],
+      "invoicedValue": "6000000.00",
+      "oldNameOnly": "6000000.00"
+    },
+    {
+      "name": "nama dipakai baris lama DAN baris tertaut — faktur tanpa item_id jatuh ke kunci-nama baris lama",
+      "lines": [
+        { "itemId": null, "itemName": "LONG PEPPER", "bags": "1", "kgPerBag": "100", "pricePerKg": "20000" },
+        { "itemId": 6, "itemName": "Long Pepper", "bags": "1", "kgPerBag": "100", "pricePerKg": "50000" }
+      ],
+      "invoiced": [
+        { "itemId": null, "itemName": "long pepper", "quantity": "50", "price": "20000" },
+        { "itemId": 6, "itemName": "LONG PEPPER", "quantity": "10", "price": "50000" }
+      ],
+      "invoicedValue": "1500000.00",
+      "oldNameOnly": "1500000.00"
+    },
+    {
+      "name": "satu barang di dua baris kontrak — digabung satu kunci, faktur melebihi tetap terhitung penuh",
+      "lines": [
+        { "itemId": 6, "itemName": "CLOVE", "bags": "1", "kgPerBag": "100", "pricePerKg": "100" },
+        { "itemId": 6, "itemName": "CLOVE", "bags": "1", "kgPerBag": "100", "pricePerKg": "100" }
+      ],
+      "invoiced": [
+        { "itemId": 6, "itemName": "CLOVE", "quantity": "250", "price": "100" }
+      ],
+      "invoicedValue": "25000.00",
+      "oldNameOnly": "25000.00"
+    }
+  ]
+}

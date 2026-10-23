@@ -15,8 +15,8 @@
  * awal, tambah, kurang, akhir), laba belum ditutup (awal, gerak, arah gerak,
  * akhir), dan kedua total — pada sen kontrak.
  *
- * Angka SAJA: laporan ini tidak punya berkas di TS (katalog tanpa
- * `payloadKind`), jadi tidak ada `-xlsx`. Periode bawaan sama dengan Laba
+ * Angka SAJA; ISI lembar sebarnya (berkas sejak keputusan pemilik 23 Okt
+ * 2026) dibuktikan `parity:equity-changes-xlsx`. Periode bawaan sama dengan Laba
  * Rugi — termasuk tahun lalu penuh, yang melewati jurnal penutup #555 (mutasi
  * Laba Ditahan) bila tahun itu sudah ditutup.
  *
@@ -46,7 +46,7 @@ import {
 
 async function main() {
   console.log(
-    `Laporan Perubahan Ekuitas · mesin: ${reportEngine("equity-changes")} (src/lib/report-engine.ts; tanpa berkas)`
+    `Laporan Perubahan Ekuitas · mesin: ${reportEngine("equity-changes")} (src/lib/report-engine.ts)`
   );
   const companies = await loadCompanies();
   const ranges = incomePeriods(arg("--period"));

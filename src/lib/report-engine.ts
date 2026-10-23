@@ -145,13 +145,14 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
    * lulus atas buku PRODUKSI. Tanpa kolom pembanding: halamannya tidak
    * membaca `?compare=`.
    *
-   * Laporan Perubahan Ekuitas: Go menghitung (`equity_statement.go`) dan
-   * `bun run parity:equity-changes` membandingkannya — tetapi laporan ini
-   * TIDAK PUNYA jalur berkas sama sekali (katalog: tanpa `payloadKind`; layar
-   * saja). Entri `go-parity`-nya karena itu hanya tentang ANGKA, dan ia tidak
-   * bisa menjadi `go` sebelum ada berkas yang bisa dipindahkan — penjaga
-   * `tests/report-engine.test.ts` menolaknya. Membangun berkasnya adalah
-   * keputusan produk tersendiri, bukan efek samping tahap 1d.
+   * Laporan Perubahan Ekuitas: BERBERKAS sejak keputusan pemilik 23 Okt 2026
+   * (Excel & PDF seperti laporan keuangan lain; katalog `payloadKind`). Go
+   * menghitung (`equity_statement.go`) dan menulis lembar sebarnya
+   * (`internal/document/equity_statement.go`); halaman SUDAH mengirim
+   * `sumber` (`from`/`to`), dan pelari Go sudah punya cabangnya — peralihan
+   * ke `go` = sunting entri ini + `bun run contract:gen`, SESUDAH
+   *   bun run parity:equity-changes · parity:equity-changes-xlsx
+   * lulus atas buku PRODUKSI. Tanpa kolom pembanding.
    */
   "cash-flow": {
     engine: "go",

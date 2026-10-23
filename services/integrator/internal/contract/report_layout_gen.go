@@ -110,6 +110,15 @@ var CashFlowCategoryLabels = map[CashFlowCategory]string{
 	CashFlowCategoryUncategorised: "Belum Terkategori",
 }
 
+// Laporan Perubahan Ekuitas (berkas sejak 23 Okt 2026): kalimat cetak dari
+// `EQUITY_STATEMENT_PRINT_LABELS`.
+const (
+	EquityStatementSheetName     = "Laporan Perubahan Ekuitas"
+	EquityStatementTitle         = "Laporan Perubahan Ekuitas"
+	EquityStatementUnclosedLabel = "Laba/Rugi Belum Ditutup"
+	EquityStatementTotalLabel    = "Total"
+)
+
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
@@ -163,6 +172,16 @@ var CashFlowColumns = []ReportColumn{
 	{Header: "Kas Masuk (IDR)", Width: 20},
 	{Header: "Kas Keluar (IDR)", Width: 20},
 	{Header: "Bersih (IDR)", Width: 20},
+}
+
+// EquityStatementColumns: judul (EQUITY_STATEMENT_HEADERS) dan lebar
+// (EQUITY_STATEMENT_WIDTHS) kolom Laporan Perubahan Ekuitas.
+var EquityStatementColumns = []ReportColumn{
+	{Header: "Komponen Ekuitas", Width: 44},
+	{Header: "Saldo Awal (IDR)", Width: 20},
+	{Header: "Penambahan (IDR)", Width: 20},
+	{Header: "Pengurangan (IDR)", Width: 20},
+	{Header: "Saldo Akhir (IDR)", Width: 20},
 }
 
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.

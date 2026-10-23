@@ -52,3 +52,18 @@ func TestCashFlowRejectsComparative(t *testing.T) {
 		}
 	}
 }
+
+// Laporan Perubahan Ekuitas juga tanpa kolom pembanding: muatan yang
+// membawanya DITOLAK sebelum buku mana pun dibuka.
+func TestEquityChangesRejectsComparative(t *testing.T) {
+	period := map[string]string{"from": "2026-01-01", "to": "2026-06-30"}
+	withCompare := map[string]string{"from": "2026-01-01", "to": "2026-06-30", "compare": "previous_year"}
+	for name, m := range map[string]muatanEkspor{
+		"compare":     {Params: withCompare},
+		"instan saja": {Params: period, PriorToInstant: "2025-06-30T16:59:59.999Z"},
+	} {
+		if _, _, err := perubahanEkuitas(context.Background(), nil, m, func(int) error { return nil }); err == nil {
+			t.Errorf("%s: muatan pembanding diterima", name)
+		}
+	}
+}

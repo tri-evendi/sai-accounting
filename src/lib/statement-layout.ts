@@ -1844,6 +1844,147 @@ export function budgetColumns(report: { visibleColumns?: string[] }): BudgetColu
   return selectColumns(BUDGET_COLUMNS, report.visibleColumns, "account");
 }
 
+// ─── Bentuk Laporan Perubahan Ekuitas ────────────────────────────────────────
+
+/**
+ * Bentuk Laporan Perubahan Ekuitas — SATU penentu untuk layar, PDF, dan lembar
+ * sebar (keputusan pemilik 23 Okt 2026: laporan ini mendapat berkas Excel &
+ * PDF seperti laporan keuangan lainnya).
+ *
+ * Sampai keputusan itu laporan ini hanya hidup di layar, dan halamannya
+ * menyusun barisnya sendiri. Begitu ia punya kertas, bentuknya pindah ke sini
+ * dengan alasan yang sama persis dengan `cashFlowLayout()` (#241): tiga
+ * permukaan yang masing-masing memutuskan barisnya sendiri hanya kebetulan
+ * sepakat pada hari ketiganya ditulis.
+ *
+ * ── Keputusan yang dibawa dari layar, apa adanya ───────────────────────────
+ *  1. **Satu baris per komponen ekuitas** (akun bertipe `equity` yang bersaldo
+ *     atau bergerak), urutan kode — `buildEquityStatement` sudah membuang yang
+ *     diam.
+ *  2. **"Laba/Rugi Belum Ditutup" SELALU tampil**, sebagai baris TANPA kode:
+ *     ia memang tidak punya akun, dan menyembunyikannya membuat saldo akhir
+ *     tidak berjumlah Ekuitas di Neraca. Satu pergerakan, dua kolom: arahnya
+ *     yang menentukan kolom mana yang memikulnya, supaya rugi tidak tampil
+ *     sebagai "penambahan negatif".
+ *  3. **Baris Total menyebut saldo awal dan akhir saja.** Kolom tambah/kurang
+ *     di baris itu TIDAK BERLAKU (`null` — sel kosong di ketiga permukaan),
+ *     sama dengan layar sejak #555: yang dibandingkan pembaca dengan Neraca
+ *     adalah total akhirnya.
+ *
+ * Karena laba belum ditutup selalu ada, laporan ini tidak punya keadaan
+ * "kosong" — buku tanpa satu jurnal pun tetap mencetak barisnya (nol) dan
+ * Total-nya.
+ */
+
+/** Satu komponen — bentuk `EquityComponentRow` (`@/lib/equity-statement`). */
+export interface EquityComponentShape {
+  code: string;
+  name: string;
+  opening: number;
+  additions: number;
+  reductions: number;
+  closing: number;
+}
+
+/** Struktural dengan sengaja — muat untuk hasil `getEquityStatement` maupun payload ekspor. */
+export interface EquityStatementShape {
+  components: readonly EquityComponentShape[];
+  unclosedIncome: { opening: number; movement: number; closing: number };
+  totalOpening: number;
+  totalClosing: number;
+}
+
+export type EquityStatementRowKind = "line" | "unclosed" | "total";
+
+export interface EquityStatementLayoutRow {
+  kind: EquityStatementRowKind;
+  label: string;
+  /** Hanya `kind: "line"` — kode akun, dipisah dari namanya agar layar bisa menggayainya. */
+  code?: string;
+  name?: string;
+  opening: number;
+  /** `null` = TIDAK BERLAKU (baris Total) — sel kosong, bukan nol. */
+  additions: number | null;
+  reductions: number | null;
+  closing: number;
+}
+
+export interface EquityStatementLabels {
+  /** Baris laba yang belum ditutup — komponen tanpa akun. */
+  unclosed: string;
+  total: string;
+  /** Kalimat rekonsiliasi di bawah tabel (layar & PDF). */
+  note: string;
+}
+
+/**
+ * Label DOKUMEN CETAK — bahasa Indonesia. Kamus `id.json` memuat kalimat yang
+ * SAMA PERSIS (`reports.unclosedIncomeRow`, `common.total`,
+ * `reports.equityReconcileNote`), diikat `tests/print-label-dictionary.test.ts`.
+ */
+export const EQUITY_STATEMENT_PRINT_LABELS: EquityStatementLabels = {
+  unclosed: "Laba/Rugi Belum Ditutup",
+  total: "Total",
+  note: "Saldo akhir laporan ini sama dengan Ekuitas di Neraca pada tanggal yang sama.",
+};
+
+export const EQUITY_STATEMENT_COLUMNS = [
+  "component",
+  "opening",
+  "additions",
+  "reductions",
+  "closing",
+] as const;
+
+export type EquityStatementColumnId = (typeof EQUITY_STATEMENT_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const EQUITY_STATEMENT_HEADERS: Record<EquityStatementColumnId, string> = {
+  component: "Komponen Ekuitas",
+  opening: "Saldo Awal (IDR)",
+  additions: "Penambahan (IDR)",
+  reductions: "Pengurangan (IDR)",
+  closing: "Saldo Akhir (IDR)",
+};
+
+/**
+ * Seluruh baris Laporan Perubahan Ekuitas dalam urutan kanoniknya: komponen,
+ * laba belum ditutup, Total (baris terakhir SELALU Total — kaki tabel).
+ */
+export function equityStatementLayout(
+  statement: EquityStatementShape,
+  labels: EquityStatementLabels = EQUITY_STATEMENT_PRINT_LABELS
+): EquityStatementLayoutRow[] {
+  const rows: EquityStatementLayoutRow[] = statement.components.map((c) => ({
+    kind: "line",
+    label: `${c.code}  ${c.name}`.trim(),
+    code: c.code,
+    name: c.name,
+    opening: c.opening,
+    additions: c.additions,
+    reductions: c.reductions,
+    closing: c.closing,
+  }));
+  const gerak = statement.unclosedIncome.movement;
+  rows.push({
+    kind: "unclosed",
+    label: labels.unclosed,
+    opening: statement.unclosedIncome.opening,
+    additions: gerak > 0 ? gerak : 0,
+    reductions: gerak < 0 ? -gerak : 0,
+    closing: statement.unclosedIncome.closing,
+  });
+  rows.push({
+    kind: "total",
+    label: labels.total,
+    opening: statement.totalOpening,
+    additions: null,
+    reductions: null,
+    closing: statement.totalClosing,
+  });
+  return rows;
+}
+
 // ─── Nama dokumen & nama lembar ──────────────────────────────────────────────
 
 /**
@@ -1861,6 +2002,7 @@ export type StatementKind =
   | "income-statement"
   | "balance-sheet"
   | "cash-flow"
+  | "equity-changes"
   | "stock-movement"
   | "opname-history"
   | "sales-by-customer"
@@ -1897,6 +2039,7 @@ export const STATEMENT_TITLES: Record<StatementKind, string> = {
   "income-statement": "Laporan Laba / Rugi",
   "balance-sheet": "Neraca",
   "cash-flow": "Laporan Arus Kas",
+  "equity-changes": "Laporan Perubahan Ekuitas",
   "stock-movement": "Kartu Stok / Mutasi Persediaan",
   "opname-history": "Riwayat Hitung Ulang Stok (Stok Opname)",
   "sales-by-customer": "Penjualan per Pelanggan",
@@ -1943,6 +2086,7 @@ export const SHEET_NAMES: Record<StatementKind, string> = {
   "income-statement": "Laba Rugi",
   "balance-sheet": "Neraca",
   "cash-flow": "Laporan Arus Kas",
+  "equity-changes": "Laporan Perubahan Ekuitas",
   /* Judulnya memuat `/`. */
   "stock-movement": "Kartu Stok",
   /* Judulnya 39 huruf — batas Excel 31. */

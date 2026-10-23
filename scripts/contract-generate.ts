@@ -66,6 +66,9 @@ import {
   CASH_FLOW_COLUMNS,
   CASH_FLOW_HEADERS,
   CASH_FLOW_PRINT_LABELS,
+  EQUITY_STATEMENT_COLUMNS,
+  EQUITY_STATEMENT_HEADERS,
+  EQUITY_STATEMENT_PRINT_LABELS,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   INCOME_STATEMENT_PRINT_LABELS,
@@ -89,6 +92,7 @@ import {
   BALANCE_SHEET_WIDTHS,
   CASH_FLOW_WIDTHS,
   COMPARE_CHANGE_WIDTH,
+  EQUITY_STATEMENT_WIDTHS,
   IDR_NUMBER_FORMAT,
   INCOME_STATEMENT_WIDTHS,
   SHEET_BANNER_STYLE,
@@ -1609,6 +1613,17 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
   const kolomCf = CASH_FLOW_COLUMNS.map(
     (c) => `\t{Header: ${q(CASH_FLOW_HEADERS[c])}, Width: ${CASH_FLOW_WIDTHS[c]}},`
   ).join("\n");
+  /* Laporan Perubahan Ekuitas (berkas sejak 23 Okt 2026, `go-parity`). */
+  const eql = EQUITY_STATEMENT_PRINT_LABELS;
+  const konstEkuitas = ratakan([
+    { kiri: "EquityStatementSheetName", kanan: `= ${q(SHEET_NAMES["equity-changes"])}` },
+    { kiri: "EquityStatementTitle", kanan: `= ${q(STATEMENT_TITLES["equity-changes"])}` },
+    { kiri: "EquityStatementUnclosedLabel", kanan: `= ${q(eql.unclosed)}` },
+    { kiri: "EquityStatementTotalLabel", kanan: `= ${q(eql.total)}` },
+  ]);
+  const kolomEq = EQUITY_STATEMENT_COLUMNS.map(
+    (c) => `\t{Header: ${q(EQUITY_STATEMENT_HEADERS[c])}, Width: ${EQUITY_STATEMENT_WIDTHS[c]}},`
+  ).join("\n");
   const kolomBs = BALANCE_SHEET_COLUMNS.map(
     (c) => `\t{Header: ${q(BALANCE_SHEET_HEADERS[c])}, Width: ${BALANCE_SHEET_WIDTHS[c]}},`
   ).join("\n");
@@ -1670,6 +1685,12 @@ var CashFlowCategoryLabels = map[CashFlowCategory]string{
 ${labelKelompok}
 }
 
+// Laporan Perubahan Ekuitas (berkas sejak 23 Okt 2026): kalimat cetak dari
+// \`EQUITY_STATEMENT_PRINT_LABELS\`.
+const (
+${konstEkuitas}
+)
+
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
@@ -1704,6 +1725,12 @@ ${kolomBs}
 // kolom Arus Kas, dalam urutan CASH_FLOW_COLUMNS.
 var CashFlowColumns = []ReportColumn{
 ${kolomCf}
+}
+
+// EquityStatementColumns: judul (EQUITY_STATEMENT_HEADERS) dan lebar
+// (EQUITY_STATEMENT_WIDTHS) kolom Laporan Perubahan Ekuitas.
+var EquityStatementColumns = []ReportColumn{
+${kolomEq}
 }
 
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.

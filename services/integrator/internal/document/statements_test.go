@@ -56,6 +56,12 @@ type statementBookMeta struct {
 		From string `json:"from"`
 		To   string `json:"to"`
 	} `json:"cashFlows"`
+	// Laporan Perubahan Ekuitas (berkas sejak 23 Okt 2026) — `equity_statement_test.go`.
+	EquityStatements []struct {
+		Case string `json:"case"`
+		From string `json:"from"`
+		To   string `json:"to"`
+	} `json:"equityStatements"`
 }
 
 // Berkas emas angka komparatif (`ledgerread.IncomeComparisonGolden` /

@@ -187,19 +187,25 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
    * entri di bawah + `bun run contract:gen`.
    */
   "stock-value": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/stock.go",
     parityScript: "parity:stock-value",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, image 0.18.1): angka 51 setara · isi XLSX setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
   "stock-movement": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/stock.go",
     parityScript: "parity:stock-movement",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, image 0.18.1): angka 51 setara · isi XLSX setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
   "opname-history": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/stock.go",
     parityScript: "parity:opname-history",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, image 0.18.1): angka 51 setara · isi XLSX setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
 };
 

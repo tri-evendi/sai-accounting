@@ -3,7 +3,7 @@
  * gerbang yang tak pernah dilewati (`bun run verify`), tanpa toolchain Go.
  *
  * Nilai Persediaan, Riwayat Stok (Kartu Stok), dan Riwayat Hitung Ulang Stok
- * — ketiganya `engine: "go-parity"` (`src/lib/report-engine.ts`). Pola Arus
+ * — ketiganya `engine: "go"` sejak paritas produksi 23 Okt 2026 (`src/lib/report-engine.ts`). Pola Arus
  * Kas, dengan buku fixture SENDIRI
  * (`services/integrator/internal/ledgerread/testdata/stock_books.json`):
  *

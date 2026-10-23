@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
+import { CACHE_SIGNAL_POLL_SECONDS } from "@sai/core/cache-signals";
 import { getT } from "@sai/platform/i18n/server";
 import { writeOperatorAuditLog } from "@op/lib/operator/audit";
 import { requireOperatorActionSession } from "@op/lib/operator/guard";
@@ -56,7 +57,7 @@ export async function operatorUploadBrandMark(formData: FormData): Promise<Brand
     },
   });
   revalidate();
-  return { ok: true, message: t("operator.brand.saved") };
+  return { ok: true, message: t("operator.brand.saved", { seconds: CACHE_SIGNAL_POLL_SECONDS }) };
 }
 
 export async function operatorResetBrandMark(): Promise<BrandActionResult> {

@@ -26,6 +26,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
+import { CACHE_SIGNAL_POLL_SECONDS } from "@sai/core/cache-signals";
 import { getT } from "@sai/platform/i18n/server";
 import { writeOperatorAuditLog } from "@op/lib/operator/audit";
 import { requireOperatorActionSession } from "@op/lib/operator/guard";
@@ -125,7 +126,7 @@ export async function operatorSaveSiteSettings(
   });
 
   segarkanPermukaan();
-  return { ok: true, message: t("operator.settings.saved") };
+  return { ok: true, message: t("operator.settings.saved", { seconds: CACHE_SIGNAL_POLL_SECONDS }) };
 }
 
 /**

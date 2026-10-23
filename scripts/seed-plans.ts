@@ -56,6 +56,7 @@
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { buatAdapter } from "@sai/db/adapter";
+import { bumpCacheSignal } from "@sai/platform/cache-signals";
 import {
   SIGNUP_MAX_COMPANIES,
   SIGNUP_MAX_USERS,
@@ -268,6 +269,10 @@ async function main() {
     console.log(`- paket "${key}" dipensiunkan dari katalog (tetap aktif bagi pelanggan lama)`);
   }
 
+  /* Halaman harga di `app-customer` menyimpan katalog di cache-nya sendiri;
+   * sinyal ini membuatnya membaca ulang dalam beberapa detik, bukan lima
+   * menit. Tanpa perubahan pun dinaikkan: satu baca ulang tidak berharga apa-apa. */
+  await bumpCacheSignal(platform, "plan-catalog");
   await platform.$disconnect();
 }
 

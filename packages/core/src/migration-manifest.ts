@@ -14,7 +14,7 @@
 export const MIGRATION_TERAKHIR = {
   control: "0014_companies_legal_form",
   platform: "0015_landing_media",
-  company: "0007_company_partners",
+  company: "0008_company_identity_pph_final",
 } as const;
 
 export type JenisBasisData = keyof typeof MIGRATION_TERAKHIR;

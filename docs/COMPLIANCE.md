@@ -95,3 +95,32 @@ saat naskah final pertama terbit.
 4. **Persetujuan S&K penerima undangan (#139).** Yang tercatat ber-versi baru
    persetujuan pendaftar utama; halaman terima-undangan belum memintanya.
    Lengkapi bersama alur persetujuan-ulang saat naskah final terbit.
+
+## 6. Bentuk usaha & PPh Final UMKM (PP 55/2022) — asumsi hukum
+
+Keputusan pemilik 24 Okt 2026. Yang diimplementasikan dan anggapan yang
+mendasarinya — ditulis supaya bisa diperiksa ahli pajak/hukum, bukan
+dipercaya begitu saja:
+
+- **Perlakuan ekuitas per bentuk usaha** (`packages/core/src/legal-form.ts`):
+  PT & PT Perorangan menutup laba ke Laba Ditahan (badan hukum, UU 40/2007 jo.
+  UU Cipta Kerja); CV & Firma (KUHD Pasal 16–35) membagi laba ke modal
+  masing-masing sekutu menurut porsi akta dan mencatat penarikan sebagai
+  prive; usaha perorangan (UD) menutup laba ke Modal Pemilik. CV divalidasi
+  memiliki sedikitnya satu sekutu aktif (komplementer) dan satu komanditer.
+- **PPh Final UMKM adalah ALAT BANTU LAPORAN** (`src/lib/pph-final-umkm.ts`):
+  tidak ada jurnal yang diposting, bawaannya MATI per perusahaan, dan setiap
+  angka tampil bersama bunyi aturannya serta catatan "periksa ketentuan
+  terbaru". Ringkasan dari PP 55/2022 dan PMK 164/2023 per Okt 2026:
+  tarif 0,5% dari peredaran bruto (≤ Rp 4,8 miliar setahun); pembebasan
+  peredaran bruto Rp 500 juta setahun hanya untuk wajib pajak ORANG PRIBADI
+  (usaha perorangan); batas waktu Pasal 59 ayat (1): 7 tahun pajak (orang
+  pribadi), 4 tahun pajak (koperasi, CV, firma, BUMDes/BUMDesma, dan
+  **perseroan perorangan** yang didirikan satu orang), 3 tahun pajak (PT).
+  Catatan: PT Perorangan masuk kelompok 4 tahun, bukan 3 tahun seperti PT.
+  Perpanjangan bagi orang pribadi yang pernah diumumkan pemerintah tidak
+  dimodelkan — itu salah satu alasan catatan "periksa ketentuan terbaru".
+- **Peredaran bruto** diambil dari mutasi bersih akun bertipe `revenue`
+  (penjualan dikurangi retur), tanpa `other_income` dan tanpa jurnal penutup;
+  perkiraan dibulatkan ke bawah ke rupiah penuh.
+

@@ -1925,6 +1925,20 @@ model CompanySetting {
   /// Alamat sesuai NPWP, when it differs from `address`. NULL → falls back to
   /// `address`. Reported on the seller identity line of any e-Faktur output.
   taxAddress String? @map("tax_address") @db.Text
+  // ── Bentuk usaha (PR B, 24 Okt 2026) — identitas legal & PPh Final UMKM ──
+  /// Nomor Induk Berusaha (OSS). Opsional.
+  nib                  String?   @db.VarChar(20)
+  /// Nomor akta / pernyataan pendirian (PT Perorangan: pernyataan pendirian).
+  deedNumber           String?   @map("deed_number") @db.VarChar(100)
+  /// Nomor SK / pengesahan Kemenkumham.
+  ministryDecreeNumber String?   @map("ministry_decree_number") @db.VarChar(100)
+  /// Tanggal pendirian (tanggal saja).
+  establishedOn        DateTime? @map("established_on") @db.Date
+  /// Memakai PPh Final 0,5% (PP 55/2022) — alat bantu laporan, bukan posting.
+  /// Bawaan FALSE (company 0008).
+  pphFinalUmkm         Boolean   @default(false) @map("pph_final_umkm")
+  /// Tahun pajak pertama memakai PPh Final UMKM — dasar pengingat batas waktu.
+  pphFinalUmkmStartYear Int?     @map("pph_final_umkm_start_year")
   // ── issue #99 — Modul per kategori usaha ───────────────────────────────────
   /// Kategori usaha chosen in the setup wizard (`commodity_trading`,
   /// `distribution`, `services`, `custom` — see `lib/business-modules.ts`).

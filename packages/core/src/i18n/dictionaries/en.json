@@ -2544,6 +2544,10 @@
         "title": "e-Faktur Export (DJP/CTAS)",
         "description": "Export output tax invoices to the DJP import format."
       },
+      "pph_final_umkm": {
+        "title": "Final income tax estimate for MSMEs (PP 55/2022)",
+        "description": "Monthly 0.5% final income tax estimate from gross revenue, with the time-limit reminder for the legal form."
+      },
       "project_profit": {
         "title": "Profit by Project",
         "description": "Profit per project/cost centre side by side — which earns, which loses. All projects plus the unassigned row equal the company income statement."
@@ -6526,5 +6530,49 @@
       "partnersIncomplete": "The partner list is incomplete. Reload the page and save again.",
       "parentCodeTaken": "Account code 3110/3120 is used by a non-equity account. Set up the partners' capital accounts in the chart of accounts."
     }
+  },
+  "businessProfile": {
+    "title": "Business profile",
+    "identityTitle": "Legal identity",
+    "nib": "NIB (13 digits)",
+    "deedNumber": "Deed of establishment number",
+    "statementNumber": "Statement of establishment number",
+    "decreeNumber": "Ministry of Law decree number",
+    "establishedOn": "Date of establishment",
+    "identityNote": "All fields are optional and stored in the company profile. Printed documents currently show only the company name and address, so these fields do not appear on invoices.",
+    "saveIdentity": "Save identity",
+    "pphTitle": "MSME final income tax (PP 55/2022)",
+    "pphToggle": "Use the 0.5% final income tax (PP 55/2022)",
+    "pphStartYear": "First tax year using this rate",
+    "pphNoGroup": "No time limit is computed for the \"Other\" legal form: 7 years for individuals; 4 years for cooperatives, CVs, Firmas, village enterprises and single-person PTs; 3 years for PTs.",
+    "pphCheckLatest": "This is a summary of the rule, not tax advice — check the latest regulations.",
+    "pphActiveUntil": "This rate may be used up to tax year {year}.",
+    "pphLastYear": "Tax year {year} is the last year this rate may be used.",
+    "pphExpired": "The time limit has passed: the last tax year was {year}.",
+    "savePph": "Save final income tax",
+    "openReport": "Open the final income tax estimate",
+    "saved": "Business profile saved.",
+    "loadFailed": "The business profile could not be loaded.",
+    "saveFailed": "The business profile could not be saved.",
+    "invalid": "Check the fields: NIB has 13 digits, dates use year-month-day, and the start year is required when the final income tax is on.",
+    "setupFirst": "Finish the company setup wizard first."
+  },
+  "pphFinal": {
+    "subtitle": "Tax year {year} — an estimate, not an official computation",
+    "colMonth": "Month",
+    "colGross": "Gross revenue",
+    "colCumulative": "Cumulative",
+    "colTaxable": "Tax base",
+    "colTax": "Estimated 0.5% final tax",
+    "notPosting": "This is a reporting aid: no journal is created. Pay and report the tax according to the regulations.",
+    "disabled": "The MSME final income tax is not turned on for this company; the figures below are indicative only.",
+    "openSettings": "Set it in Settings → Business profile.",
+    "expired": "The PP 55/2022 time limit has passed (last tax year {year}). Ordinary rates apply this year — check the latest regulations.",
+    "lastYear": "Tax year {year} is the last year the MSME final income tax may be used.",
+    "notStarted": "This year is before the configured start year ({year}).",
+    "overLimit": "Annual gross revenue exceeds Rp 4.8 billion: PP 55/2022 no longer applies from the next tax year.",
+    "personalExemption": "Sole proprietorship (individual taxpayer): gross revenue up to Rp 500 million a year is not taxed; the exemption is counted cumulatively from January.",
+    "grossNote": "Gross revenue = net movement of operating revenue accounts (sales less returns) per month, excluding other income and year-end closing journals. The estimate is rounded down to whole rupiah.",
+    "checkLatest": "The rule summary above comes from PP 55/2022 and PMK 164/2023; regulations may change (including extensions for individuals) — check the latest regulations."
   }
 }

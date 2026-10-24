@@ -2544,6 +2544,10 @@
         "title": "电子发票（e-Faktur）导出（DJP/CTAS）",
         "description": "将销项税务发票导出为 DJP 导入格式。"
       },
+      "pph_final_umkm": {
+        "title": "中小微企业最终所得税估算（PP 55/2022）",
+        "description": "按营业总额估算每月 0.5% 最终所得税，并按企业形式提示适用期限。"
+      },
       "project_profit": {
         "title": "项目损益",
         "description": "并排显示各项目/成本中心的利润——哪个盈利，哪个亏损。所有项目加上未分配行等于公司损益表。"
@@ -6526,5 +6530,49 @@
       "partnersIncomplete": "合伙人列表不完整。请重新加载页面后再保存。",
       "parentCodeTaken": "科目代码 3110/3120 已被非权益科目使用。请在会计科目表中设置合伙人资本科目。"
     }
+  },
+  "businessProfile": {
+    "title": "企业概况",
+    "identityTitle": "法律身份",
+    "nib": "NIB（13 位）",
+    "deedNumber": "设立契约编号",
+    "statementNumber": "设立声明编号",
+    "decreeNumber": "法律与人权部批准书编号",
+    "establishedOn": "设立日期",
+    "identityNote": "所有字段均为可选，保存在企业资料中。目前打印的单据只显示企业名称和地址，因此这些字段不会出现在发票上。",
+    "saveIdentity": "保存身份信息",
+    "pphTitle": "中小微企业最终所得税（PP 55/2022）",
+    "pphToggle": "适用 0.5% 最终所得税（PP 55/2022）",
+    "pphStartYear": "首个适用该税率的纳税年度",
+    "pphNoGroup": "“其他”企业形式不计算期限：个人 7 年；合作社、CV、Firma、村营企业和一人有限公司 4 年；有限责任公司 3 年。",
+    "pphCheckLatest": "这是规定摘要，不是税务建议——请核对最新规定。",
+    "pphActiveUntil": "该税率可使用至 {year} 纳税年度。",
+    "pphLastYear": "{year} 纳税年度是可使用该税率的最后一年。",
+    "pphExpired": "期限已过：最后一个纳税年度是 {year}。",
+    "savePph": "保存最终所得税设置",
+    "openReport": "打开最终所得税估算",
+    "saved": "企业概况已保存。",
+    "loadFailed": "无法加载企业概况。",
+    "saveFailed": "无法保存企业概况。",
+    "invalid": "请检查字段：NIB 为 13 位，日期格式为年-月-日，开启最终所得税时必须填写起始年度。",
+    "setupFirst": "请先完成企业设置向导。"
+  },
+  "pphFinal": {
+    "subtitle": "{year} 纳税年度——估算，而非正式计算",
+    "colMonth": "月份",
+    "colGross": "营业总额",
+    "colCumulative": "累计",
+    "colTaxable": "计税基础",
+    "colTax": "0.5% 最终所得税估算",
+    "notPosting": "这是报表辅助工具：不会生成任何凭证。请按规定缴纳并申报税款。",
+    "disabled": "本企业尚未开启中小微企业最终所得税；以下数字仅供参考。",
+    "openSettings": "请在 设置 → 企业概况 中设置。",
+    "expired": "PP 55/2022 的期限已过（最后纳税年度 {year}）。本年度适用一般税率——请核对最新规定。",
+    "lastYear": "{year} 纳税年度是可适用中小微企业最终所得税的最后一年。",
+    "notStarted": "本年度早于设置的起始年度（{year}）。",
+    "overLimit": "年营业总额超过 48 亿印尼盾：自下一纳税年度起不再适用 PP 55/2022。",
+    "personalExemption": "个人独资企业（个人纳税人）：每年营业总额 5 亿印尼盾以内免征所得税；免征额自一月起累计计算。",
+    "grossNote": "营业总额 = 每月经营收入科目的净发生额（销售减退货），不含其他收入和年末结账凭证。估算向下取整到整印尼盾。",
+    "checkLatest": "以上规定摘要来自 PP 55/2022 和 PMK 164/2023；规定可能变化（包括对个人的延期）——请核对最新规定。"
   }
 }

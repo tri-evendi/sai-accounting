@@ -25,6 +25,8 @@
 import { ImageResponse } from "next/og";
 import { cachedBrandMarkContent } from "@sai/platform/brand-assets";
 import { platformDb } from "@sai/platform/platform-db";
+import { landingImageContent } from "@sai/platform/landing-images";
+import { landingMedia } from "@sai/platform/landing-settings";
 
 import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@sai/ui/brand/mark";
 import { APP_NAME } from "@sai/core/constants";
@@ -44,6 +46,26 @@ export const contentType = "image/png";
 export const revalidate = 300;
 
 export default async function Image() {
+  /* ══ GAMBAR UNGGAHAN OPERATOR (konsol `/landing/media`, migration 0015) ══
+     Metadata berbasis BERKAS menang atas `openGraph.images` di
+     `generateMetadata` (dokumen Next), jadi gambar unggahan disajikan DARI
+     SINI — untuk `/` dan `/pricing` sekaligus, sebab berkas ini di akar grup.
+     Konsol hanya menerima PNG berasio ±1,91:1 (≥600 px lebar), jadi
+     `contentType` & `size` di atas tetap jujur tentang berkasnya. Tanpa unggahan / platform tak terjangkau:
+     kartu bawaan di bawah, seperti sebelumnya. */
+  const og = (await landingMedia()).ogImage;
+  if (og) {
+    const isi = await landingImageContent({ platform: platformDb }, og.id);
+    if (isi) {
+      return new Response(Buffer.from(isi.content), {
+        headers: {
+          "Content-Type": isi.mime,
+          "Cache-Control": "public, max-age=300",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
+  }
   const unggahan = await cachedBrandMarkContent({ platform: platformDb });
   const logo = unggahan
     ? `data:${unggahan.meta.mimeType};base64,${Buffer.from(unggahan.content).toString("base64")}`

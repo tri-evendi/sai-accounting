@@ -100,6 +100,8 @@ class Redirected extends Error {
 const state = {
   session: null as { user: { id: string } } | null,
   plans: null as typeof PLANS | null,
+  /** Harga di situs publik (migration platform 0013) — bawaan tampil. */
+  pricingVisible: true,
 };
 
 vi.mock("next/navigation", () => ({
@@ -132,8 +134,17 @@ vi.mock("@sai/platform/i18n/server", () => ({
 
 vi.mock("@/lib/plan-catalog", () => ({ activePlans: async () => state.plans }));
 
+/* Sakelar harga publik dibaca dari basis data platform (yang tidak ada di
+ * sini); selebihnya modul ASLI — gerbang pendaftaran & kanal kontak tetap
+ * jatuh ke environment yang dipasang tiap tes. */
+vi.mock("@sai/platform/site-settings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@sai/platform/site-settings")>()),
+  resolvePublicPricingVisible: async () => state.pricingVisible,
+}));
+
 const { default: LandingPage } = await import("@/app/(marketing)/page");
 const { default: PricingPage } = await import("@/app/(marketing)/pricing/page");
+const { default: sitemap } = await import("@/app/sitemap");
 
 /**
  * TANPA `LocaleProvider` — dengan sengaja (#399). Halaman pemasaran hidup di
@@ -187,6 +198,7 @@ function jsonLdBlocks(html: string): Record<string, unknown>[] {
 beforeEach(() => {
   state.session = null;
   state.plans = PLANS;
+  state.pricingVisible = true;
   /*
    * PENDAFTARAN MANDIRI TERBUKA — dinyatakan, bukan diwarisi.
    *
@@ -713,5 +725,71 @@ describe("halaman pendaratan saat pendaftaran mandiri DITUTUP", () => {
     const html = await render();
     expect(html).toContain('href="/register"');
     expect(html).toContain('href="/login"');
+  });
+});
+
+/**
+ * ══ HARGA PUBLIK DISEMBUNYIKAN (migration platform 0013, alur demo-first) ══
+ *
+ * Harga dikutip per pelanggan, jadi operator bisa menyembunyikan katalognya.
+ * Yang dijaga: SEMUA jalan ke harga hilang bersama-sama — seksi di `/`,
+ * penawaran JSON-LD, tautan bilah atas & kaki, `/pricing`, dan peta situs —
+ * dan slot tautannya menjadi "Minta penawaran" ke halaman kontak.
+ */
+describe("harga publik DISEMBUNYIKAN dari konsol", () => {
+  beforeEach(() => {
+    state.pricingVisible = false;
+  });
+
+  it("seksi harga di / tidak dirender — termasuk penawaran JSON-LD-nya", async () => {
+    const html = await render();
+    expect(html).not.toContain('id="harga"');
+    expect(html).not.toContain(T("landing.pricingHeading"));
+    for (const plan of PLANS.filter((p) => !p.contactOnly))
+      expect(html).not.toContain(formatMoney(plan.priceMonthly, plan.currency));
+    expect(JSON.stringify(jsonLdBlocks(html))).not.toContain('"offers"');
+    // Halaman selebihnya tetap utuh.
+    expect(html).toContain(T("landing.heroHeading"));
+    expect(html).toContain(T("landing.faqTrialQ"));
+  });
+
+  it("tautan Harga (bilah atas & kaki) menjadi Minta penawaran — tidak ada tautan ke /pricing", async () => {
+    const html = await render();
+    expect(html).not.toContain('href="/pricing"');
+    expect(html).not.toContain(`>${T("landing.navPricing")}<`);
+    // Pendaftaran TERBUKA (bawaan blok ini) → layar penawaran, bukan formulir daftar.
+    expect(html).toContain(`href="/register?quote=1"`);
+    expect(html).toContain(`>${T("landing.quoteCta")}<`);
+  });
+
+  it("pendaftaran tertutup → Minta penawaran menuju /register (halaman kontak demo-first)", async () => {
+    vi.stubEnv("SELF_SERVE_SIGNUP", "");
+    const html = await render();
+    expect(html).not.toContain('href="/pricing"');
+    expect(html).not.toContain("/register?quote=1");
+    expect(html).toMatch(new RegExp(`href="/register"[^>]*>${T("landing.quoteCta")}<`));
+  });
+
+  it("/pricing dialihkan ke halaman kontak", async () => {
+    await expect(renderPricing()).rejects.toThrow("redirect: /register?quote=1");
+    vi.stubEnv("SELF_SERVE_SIGNUP", "");
+    await expect(renderPricing()).rejects.toThrow("redirect: /register");
+  });
+
+  it("peta situs tidak lagi menyebut /pricing", async () => {
+    const urls = (await sitemap()).map((e) => new URL(e.url).pathname);
+    expect(urls).not.toContain("/pricing");
+    expect(urls).toContain("/");
+  });
+});
+
+describe("harga publik TAMPIL (bawaan) — perilaku lama utuh", () => {
+  it("seksi harga, tautan /pricing, dan entri peta situs tetap ada", async () => {
+    const html = await render();
+    expect(html).toContain('id="harga"');
+    expect(html).toContain('href="/pricing"');
+    expect((await sitemap()).map((e) => new URL(e.url).pathname)).toContain("/pricing");
+    // `/pricing` dirender, tidak dialihkan.
+    expect(await renderPricing()).toContain(T("landing.pricingHeading"));
   });
 });

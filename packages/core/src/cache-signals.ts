@@ -22,6 +22,7 @@ export const CACHE_SIGNAL_NAMES = [
   "brand-mark",
   "status-notices",
   "platform-mail-settings",
+  "landing-settings",
 ] as const;
 
 export type CacheSignalName = (typeof CACHE_SIGNAL_NAMES)[number];

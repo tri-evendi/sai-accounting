@@ -350,12 +350,33 @@ import { join } from "node:path";
  *   + `components/operator/trial-retention-form` — sakelar hapus otomatis (bawaan
  *     MATI) + masa retensi, konfirmasi ketik-HAPUS. Halaman `/settings` tetap
  *     server; daftar kandidatnya dirender di sana.
- * 212 → 213 (24 Okt 2026, paket laporan — 09 §5):
+ * 212 → 213 (24 Okt 2026, visibilitas harga publik):
+ *   + `components/operator/plan-visibility-toggle` — sakelar tampil/tersembunyi
+ *     per paket dengan alasan wajib + konfirmasi akibat. Halaman `/plans` tetap
+ *     server; katalognya dibaca di sana dan dioper per baris.
+ * 213 → 218 (24 Okt 2026, tampilan halaman depan — konsol `/landing`):
+ *   + `components/operator/landing-sections-form`, `-contact-form`,
+ *     `-announcement-form`, `-faq-form` — empat formulir RHF + zod (penyunting
+ *     FAQ memakai `useFieldArray` untuk tambah/hapus/urutkan). Halaman
+ *     `/landing` tetap server; setelannya dibaca di sana.
+ *   + `components/landing/landing-announcement-dismiss` — SATU tombol tutup
+ *     bilah pengumuman (menulis cookie + menyembunyikan bilah). Bilahnya
+ *     sendiri tetap server component; pendaratan tetap tanpa pulau client
+ *     lain selain sakelar bahasa/tema.
+ * 218 → 221 (24 Okt 2026, gambar & bukti sosial — konsol `/landing/media`):
+ *   + `components/operator/landing-image-field` — kolom unggah + pratinjau
+ *     (memanggil server action unggah, menyimpan rujukan di state formulir).
+ *   + `components/operator/landing-proof-form` — penyunting daftar testimoni /
+ *     logo klien / mitra (`useFieldArray`).
+ *   + `components/operator/landing-screens-form` — hero, galeri, gambar OG.
+ *     Halaman `/landing/media` tetap server; seksi bukti sosial di pendaratan
+ *     tetap server component tanpa satu pun pulau client baru.
+ * 221 → 222 (24 Okt 2026, paket laporan — 09 §5):
  *   + `components/reports/report-package-dialog` — formulir periode/laporan/format
  *     + kemajuan pekerjaan di header Pusat Laporan. Halaman `/reports` tetap
  *     server; daftar laporan & tanda izinnya dihitung di sana dan dioper.
  */
-const AMBANG_KLIEN = 213;
+const AMBANG_KLIEN = 222;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -534,6 +555,15 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/components/operator/content-publish-controls.tsx",
   /* Buat tenant uji coba (alur demo-first) — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/create-trial-form.tsx",
+  /* Tampilan halaman depan (konsol `/landing`) — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/landing-announcement-form.tsx",
+  "apps/operator/src/components/operator/landing-contact-form.tsx",
+  "apps/operator/src/components/operator/landing-faq-form.tsx",
+  /* Gambar & bukti sosial (konsol `/landing/media`) — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/landing-image-field.tsx",
+  "apps/operator/src/components/operator/landing-proof-form.tsx",
+  "apps/operator/src/components/operator/landing-screens-form.tsx",
+  "apps/operator/src/components/operator/landing-sections-form.tsx",
   /* Register lisensi on-premise — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/licence-register-panel.tsx",
   /* Kunci penanda lisensi (migration platform 0007) — lihat `AMBANG_KLIEN`. */
@@ -548,6 +578,8 @@ const KLIEN_TERSAHKAN = [
      dan formulir keluarnya DIOPER dari layout server; berkas itu tidak
      mengimpor satu pun modul autentikasi. */
   "apps/operator/src/components/operator/operator-shell.tsx",
+  /* Sakelar tampil/tersembunyi paket — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/plan-visibility-toggle.tsx",
   /* Pengaturan situs (migration 0016): formulir tiga medan — client karena ia
      memang formulir (RHF + zod, hasil simpan tanpa muat ulang, dialog
      konfirmasi untuk "kembalikan ke pengaturan server"). Halamannya TETAP
@@ -566,6 +598,9 @@ const KLIEN_TERSAHKAN = [
   "components/auth/signed-in-as.tsx",
   "components/dashboard/dashboard-export-actions.tsx",
   "components/help/guided-tour.tsx",
+  /* Tombol tutup bilah pengumuman — satu-satunya daun client baru di
+     pendaratan; lihat `AMBANG_KLIEN`. */
+  "components/landing/landing-announcement-dismiss.tsx",
   "components/layout/accountant-mode-toggle.tsx",
   "components/layout/approval-badge.tsx",
   "components/layout/command-palette.tsx",

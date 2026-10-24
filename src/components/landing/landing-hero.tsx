@@ -33,7 +33,10 @@ import {
 } from "@/components/landing/landing-scale";
 import { LandingStats } from "@/components/landing/landing-stats";
 import { ButtonLink } from "@sai/ui/button";
-import { getT } from "@sai/platform/i18n/server";
+import { LandingAskButton } from "@/components/landing/landing-ask-button";
+import { landingMedia, landingSettings } from "@sai/platform/landing-settings";
+import { LandingHeroScreenshot } from "@/components/landing/landing-screens";
+import { getLocale, getT } from "@sai/platform/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS } from "@sai/core/registration";
 import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
@@ -43,6 +46,10 @@ export async function LandingHero() {
   /* Apa yang boleh dijanjikan tombol di bawah — uji coba, atau penawaran.
      Satu keputusan, satu tempat (`lib/landing-ask.ts`). */
   const ask = landingAsk(await resolveSelfServeSignupOpen());
+  const { demoBookingUrl } = await landingSettings();
+  /* Gambar utama unggahan operator (konsol `/landing/media`) menggantikan
+     purwarupa yang digambar kode — hanya bila ada. */
+  const [{ heroImage }, locale] = await Promise.all([landingMedia(), getLocale()]);
 
   return (
     <section
@@ -167,9 +174,12 @@ export async function LandingHero() {
                   yang diulang, dijaga `tests/button-emphasis.test.ts`. Yang
                   berubah hanya BUNYINYA, dan saat pendaftaran ditutup halaman
                   itulah yang menjelaskan jalan penawarannya. */}
-              <ButtonLink href="/register" size="lg" variant="primary">
+              {/* "Jadwalkan demo" boleh menuju tautan pemesanan demo yang
+                  disetel di konsol `/landing` — keputusannya di
+                  `LandingAskButton`, satu untuk pahlawan dan bilah atas. */}
+              <LandingAskButton ask={ask} slot="heroCta" demoBookingUrl={demoBookingUrl} size="lg">
                 {t(ask.heroCta, askValues(ask, TRIAL_DAYS))}
-              </ButtonLink>
+              </LandingAskButton>
               <ButtonLink href="/login" size="lg" variant="outline">
                 {t("landing.heroSecondary")}
               </ButtonLink>
@@ -204,7 +214,7 @@ export async function LandingHero() {
               lipatan; kartu ponsel menjorok 16px ke bawah kerangka, dan
               `paddingBottom` menampungnya supaya tidak menabrak strip bukti. */}
           <div style={{ minWidth: 0, paddingBottom: "var(--ant-padding)" }}>
-            <LandingHeroMock />
+            {heroImage ? <LandingHeroScreenshot shot={heroImage} locale={locale} /> : <LandingHeroMock />}
           </div>
         </div>
 

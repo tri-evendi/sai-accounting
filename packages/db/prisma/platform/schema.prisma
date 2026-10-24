@@ -726,6 +726,12 @@ model SiteSetting {
   /// `TRIAL_RETENTION_DAYS`, lalu 90. Batas 30–3650 ditegakkan kode.
   trialRetentionDays Int? @map("trial_retention_days")
 
+  /// Harga dipajang di situs publik? (migration platform 0013, alur
+  /// demo-first). `null` = TAMPIL — bawaan sebelum kolom ini ada; tanpa env.
+  /// `false` menyembunyikan seksi harga di `/`, tautan "Harga", `/pricing`
+  /// (dialihkan ke halaman kontak), peta situs, dan penawaran JSON-LD.
+  publicPricingVisible Boolean? @map("public_pricing_visible")
+
   /// Nama akun operator yang terakhir menyimpan.
   updatedBy String @map("updated_by") @db.VarChar(100)
 
@@ -1141,4 +1147,83 @@ model QuoteActivation {
   @@index([tenantId])
   @@index([subscriptionId])
   @@map("quote_activations")
+}
+
+/// TAMPILAN HALAMAN DEPAN yang diatur operator (konsol `/landing`, migration
+/// platform 0014). Satu baris (`singleton = 1`); tidak ada baris / kolom NULL
+/// = halaman tampil seperti sebelum tabel ini ada.
+///
+/// Kolom `*_json` berisi TEKS JSON (pola `payload_json`), divalidasi kode di
+/// kedua arah oleh `@sai/core/landing-settings`. Nilai yang tidak lolos saat
+/// dibaca = tidak diatur, bukan galat.
+///
+/// Sengaja TERPISAH dari `SiteSetting`: baris itu memikul gerbang uang yang
+/// dibaca penjadwal, dan menyimpan tampilan tidak boleh ikut menulis ulangnya.
+model LandingSetting {
+  id Int @id @default(autoincrement())
+
+  singleton Int @unique @default(1)
+
+  /// Larik kunci seksi yang DISEMBUNYIKAN. NULL = semua tampil.
+  hiddenSectionsJson String? @map("hidden_sections_json") @db.Text
+
+  /// Tautan pemesanan demo (https saja — CHECK + validasi kode). NULL = tombol
+  /// "Jadwalkan demo" tetap menuju `/register`.
+  demoBookingUrl String? @map("demo_booking_url") @db.VarChar(500)
+
+  /// Kalimat pembuka WhatsApp per bahasa. NULL = tanpa kalimat pembuka.
+  whatsappMessageJson String? @map("whatsapp_message_json") @db.Text
+
+  /// Bilah pengumuman. NULL = tidak ada bilah.
+  announcementJson String? @map("announcement_json") @db.Text
+
+  /// Daftar tanya-jawab. NULL = daftar bawaan dari kamus.
+  faqItemsJson String? @map("faq_items_json") @db.Text
+
+  /// Bukti sosial & gambar (migration platform 0015) — teks JSON yang
+  /// divalidasi `@sai/core/landing-media`. NULL = seksi/gambar tidak ada,
+  /// purwarupa yang digambar kode dan gambar OG bawaan tetap dipakai.
+  testimonialsJson String? @map("testimonials_json") @db.Text
+  clientLogosJson  String? @map("client_logos_json") @db.Text
+  partnersJson     String? @map("partners_json") @db.Text
+  heroImageJson    String? @map("hero_image_json") @db.Text
+  galleryJson      String? @map("gallery_json") @db.Text
+  ogImageJson      String? @map("og_image_json") @db.Text
+
+  /// Nama akun operator yang terakhir menyimpan.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("landing_settings")
+}
+
+/// GAMBAR HALAMAN DEPAN unggahan operator (konsol `/landing/media`, migration
+/// platform 0015). Pola `BrandAsset`: isi di basis data, format dibaca dari isi
+/// berkas (PNG/JPEG/WebP — SVG tidak pernah), metadata dibuang sebelum
+/// disimpan. Baris TIDAK PERNAH diubah: sidiknya dirujuk dari JSON
+/// `LandingSetting` dan dari URL yang di-cache peramban selamanya.
+model LandingImage {
+  id Int @id @default(autoincrement())
+
+  /// `hero` | `gallery` | `og` | `testimonial` | `client_logo` | `partner_logo`
+  /// — kosakata ditutup CHECK; menentukan batas ukuran.
+  kind String @db.VarChar(20)
+
+  mimeType String @map("mime_type") @db.VarChar(20)
+  content  Bytes
+  sha256   String @db.Char(64)
+  width    Int
+  height   Int
+  byteSize Int    @map("byte_size")
+
+  /// Nama operator yang mengunggah.
+  createdBy String @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([kind, createdAt])
+  @@map("landing_images")
 }

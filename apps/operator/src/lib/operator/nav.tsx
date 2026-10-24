@@ -26,8 +26,10 @@ import {
   FileTextOutlined,
   HistoryOutlined,
   KeyOutlined,
+  LayoutOutlined,
   MailOutlined,
   PictureOutlined,
+  FileImageOutlined,
   SettingOutlined,
   TeamOutlined,
   FileSearchOutlined,
@@ -98,6 +100,23 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/content",
       label: t("operator.nav.content"),
       icon: <FileTextOutlined style={UKURAN_IKON} />,
+      group: situs,
+    },
+    {
+      /* Tampilan halaman depan: seksi, pengumuman, demo, FAQ (migration
+         platform 0014) — halaman sendiri, bukan tab `/settings`. */
+      href: "/landing",
+      label: t("operator.nav.landing"),
+      icon: <LayoutOutlined style={UKURAN_IKON} />,
+      group: situs,
+      /* PERSIS: `/landing/media` punya butirnya sendiri di bawah. */
+      exact: true,
+    },
+    {
+      /* Gambar & bukti sosial halaman depan (migration platform 0015). */
+      href: "/landing/media",
+      label: t("operator.nav.landingMedia"),
+      icon: <FileImageOutlined style={UKURAN_IKON} />,
       group: situs,
     },
     {

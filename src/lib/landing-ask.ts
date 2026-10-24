@@ -118,3 +118,24 @@ export function landingAsk(signupOpen: boolean): LandingAsk {
 export function askValues(ask: LandingAsk, trialDays: number): { days: number } | undefined {
   return ask.needsDays ? { days: trialDays } : undefined;
 }
+
+/**
+ * Parameter `/register` yang meminta LAYAR PENAWARAN walau pendaftaran mandiri
+ * terbuka — `/register?quote=1`.
+ */
+export const QUOTE_PARAM = "quote";
+
+/**
+ * Ke mana pengunjung dikirim untuk MEMINTA PENAWARAN saat harga publik
+ * disembunyikan (migration platform 0013): tautan "Minta penawaran" di bilah
+ * atas & kaki, dan tujuan pengalihan `/pricing`.
+ *
+ * Tertutup → `/register`, yang saat itu memang halaman kontak (tujuan yang
+ * sama dengan ajakan demo-first di atas). Terbuka → `/register` adalah
+ * formulir DAFTAR, dan orang yang meminta penawaran tidak sedang mendaftar;
+ * `?quote=1` membuat halaman yang sama merender layar penawarannya. Satu
+ * halaman kontak, bukan dua.
+ */
+export function quoteContactHref(signupOpen: boolean): string {
+  return signupOpen ? `/register?${QUOTE_PARAM}=1` : "/register";
+}

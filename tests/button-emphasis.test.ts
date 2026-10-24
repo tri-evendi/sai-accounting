@@ -312,6 +312,39 @@ function atributLiteral(node: Jsx, nama: string): string | undefined {
   return undefined;
 }
 
+/**
+ * SATU pengecualian bernama atas tujuan primer pendaratan: tautan pemesanan
+ * demo yang disetel operator di konsol `/landing`.
+ *
+ * Saat pendaftaran ditutup, ajakan di pahlawan & bilah atas berbunyi
+ * "Jadwalkan demo"; bila operator menyetel tautan pemesanan demo, tombol
+ * yang SAMA (label sama, tempat sama) membuka tautan itu alih-alih
+ * `/register`. Itu bukan ajakan kedua — tidak pernah ada dua primer dengan dua
+ * tujuan di satu layar, sebab keduanya cabang dari satu komponen.
+ *
+ * Yang membuatnya tetap berpagar: hanya di `landing-ask-button.tsx`, dan hanya
+ * bila `href`-nya PERSIS ekspresi `{demoBookingUrl}`. Primer dinamis lain di
+ * pendaratan tetap merah.
+ */
+function pengecualianTautanDemo(jalur: string, baris: number): boolean {
+  if (!relatif(jalur).endsWith("components/landing/landing-ask-button.tsx")) return false;
+  const src = sumber(jalur);
+  let cocok = false;
+  const kunjungi = (node: ts.Node) => {
+    if (isJsx(node) && primer(node) && src.getLineAndCharacterOfPosition(node.getStart()).line + 1 === baris) {
+      const atribut = (ts.isJsxElement(node) ? node.openingElement : node).attributes;
+      for (const a of atribut.properties) {
+        if (ts.isJsxAttribute(a) && a.name.getText() === "href" && a.initializer?.getText() === "{demoBookingUrl}") {
+          cocok = true;
+        }
+      }
+    }
+    ts.forEachChild(node, kunjungi);
+  };
+  kunjungi(src);
+  return cocok;
+}
+
 /** Setiap `<Button>` primer di sebuah berkas, dengan `href`-nya. */
 function tombolPrimer(jalur: string): { baris: number; href: string | undefined }[] {
   const src = sumber(jalur);
@@ -427,6 +460,7 @@ describe("penekanan tombol (#267)", () => {
     const salahTujuan: string[] = [];
     for (const jalur of berkasTsx(join(ROOT, AREA_PENDARATAN))) {
       for (const { baris, href } of tombolPrimer(jalur)) {
+        if (href === undefined && pengecualianTautanDemo(jalur, baris)) continue;
         if (href !== TUJUAN_PRIMER_PENDARATAN) {
           salahTujuan.push(`${relatif(jalur)}:${baris} (href=${href ?? "—"})`);
         }

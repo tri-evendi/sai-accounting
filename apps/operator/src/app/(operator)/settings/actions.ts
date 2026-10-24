@@ -49,7 +49,10 @@ export interface OperatorSettingsResult {
 function segarkanPermukaan(): void {
   revalidatePath("/settings");
   /* Ketiganya memajang kanal kontak: pendaratan (tombol WhatsApp melayang,
-     jawaban FAQ, kaki kartu rundingan), halaman harga, dan layar penawaran. */
+     jawaban FAQ, kaki kartu rundingan), halaman harga, dan layar penawaran —
+     dan ketiganya ikut berubah bila harga publik disembunyikan. Yang membuat
+     `app-customer` membaca ulang adalah sinyal `site-settings`
+     (`saveSiteSettings`); revalidasi ini hanya untuk proses konsol. */
   revalidatePath("/");
   revalidatePath("/pricing");
   revalidatePath("/register");
@@ -92,6 +95,7 @@ export async function operatorSaveSiteSettings(
       manualPaymentInstructions: data.manualPaymentInstructions,
       selfServeSignupOpen: triState(data.selfServeSignup),
       ppnEnabled: triState(data.ppn),
+      publicPricingVisible: data.publicPricing === "on",
       actor: session.operator.name,
     });
   } catch (error) {
@@ -123,6 +127,10 @@ export async function operatorSaveSiteSettings(
       signupTo: triState(data.selfServeSignup),
       ppnFrom: lama?.ppnEnabled ?? null,
       ppnTo: triState(data.ppn),
+      /* Harga publik (migration platform 0013): `null` lama = tampil. Dicatat
+         apa adanya supaya "belum pernah disetel" tetap terbaca di jejak. */
+      publicPricingFrom: lama?.publicPricingVisible ?? null,
+      publicPricingTo: data.publicPricing === "on",
     },
   });
 

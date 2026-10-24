@@ -1,11 +1,7 @@
-import { prisma } from "@/lib/prisma";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
-import {
-  countStockHealth,
-  stockLevelsFromTotals,
-  toLowStockAlerts,
-} from "@/lib/inventory";
+import { countStockHealth, toLowStockAlerts } from "@/lib/inventory";
+import { opnameStockLevels } from "@/lib/report-pdf-payload";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
 import { Card } from "@sai/ui/card";
@@ -77,22 +73,10 @@ export default async function StockOpnamePage({
    * (dibuktikan tests/inventory-value.test.ts). Angkanya identik; yang hilang
    * hanya pekerjaannya.
    */
-  const [allItems, movementTotals] = await Promise.all([
-    prisma.item.findMany({
-      select: { id: true, name: true, unit: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.stockMovement.groupBy({ by: ["itemId", "type"], _sum: { quantity: true } }),
-  ]);
-
-  const opnameItems = stockLevelsFromTotals(
-    allItems,
-    movementTotals.map((row) => ({
-      itemId: row.itemId,
-      type: row.type,
-      quantity: Number(row._sum.quantity ?? 0),
-    }))
-  );
+  /* Pembaca yang SAMA dengan lembar hitungnya (`/api/reports/pdf/opname`):
+     kertas yang dicetak dari formulir ini menyebut saldo yang sama dengan
+     kolom stok sistemnya. */
+  const opnameItems = await opnameStockLevels();
 
   const stockHealth = countStockHealth(opnameItems);
   const lowStockAlerts = toLowStockAlerts(opnameItems);

@@ -73,8 +73,28 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.22.0",
+    tanggal: "2026-10-24",
+    ringkas: "PDF laporan stok, lembar opname, dan laporan keuangan kini disusun di server dari angka terbaru, dan PDF laporan keuangan dari dialog laporan kembali bisa diunduh.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "PDF laporan stok, lembar opname, dan laporan keuangan memakai angka terbaru saat tombol cetak ditekan, bukan angka yang dimuat saat halaman dibuka.",
+      },
+      {
+        jenis: "ubah",
+        teks: "PDF laporan yang sangat besar disiapkan di latar; tombolnya menunggu lalu mengunduh berkasnya saat siap.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Unduh PDF laporan keuangan dari dialog laporan kembali berfungsi.",
+      },
+    ],
+  },
+  {
     versi: "0.21.1",
     tanggal: "2026-10-24",
+    sha: "da2b198",
     ringkas: "Unduhan data perusahaan kini disiapkan di latar, jadi data besar tidak lagi membuat halaman menunggu.",
     butir: [
       {

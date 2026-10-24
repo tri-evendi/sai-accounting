@@ -219,7 +219,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
         {/* Cetak DULU, hitung, baru ketik — urutan itulah alasan tombolnya ada
             di sebelah tanggalnya, bukan di kepala halaman. */}
         <Flex vertical gap={4}>
-          <OpnameSheetPDFButton items={items} date={date} showSystemQty={showSystemQty} />
+          <OpnameSheetPDFButton empty={items.length === 0} date={date} showSystemQty={showSystemQty} />
           {/* `Checkbox` AntD MEMANG sebuah `<label>` yang membungkus isian dan
               katanya — jadi kotak centang telanjang + label rakitan tangan tidak
               lagi diperlukan. */}

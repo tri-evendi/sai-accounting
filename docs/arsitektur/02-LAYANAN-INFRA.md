@@ -42,7 +42,7 @@ dan batas heap eksplisit di setiap perintah Node.
 | `app-operator` | `sai-app-operator` | Konsol operator | selalu hidup |
 | `pg` | `sai-pg` | PostgreSQL 17 — 17 buku PT + control + platform | selalu hidup |
 | `pgbouncer` | `sai-pgbouncer` | Pool koneksi `transaction` | selalu hidup |
-| `svc-worker` | `sai-svc-worker` | **Lima peran Node** di bawah penyelia `scripts/run-workers.ts`: `scheduler` (8 langkah penagihan & pemeliharaan, tiap jam), `conformance` (sapuan kesesuaian, mingguan), `ledger` (pelari jalur `ledger`), `interactive` (ekspor besar, `report.export`; penyediaan PT baru, `company.provision` — satu-satunya layanan hidup-terus dengan `PROVISION_DATABASE_URL`; kirim faktur saat diposting, `document.invoice_send`), `outbox` (relay outbox transaksional buku PT → `jobs`, 09 §4) | selalu hidup |
+| `svc-worker` | `sai-svc-worker` | **Lima peran Node** di bawah penyelia `scripts/run-workers.ts`: `scheduler` (8 langkah penagihan & pemeliharaan, tiap jam), `conformance` (sapuan kesesuaian, mingguan), `ledger` (pelari jalur `ledger`), `interactive` (ekspor besar, `report.export`; PDF laporan besar yang muatannya dihitung server, `report.pdf`; penyediaan PT baru, `company.provision` — satu-satunya layanan hidup-terus dengan `PROVISION_DATABASE_URL`; kirim faktur saat diposting, `document.invoice_send`), `outbox` (relay outbox transaksional buku PT → `jobs`, 09 §4) | selalu hidup |
 | `svc-integrator` | `sai-svc-integrator` | **Dua jalur Go** dalam satu proses: `tenant` (cadangan **per basis data**) dan `interactive` sisi Go (lembar sebar ber-`engine: go`, `report.export_go`; hari ini Neraca Saldo) | selalu hidup |
 | `job-backup` | `sai-job-backup` | **Perkakas saja** sejak tahap 1b (profil `perkakas`) — pembukti pemulihan & jalur lama bertangan | tidak dijadwalkan |
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
@@ -527,9 +527,17 @@ memuat `instansGagal`, jejaknya `error`, pemangkasan dilewati, dan
 
 ### Peran `interactive` (`svc-worker`) — jalur `interactive`, ekspor besar
 
-Menguras `report.export` dari tabel `jobs`. Ia **tidak** menggantikan
-`/api/reports/export`: ekspor berukuran biasa tetap dirakit di dalam permintaan
-HTTP dan selesai dalam milidetik — antrean untuknya hanya menambah penantian.
+Menguras `report.export` dan `report.pdf` dari tabel `jobs`. Ia **tidak**
+menggantikan `/api/reports/export` maupun `/api/reports/pdf/<jenis>`: berkas
+berukuran biasa tetap dirakit di dalam permintaan HTTP dan selesai dalam
+milidetik — antrean untuknya hanya menambah penantian.
+
+`report.pdf` (24 Okt 2026) adalah PDF laporan stok, lembar hitung opname, dan
+laporan kas & bank di atas ambang yang sama. Muatannya `{ jenis, params }`;
+pekerjanya menghitung muatan dengan pembangun yang SAMA dengan rute sinkronnya
+(`src/lib/report-pdf-payload.ts`), menggambar dengan generator jsPDF yang sama
+(Node, bukan Go — 09 §5), dan membangkitkan byte SEKALI. Izin unduhnya milik
+jenis laporannya (`PER_REPORT_PERMISSION`), bukan `report.export`.
 
 Yang diserahkan ke sini hanya yang di atas `EXPORT_QUEUE_HANDOFF_ROWS` (5.000
 baris, plafon penolakan 50.000), dan sebabnya bukan ukuran berkasnya melainkan

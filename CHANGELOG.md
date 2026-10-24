@@ -20,7 +20,22 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.21.1 — 2026-10-24 — belum digelar
+## 0.22.0 — 2026-10-24 — belum digelar
+
+PDF laporan stok, lembar opname, dan laporan keuangan kini disusun di server dari angka terbaru, dan PDF laporan keuangan dari dialog laporan kembali bisa diunduh.
+
+### Berubah
+
+- PDF laporan stok, lembar opname, dan laporan keuangan memakai angka terbaru saat tombol cetak ditekan, bukan angka yang dimuat saat halaman dibuka.
+- PDF laporan yang sangat besar disiapkan di latar; tombolnya menunggu lalu mengunduh berkasnya saat siap.
+
+### Perbaikan
+
+- Unduh PDF laporan keuangan dari dialog laporan kembali berfungsi.
+
+---
+
+## 0.21.1 — 2026-10-24 (da2b198)
 
 Unduhan data perusahaan kini disiapkan di latar, jadi data besar tidak lagi membuat halaman menunggu.
 

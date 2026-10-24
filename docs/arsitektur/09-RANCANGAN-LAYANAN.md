@@ -617,24 +617,43 @@ OTOMATIS DI SINI" tetap benar untuk berkas itu.
 
 ## 5. Dokumen dibuat di server
 
-✅ **Sebagian besar sudah jadi (tahap 1c).** Permukaannya di
+✅ **Pemindahannya selesai (tahap 1c, ditutup 24 Okt 2026).** Permukaannya di
 [03 §1](./03-API-INTEGRASI.md); jalur berantrenya di
 [02 §5](./02-LAYANAN-INFRA.md).
 
 | Dokumen | Sesudah | Keadaan |
 |---|---|---|
 | Satu faktur, surat jalan, kontrak, retur | server, sinkron, di-stream — milidetik | ✅ setiap dokumen satuan, dari ID-nya |
-| Laporan pendek yang sudah tampil di layar | server, sinkron | ✅ `/api/reports/pdf` & `/api/reports/export` |
+| Laporan pendek yang sudah tampil di layar | server, sinkron | ✅ `/api/reports/pdf/<jenis>` & `/api/reports/export` |
+| Laporan stok, lembar hitung opname, laporan kas & bank | server, dari PARAMETER — muatannya dihitung dari buku PT oleh pembaca yang sama dengan halamannya (`src/lib/report-pdf-payload.ts`) | ✅ sinkron di bawah ambang penyerahan, pekerjaan `report.pdf` (jalur `interactive`) di atasnya |
 | Ekspor besar | **pekerjaan** → penyimpanan objek → pengguna mengunduh tautan | ✅ jalur `interactive`; di atas ambang penyerahan |
 | **Paket laporan** (banyak laporan satu periode jadi satu berkas) | pekerjaan `report.package` | **belum** — ia FITUR BARU, bukan pemindahan |
-| Peramban | tidak menghasilkan apa pun | sebagian: tiga generator LAPORAN masih di sana |
+| Peramban | tidak menghasilkan — dan tidak merakit — apa pun | ✅ nol generator `src/lib/pdf/` di komponen klien (dijaga `tests/laporan-pdf-server.test.ts`); tiga laporan terakhir kini juga tidak lagi dirakit muatannya di peramban |
 
-**Yang tersisa dua, dan keduanya bukan "pemindahan yang belum selesai":**
+**Yang tersisa satu, dan ia bukan "pemindahan yang belum selesai":**
 
 | Tersisa | Kenapa ia bukan sekadar sisa |
 |---|---|
-| Tiga generator laporan di peramban (`finance-report`, `opname-sheet`, `stock-report`) | ketiganya LAPORAN, bukan dokumen satuan — jalur mereka `/api/reports/pdf`, dan memindahkannya menuntut pembangun payload per laporan, bukan satu pemuat per dokumen |
 | `report.package` | tidak pernah ada di aplikasi ini. Membangunnya berarti **menambah fitur** di bawah nama "pindah ke server", dan itu dua keputusan yang digabung menjadi satu |
+
+**Bagaimana tiga laporan terakhir pindah** (`finance-report`, `opname-sheet`,
+`stock-report` — LAPORAN, bukan dokumen satuan, jadi jalurnya
+`/api/reports/pdf/<jenis>`, bukan rute dokumen):
+
+| Bagian | Di mana |
+|---|---|
+| Pembangun muatan per laporan, dari parameter + buku PT; halaman Stok, Stok Opname, dan Kas & Bank memakai turunan yang SAMA untuk layarnya (`inventorySummaries`, `opnameStockLevels`, `financeFilter`/`financeBalances`) | `src/lib/report-pdf-payload.ts` |
+| Badan permintaan = PARAMETER (`{}` · `{ date, showSystemQty }` · saringan `type/currency/year/month`), skema `.strict()` supaya tab lama yang masih mengirim muatan jadi dijawab 400, bukan dicetak tanpa saringan | `src/lib/validations/report-pdf.ts` |
+| Izin per jenis = izin HALAMANNYA (`inventory.read` · `inventory.write` · `cash.read`); buku dibaca hanya sesudah penjaga dan bentuk lolos, dan perusahaannya PT aktif dari penjaga — laporan PT lain tidak terjangkau | `REPORT_PDF` (`src/lib/report-pdf.ts`) |
+| Pembelah ukuran: `EXPORT_QUEUE_HANDOFF_ROWS` yang SAMA dengan ekspor Excel — di atasnya `202` + pekerjaan `report.pdf` yang membawa `{ jenis, params }` saja (#104) | `src/app/api/reports/pdf/[jenis]/route.ts` |
+| Pekerjanya: registri, pembangun muatan, dan generator jsPDF yang SAMA; byte dibangkitkan SEKALI dan buffer itu yang disimpan | `src/lib/report-pdf-job.ts` · `workers/interactive.ts` |
+| Unduhan berantre: rute hasil bertenant; izin `report.pdf` milik JENIS LAPORAN (`PER_REPORT_PERMISSION`, `?jenis=` di alamat, dicocokkan dengan muatan barisnya, lalu gerbang kedua atas muatan) — `report.export` menuntut akses penuh dan akan mencabut laporan kas dari Manajer Keuangan tepat ketika ia besar | `packages/core/src/job-result.ts` · `src/lib/job-result-gate.ts` |
+| Bukti isi: kertas dari server = kertas dari muatan rakitan peramban lama untuk buku yang sama (tanpa `/ID`/`/CreationDate`), sinkron maupun berantre; dan otorisasinya | `tests/laporan-pdf-parameter.test.ts` |
+
+Harga yang disebut: muatan kini dihitung saat tombol DITEKAN, bukan saat
+halaman dimuat — transaksi yang masuk di antaranya ikut tercetak. Beranda sudah
+hidup dengan sifat itu sejak #104, dan ia lebih benar daripada mencetak potret
+basi.
 
 ⚠ **Satu klaim di §5 ini DIUKUR dan ternyata punya batas.** "Byte tetap
 identik" dipakai untuk menyimpulkan pemindahan ini tidak menuntut Go, dan
@@ -973,10 +992,12 @@ kehabisan waktu:
 | **`report.package`** | tidak pernah ada di aplikasi ini. Membangunnya berarti menambah FITUR di bawah nama "pindah ke server" — dua keputusan yang digabung menjadi satu |
 | Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. ✅ **`bulk` berjalan sejak kind pertamanya** (23 Okt 2026): `tenant.data_export`, ekspor data mandiri #142 — pelari Go + pintu hasil tingkat tenant + paritas `parity:tenant-export` (lokal: setara). ✅ Sakelar `runner:` **`go` sejak 24 Okt 2026**: paritas produksi lulus (11 tenant × 1 ekspor, 0 berselisih) — §3.2, PRODUCTION.md §Ekspor data mandiri |
 
-Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
-`stock-report`) — ketiganya bukan dokumen satuan, dan jalurnya `/api/reports/pdf`
-(§5). Jumlahnya DICACAH penjaga, jadi ia tidak bisa diam-diam berubah menjadi
-"sudah semuanya".
+Tiga generator LAPORAN yang dulu tersisa (`finance-report`, `opname-sheet`,
+`stock-report`) sudah pindah: penggambarannya ke `/api/reports/pdf/<jenis>`
+sejak 1c, dan muatannya — sejak 24 Okt 2026 — dihitung server dari parameter,
+dengan penyerahan ke antrean di atas ambang (§5). Pencacahnya kini LARANGAN
+dengan ambang nol (`tests/laporan-pdf-server.test.ts`,
+`tests/dokumen-di-server.test.ts`).
 
 🔶 **Tahap 1d DIMULAI 22 Okt 2026 — laporan PERTAMA sudah dipindah (`go`).**
 Pengukurannya (§11, vonis di `/scheduler`) sudah ada, dan pemilik meminta

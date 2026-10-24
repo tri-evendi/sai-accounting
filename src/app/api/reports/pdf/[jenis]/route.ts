@@ -1,21 +1,19 @@
 /**
  * LAPORAN menjadi PDF — DI SERVER (rancangan §5), empat jenis, satu rute.
  *
- * READ-ONLY. Ia menerima muatan laporan yang sudah dihitung halaman yang
- * memintanya, menjalankan generator yang SAMA yang dulu dijalankan peramban,
+ * READ-ONLY. Ia menjalankan generator yang SAMA yang dulu dijalankan peramban,
  * dan men-stream byte-nya.
  *
- * ══ SESUDAH INI PERAMBAN TIDAK MENGGAMBAR APA PUN ══════════════════════════
+ * ══ SESUDAH INI PERAMBAN TIDAK MENGGAMBAR — DAN TIDAK MERAKIT — APA PUN ═══
  * Sebelas modul `src/lib/pdf/` dulu berjalan di peramban. Dengan rute ini
  * jumlahnya **nol**: dokumen satuan lewat rute dokumen (dari ID, dari BUKU),
- * laporan lewat rute ini (dari muatan), ekspor besar lewat antrean.
+ * laporan lewat rute ini, ekspor besar lewat antrean.
  *
- * ══ KENAPA LAPORAN MEMAKAI MUATAN SEMENTARA DOKUMEN MEMAKAI ID ════════════
- * Satu pertanyaan: siapa yang menerima kertasnya. Dokumen diserahkan ke pihak
- * LUAR, jadi angkanya wajib diturunkan dari buku. Laporan di sini dicetak oleh
- * orang yang sedang menatapnya — yang harus dijamin justru kebalikannya:
- * kertasnya sama dengan LAYARNYA. Uraian penuhnya di
- * `lib/validations/report-pdf.ts`.
+ * Tiga laporan (stok, opname, kas) kini juga tidak lagi DIRAKIT peramban:
+ * badannya PARAMETER, dan muatannya dihitung di sini dari buku PT aktif oleh
+ * pembaca yang sama dengan halamannya (`REPORT_PDF[jenis].sumber ===
+ * "parameter"`, `src/lib/report-pdf-payload.ts`). Hanya laporan keuangan
+ * (`statement`) yang masih mengirim muatan jadi — lihat `REPORT_PDF`.
  *
  * ══ YANG DIPUTUSKAN PER JENIS TIDAK ADA DI RUTE INI ═══════════════════════
  * Izin, bentuk muatan, penghitung baris, dan nama berkas hidup di `REPORT_PDF`
@@ -26,18 +24,30 @@
  * ⚠ **URUTANNYA ADALAH PENJAGANYA.** Jenis diperiksa SEBELUM izin, sebab izin
  * yang dituntut ditentukan jenisnya — dan jenis yang tidak dikenal karena itu
  * dijawab 404 tanpa menyentuh sesi. Sesudah itu izin, lalu ukuran badan, lalu
- * bentuk, lalu jumlah baris. Menggambar adalah hal TERAKHIR yang terjadi.
+ * bentuk, lalu muatan (buku dibaca HANYA sesudah izin dan bentuk lolos), lalu
+ * jumlah baris. Menggambar adalah hal TERAKHIR yang terjadi.
  *
- * ══ ONGKOSNYA CPU YANG HARI INI GRATIS ════════════════════════════════════
+ * Perusahaan datang dari penjaga (`requireApiPermission`), dan `prisma` di
+ * dalam pembangun muatannya adalah klien PT AKTIF — jadi laporan PT lain tidak
+ * bisa diminta dari sini: penanya yang bukan anggota PT itu sudah dijawab 404
+ * oleh penjaganya, sebelum satu baris buku dibaca.
+ *
+ * ══ ONGKOSNYA CPU YANG HARI INI GRATIS — DIBELAH MENURUT UKURAN ═══════════
  * Perakitan PDF tadinya berjalan di mesin pengguna: satu peramban per pengguna,
- * paralel sempurna, nol beban server. Rute ini SINKRON, dan itu sah untuk
- * laporan yang sudah tampil di layar — muatannya sudah dihitung, jadi yang
- * tersisa hanya menggambar. Yang WAJIB lewat antrean adalah ekspor besar dan
- * paket laporan (§5), dan ambangnya satu angka: `EXPORT_QUEUE_HANDOFF_ROWS`.
+ * paralel sempurna, nol beban server. Pembelahnya satu angka, SAMA dengan
+ * ekspor Excel (`/api/reports/export`): `EXPORT_QUEUE_HANDOFF_ROWS`.
  *
- * Yang menahan rute ini sementara itu batas yang SAMA dengan ekspor Excel: byte
- * badan sebelum diurai, lalu jumlah baris pada muatan yang sudah divalidasi.
- * Keduanya 413.
+ *  • di bawahnya: sinkron, di permintaan ini — milidetik;
+ *  • di atasnya, untuk jenis yang muatannya dihitung server: pekerjaan
+ *    `report.pdf` di jalur `interactive` (202 + `jobId`). Pekerjanya
+ *    menghitung ulang muatannya dengan fungsi yang SAMA, menggambarnya SEKALI,
+ *    dan menyimpan buffer itu; kliennya menunggu di rute hasil bertenant.
+ *    Penggambaran jsPDF sinkron dan menahan event loop proses yang melayani
+ *    halaman orang lain — sebab yang sama dengan ExcelJS di rute ekspor.
+ *
+ * `EXPORT_MAX_ROWS` tetap plafon 413 untuk yang tidak bisa diantrekan
+ * (`statement`), dan untuk jatuh-kembali bila penerbitan tidak menghasilkan
+ * baris. Batas byte badan juga tetap, sebelum diurai — keduanya 413.
  *
  * ══ BYTE-NYA DIHASILKAN SEKALI ════════════════════════════════════════════
  * `output("arraybuffer")` dipanggil TEPAT sekali, dan buffer itulah yang
@@ -55,7 +65,12 @@ import { businessISODate } from "@sai/core/business-date";
 
 import { requireApiPermission } from "@/lib/auth-guard";
 import { readBoundedText } from "@/lib/request-body";
-import { EXPORT_MAX_BODY_BYTES, EXPORT_MAX_ROWS } from "@sai/core/export-limits";
+import {
+  EXPORT_MAX_BODY_BYTES,
+  EXPORT_MAX_ROWS,
+  EXPORT_QUEUE_HANDOFF_ROWS,
+} from "@sai/core/export-limits";
+import { publishJob } from "@sai/platform/job-queue";
 import { REPORT_PDF, isReportPdfKind } from "@/lib/report-pdf";
 import { serverPdfCompany } from "@/lib/pdf-company";
 import { getRequestI18n } from "@sai/platform/i18n/server";
@@ -107,16 +122,49 @@ export async function POST(request: Request, ctx: { params: Promise<{ jenis: str
       { status: 400 }
     );
   }
-  const muatan: unknown = parsed.data;
+  const badan: unknown = parsed.data;
 
   /*
-   * Batas BARIS dihitung dari muatan yang SUDAH divalidasi, oleh penghitung
-   * milik jenisnya. Untuk `statement` penghitung itu `buildReportSheet` —
-   * pemeta yang sama dengan ekspor Excel, sebab dua penghitung untuk satu
-   * laporan berarti ada ukuran yang ditolak satu tombol dan diterima tombol di
-   * sebelahnya.
+   * Muatan: untuk jenis `"parameter"` ia DIHITUNG di sini dari buku PT aktif
+   * (pembaca yang sama dengan halamannya); untuk `statement` badannya sudah
+   * muatannya.
+   *
+   * Batas BARIS dihitung dari muatan itu, oleh penghitung milik jenisnya. Untuk
+   * `statement` penghitung itu `buildReportSheet` — pemeta yang sama dengan
+   * ekspor Excel, sebab dua penghitung untuk satu laporan berarti ada ukuran
+   * yang ditolak satu tombol dan diterima tombol di sebelahnya.
    */
+  const muatan = await spec.muatan(badan);
   const baris = spec.barisnya(muatan);
+
+  /*
+   * ── PENYERAHAN KE ANTREAN (09 §5) — urutan dan bentuk yang SAMA dengan
+   *    `/api/reports/export`: serahkan lebih dulu, tolak kemudian ───────────
+   *
+   * ⚠ Yang diterbitkan PARAMETER (`badan`), bukan muatan. `jobs` hidup di basis
+   * data KENDALI, dan kendali tidak memuat satu angka akuntansi pun (#104).
+   * Karena itu hanya jenis `"parameter"` yang bisa diserahkan: muatan
+   * `statement` tidak punya asal yang bisa dihitung ulang.
+   *
+   * TANPA `dedupeKey`: dua klik memang dua pekerjaan (§4), sama dengan ekspor.
+   * `row` null karenanya praktis tak terjangkau — bila terjadi ia JATUH KEMBALI
+   * ke jalur di bawah (413 di atas plafon, digambar di sini bila tidak), bukan
+   * melempar.
+   */
+  if (spec.sumber === "parameter" && baris > EXPORT_QUEUE_HANDOFF_ROWS) {
+    const row = await publishJob({
+      kind: "report.pdf",
+      companyId: authz.companyId,
+      payload: { jenis, params: badan },
+    });
+    if (row) {
+      return NextResponse.json(
+        { queued: true, jobId: row.id, kind: "report.pdf", rows: baris },
+        { status: 202 }
+      );
+    }
+  }
+
   if (baris > EXPORT_MAX_ROWS) {
     const { t, locale } = await getRequestI18n();
     const angka = new Intl.NumberFormat(locale);

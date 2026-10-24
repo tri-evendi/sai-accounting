@@ -1,8 +1,8 @@
 "use client";
 
 import { StockReportPDFButton } from "@/components/shared/pdf-export-buttons";
-import type { ClientInventoryItem } from "@/lib/inventory";
 
-export function InventoryPageActions({ items }: { items: ClientInventoryItem[] }) {
-  return <StockReportPDFButton items={items} />;
+/* Hanya `empty` untuk `disabled` — muatannya dihitung server (09 §5). */
+export function InventoryPageActions({ empty }: { empty: boolean }) {
+  return <StockReportPDFButton empty={empty} />;
 }

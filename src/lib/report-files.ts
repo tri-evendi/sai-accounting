@@ -78,38 +78,51 @@ export async function fetchReportPayload(
  * kebenaran tentang PT mana ini.
  */
 export async function downloadStatementPdf(payload: StatementPayload): Promise<void> {
-  const res = await apiFetch("/api/reports/pdf", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`PDF gagal dibuat: ${res.status}`);
+  // Lewat `/api/reports/pdf/statement` seperti setiap laporan lain. Sampai
+  // 24 Okt 2026 fungsi ini masih POST ke `/api/reports/pdf` — rute yang sudah
+  // tidak ada sejak rute PDF berpindah ke `[jenis]` (d5324281) — sehingga PDF
+  // laporan keuangan dari dialog laporan dijawab 404.
   await simpanBlob(
-    await res.blob(),
-    res.headers.get("Content-Disposition"),
+    await fetchStatementPdfBlob(payload),
+    null,
     `${slug(STATEMENT_TITLES[payload.kind])}_${stamp()}.pdf`
   );
 }
 
 /**
- * Muatan laporan → Blob PDF dari server, TANPA mengunduhnya. Empat jenis
- * laporan memakai satu rute; `jenis` memilih izin, bentuk, dan generatornya di
+ * Laporan → Blob PDF dari server, TANPA mengunduhnya. Empat jenis laporan
+ * memakai satu rute; `jenis` memilih izin, bentuk badan, dan generatornya di
  * sisi server (`REPORT_PDF`).
+ *
+ * `badan` adalah PARAMETER untuk tiga laporan yang muatannya dihitung server
+ * (stok, opname, kas — 09 §5), dan muatan jadi untuk `statement`.
  *
  * Dipakai tombol pratinjau: ia menampilkan Blob-nya lebih dulu, dan unduhannya
  * dibuat dari Blob yang SAMA. Permintaan kedua akan menghasilkan `/ID` PDF yang
  * berbeda — pengenal berkas acak jsPDF — sehingga yang dilihat pengguna dan yang
  * ia simpan bukan berkas yang sama byte-nya. Satu permintaan, satu berkas.
+ *
+ * ── 202: laporan besar DISERAHKAN ke antrean ────────────────────────────────
+ * Di atas `EXPORT_QUEUE_HANDOFF_ROWS` rutenya menerbitkan pekerjaan
+ * `report.pdf` alih-alih menggambar di permintaan ini. Kita menunggu di rute
+ * hasil bertenant — pintu yang sama dengan ekspor Excel — dan Blob yang
+ * dipulangkan adalah buffer yang SATU KALI dibangkitkan pekerjanya. `?jenis=`
+ * ikut di alamatnya: izin unduhnya milik jenis laporan, bukan `kind`-nya.
  */
 export async function fetchReportPdfBlob(
   jenis: ReportPdfKind,
-  payload: unknown
+  badan: unknown
 ): Promise<Blob> {
   const res = await apiFetch(`/api/reports/pdf/${jenis}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(badan),
   });
+  if (res.status === 202) {
+    const antre = (await res.json()) as { jobId: number; kind: string };
+    const hasil = await tungguHasil(antre.jobId, antre.kind, undefined, { jenis });
+    return hasil.blob();
+  }
   if (!res.ok) throw new Error(`PDF gagal dibuat: ${res.status}`);
   return res.blob();
 }
@@ -257,6 +270,28 @@ async function unduhSaatSiap(
   kind: string,
   lapor?: (persen: number) => void
 ): Promise<void> {
+  const res = await tungguHasil(jobId, kind, lapor);
+  await simpanBlob(
+    await res.blob(),
+    res.headers.get("Content-Disposition"),
+    `Laporan_${stamp()}.xlsx`
+  );
+}
+
+/**
+ * Penantian di rute hasil — dipakai unduhan ekspor (`unduhSaatSiap`) dan
+ * pratinjau PDF berantre (`fetchReportPdfBlob`). Memulangkan jawaban 200-nya;
+ * pemanggil yang memutuskan apakah Blob-nya disimpan atau dipratinjau.
+ *
+ * `query` ikut ke alamat apa adanya — `report.pdf` menuntut `?jenis=` (izin
+ * unduhnya milik jenis laporan, `PER_REPORT_PERMISSION`).
+ */
+async function tungguHasil(
+  jobId: number,
+  kind: string,
+  lapor?: (persen: number) => void,
+  query?: Record<string, string>
+): Promise<Response> {
   const lingkup = parseTenantPath(window.location.pathname);
   if (!lingkup) {
     throw new Error(
@@ -264,20 +299,14 @@ async function unduhSaatSiap(
         "dan alamat unduhannya menuntut sepasang slug (#489)"
     );
   }
-  const href = `/api/t/${lingkup.tenantSlug}/${lingkup.companySlug}/jobs/${encodeURIComponent(kind)}/${jobId}/result`;
+  const cari = query ? `?${new URLSearchParams(query).toString()}` : "";
+  const href = `/api/t/${lingkup.tenantSlug}/${lingkup.companySlug}/jobs/${encodeURIComponent(kind)}/${jobId}/result${cari}`;
 
   const batas = Date.now() + BATAS_TUNGGU_MS;
   for (;;) {
     const res = await apiFetch(href);
 
-    if (res.ok) {
-      await simpanBlob(
-        await res.blob(),
-        res.headers.get("Content-Disposition"),
-        `Laporan_${stamp()}.xlsx`
-      );
-      return;
-    }
+    if (res.ok) return res;
 
     if (res.status !== 409) {
       /* 404 = bukan milik PT ini, izinnya dicabut, atau berkasnya hilang.

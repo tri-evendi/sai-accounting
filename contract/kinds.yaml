@@ -139,6 +139,20 @@ kinds:
       diterbitkan ke sini diputuskan register `src/lib/report-engine.ts`
       (`engine: go`), bukan penerbitnya.
 
+  report.pdf:
+    lane: interactive
+    max_attempts: 3
+    description: >
+      satu laporan PDF yang muatannya dihitung SERVER (stok, lembar opname,
+      kas & bank — `REPORT_PDF[jenis].sumber === "parameter"`) dan barisnya di
+      atas `EXPORT_QUEUE_HANDOFF_ROWS`. Diterbitkan `/api/reports/pdf/<jenis>`,
+      dikerjakan peran `interactive` Node dengan generator jsPDF yang SAMA
+      dengan rute sinkronnya (09 §5: Node, bukan Go). Jenis tersendiri, bukan
+      `report.export`, sebab izin unduhnya milik JENIS LAPORAN di muatannya
+      (`inventory.read` / `inventory.write` / `cash.read`) — `report.export`
+      menuntut akses penuh, dan Manajer Keuangan yang hari ini boleh mencetak
+      laporan kas akan kehilangannya tepat ketika laporannya besar.
+
   document.generate:
     lane: interactive
     max_attempts: 3

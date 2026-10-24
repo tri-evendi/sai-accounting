@@ -464,6 +464,8 @@ services:
       # `WORKER_LEADER_ROLES` hanya dari override HA — compose dasar tidak
       # pernah menyalakan leader election (`tests/leader-election.test.ts`).
       CONFORMANCE_CONCURRENCY:
+      # Buku yang direlay bersamaan oleh peran `outbox` (bawaan 3, plafon 8).
+      OUTBOX_RELAY_CONCURRENCY:
       # Pagar jalur `ledger` di koneksi LANGSUNG (lihat kepala blok ini) —
       # disetujui pemilik 22 Okt 2026. LANGSUNG ke `pg`, bukan PgBouncer;
       # `assertDirectUrl` menolak URL pooler sebelum satu byte dikirim. Dijaga
@@ -519,6 +521,12 @@ services:
       - exec bun run jobs:run:ledger
       - interactive
       - exec bun run jobs:run:interactive
+      # Relay outbox (09 §4): buku PT → `jobs`. Tunggal-instans (pagar
+      # `sai.outbox.relay`), berjalan terus, tanpa `timeout` — alasan yang sama
+      # dengan pelari `ledger`: tidak ada putaran berikutnya yang bisa
+      # tertahan, dan transaksi bukunya punya batas waktunya sendiri.
+      - outbox
+      - exec bun run outbox:relay
       - scheduler
       # `notify:setup`, `notify:invoice-due`, dan `remind:customers` menumpang
       # putaran yang SAMA, bukan layanan sendiri-sendiri: cadensinya identik

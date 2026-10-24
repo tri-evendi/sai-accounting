@@ -54,6 +54,7 @@ import { buildWorkbookBuffer } from "../src/lib/xlsx";
 import { getCompanyIdentity } from "../src/lib/company-identity";
 import { runReadOnly } from "../src/lib/read-replica";
 import { applyEfakturRecord } from "../src/lib/efaktur-record";
+import { autoSendPostedInvoice } from "../src/lib/invoice-auto-send";
 
 /** Muatan `report.export` — PARAMETER saja. */
 interface MuatanEkspor {
@@ -176,6 +177,29 @@ async function catatEfaktur(ctx: JobContext): Promise<null> {
   return null;
 }
 
+/**
+ * `document.invoice_send` — faktur yang baru DIPOSTING ke surel pelanggan
+ * (pemakai pertama outbox, 09 §4). Diterbitkan HANYA relay outbox dari
+ * peristiwa `invoice.posted`. Sakelarnya per PT (`invoice_auto_send`, bawaan
+ * MATI); idempotensinya di `src/lib/invoice-auto-send.ts`.
+ *
+ * `false` = perusahaan nonaktif TIDAK ditolak di sini: peristiwanya lahir
+ * ketika buku masih aktif, dan sakelar PT-nya yang memutuskan — bukan status
+ * registry yang bisa berubah di antara posting dan pelaksanaan.
+ */
+async function kirimFakturDiposting(ctx: JobContext): Promise<null> {
+  const p = (ctx.job.payload ?? {}) as { invoiceId?: unknown };
+  if (typeof p.invoiceId !== "number" || !Number.isInteger(p.invoiceId) || p.invoiceId <= 0) {
+    throw new Error("muatan tanpa `invoiceId` yang sah — pekerjaan ini tidak tahu faktur mana");
+  }
+  const invoiceId = p.invoiceId;
+  const hasil = await dalamKonteksPerusahaan(ctx.job.companyId, false, () =>
+    autoSendPostedInvoice(invoiceId)
+  );
+  console.log(`[interactive] #${ctx.job.id} document.invoice_send faktur #${invoiceId}: ${hasil}`);
+  return null;
+}
+
 void runLane({
   lane: "interactive",
   handlers: {
@@ -196,5 +220,6 @@ void runLane({
      */
     "company.provision": provisionCompanyJob,
     "efaktur.record": catatEfaktur,
+    "document.invoice_send": kirimFakturDiposting,
   },
 });

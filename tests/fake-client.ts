@@ -141,8 +141,19 @@ const matchesIn = (value: unknown, cond: unknown): boolean => {
 const matches = (row: Record<string, unknown>, where: Where): boolean =>
   Object.entries(where).every(([k, v]) => matchesIn(row[k], v));
 
+/** Baris outbox (09 §4) yang ditulis pintu posting lewat `emitOutboxEvent`. */
+export interface FakeOutboxRow {
+  id: number;
+  eventType: string;
+  aggregateType: string;
+  aggregateId: number;
+  payload: unknown;
+  dedupeKey: string;
+}
+
 export function createFakeClient(seed: FakeSeed = {}) {
   const journals: FakeJournal[] = [];
+  const outbox: FakeOutboxRow[] = [];
   let journalId = 0;
   let lineId = 0;
 
@@ -277,11 +288,38 @@ export function createFakeClient(seed: FakeSeed = {}) {
       },
     },
 
+    // ── outbox transaksional (09 §4) — kunci dedupe unik, seperti indeks aslinya ──
+    outbox: {
+      createMany: async ({
+        data,
+        skipDuplicates,
+      }: {
+        data: Omit<FakeOutboxRow, "id">[];
+        skipDuplicates?: boolean;
+      }) => {
+        let count = 0;
+        for (const row of data) {
+          if (outbox.some((o) => o.dedupeKey === row.dedupeKey)) {
+            if (skipDuplicates) continue;
+            throw new Error(`unique violation: outbox.dedupe_key ${row.dedupeKey}`);
+          }
+          outbox.push({ ...row, id: outbox.length + 1 });
+          count++;
+        }
+        return { count };
+      },
+    },
+
     /** Test helper — every journal created so far, in creation order. */
     _journals: journals,
+    /** Test helper — setiap baris outbox yang ditulis, berurutan. */
+    _outbox: outbox,
   };
 
-  return client as unknown as Prisma.TransactionClient & { _journals: FakeJournal[] };
+  return client as unknown as Prisma.TransactionClient & {
+    _journals: FakeJournal[];
+    _outbox: FakeOutboxRow[];
+  };
 }
 
 // ─── Read-side fake: journal lines + accounts, for the report modules ────────

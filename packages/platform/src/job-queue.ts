@@ -171,6 +171,33 @@ export async function jobStatus(by: { id: number } | { dedupeKey: string }): Pro
   return rows[0] ?? null;
 }
 
+/** Baris `latestTenantJob`: status + kapan selesai + apakah berkasnya ada. */
+export type TenantJobRow = JobStatusRow & { finishedAt: Date | null; hasResult: boolean };
+
+/**
+ * Pekerjaan TERBARU satu jenis milik satu tenant — untuk layar yang menunggu
+ * pekerjaan tingkat TENANT (ekspor data mandiri, `tenant.data_export`), yang
+ * tidak punya PT dan karena itu tidak punya rute status per-PT.
+ *
+ * Disaring `tenant_id` DI DALAM kueri, berbeda dari `jobForDownload`: pemanggil
+ * tidak memberi id — ia meminta "punya saya yang terakhir", jadi tidak ada
+ * baris milik tenant lain yang bisa ia sebut. `payload` & `lastError` tetap
+ * ikut untuk pembaca sisi server, dan TIDAK PERNAH ke jawaban HTTP.
+ */
+export async function latestTenantJob(tenantId: number, kind: JobKind): Promise<TenantJobRow | null> {
+  const rows = await controlDb.$queryRaw<TenantJobRow[]>`
+    SELECT id, kind, status, tenant_id AS "tenantId", company_id AS "companyId", payload,
+           progress, attempts, max_attempts AS "maxAttempts", last_error AS "lastError",
+           (created_at AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS "createdAt",
+           (finished_at AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS "finishedAt",
+           (result_ref IS NOT NULL) AS "hasResult"
+      FROM jobs
+     WHERE tenant_id = ${tenantId} AND kind = ${kind}
+     ORDER BY id DESC
+     LIMIT 1`;
+  return rows[0] ?? null;
+}
+
 /**
  * Klaim satu pekerjaan dari daftar `kind` yang DIKLAIM pekerja ini.
  *
@@ -455,6 +482,11 @@ export interface JobForDownload {
   id: number;
   kind: JobKind;
   status: JobStatus;
+  /**
+   * Tenant pemilik — pembanding pintu hasil TINGKAT TENANT
+   * (`/api/tenant/export/jobs/[id]/result`), yang barisnya tidak punya PT.
+   */
+  tenantId: number | null;
   companyId: number | null;
   resultRef: string | null;
   /**
@@ -480,8 +512,8 @@ export interface JobForDownload {
  */
 export async function jobForDownload(id: number): Promise<JobForDownload | null> {
   const rows = await controlDb.$queryRaw<JobForDownload[]>`
-    SELECT id, kind, status, company_id AS "companyId", result_ref AS "resultRef",
-           payload
+    SELECT id, kind, status, tenant_id AS "tenantId", company_id AS "companyId",
+           result_ref AS "resultRef", payload
       FROM jobs WHERE id = ${id}`;
   return rows[0] ?? null;
 }

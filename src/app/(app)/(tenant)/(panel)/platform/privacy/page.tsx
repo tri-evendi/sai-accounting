@@ -19,6 +19,7 @@ import { getT } from "@sai/platform/i18n/server";
 import { PageHeader } from "@sai/ui/page-header";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
+import { tenantExportRunner } from "@/lib/tenant-export-job";
 
 import { PrivacySection } from "../privacy-section";
 
@@ -37,7 +38,10 @@ export default async function PlatformPrivacyPage() {
           { label: t("tenantSettings.privacyHeading") },
         ]}
       />
-      <PrivacySection canDelete={tenantCan(tenant, "tenant.deletion")} />
+      <PrivacySection
+        canDelete={tenantCan(tenant, "tenant.deletion")}
+        exportRunner={tenantExportRunner()}
+      />
     </>
   );
 }

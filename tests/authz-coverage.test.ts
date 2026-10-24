@@ -205,6 +205,11 @@ const TENANT_API_ROUTES = new Set([
   // PT-nya — dan ekspor wajib tetap bekerja saat seluruh PT hanya-baca
   // (suspended), keadaan yang penjaga perusahaan justru tolak.
   "tenant/export/route.ts",
+  // Ekspor sebagai pekerjaan jalur `bulk` (23 Okt 2026): keadaan pekerjaan
+  // terbaru dan berkas hasilnya — izin yang SAMA dengan penerbitnya
+  // (`tenant.export`), dan baris milik tenant lain dijawab 404 di dalamnya.
+  "tenant/export/jobs/route.ts",
+  "tenant/export/jobs/[id]/result/route.ts",
   "tenant/deletion-request/route.ts",
   // Identitas akun (issue #458): mengganti NAMA TAMPILAN tenant — `tenant.settings`
   // (owner). Bukan kewenangan sebuah PT: yang berganti nama adalah akun yang
@@ -792,6 +797,9 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
     "app/(app)/(tenant)/(panel)/platform/billing-actions.tsx",
     "app/(app)/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
     "app/(app)/(tenant)/(panel)/platform/privacy-section.tsx",
+    // Ekspor data mandiri sebagai pekerjaan jalur `bulk`: `/api/tenant/export`
+    // (POST) dan `/api/tenant/export/jobs` — tingkat tenant, seperti saudaranya.
+    "app/(app)/(tenant)/(panel)/platform/export-panel.tsx",
     // Banner pengumuman status (migration platform 0004): endpoint PUBLIK
     // tanpa perusahaan — tampil juga di halaman masuk, sebelum ada sesi.
     "components/layout/status-banner.tsx",

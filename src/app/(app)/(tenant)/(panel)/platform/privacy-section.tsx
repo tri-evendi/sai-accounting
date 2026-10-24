@@ -4,8 +4,9 @@
  * Kartu "Data & Privasi" di Pengaturan Tenant (issue #142) — dua hak UU PDP:
  * ekspor seluruh data, dan permintaan penghapusan akun.
  *
- * Ekspor = tautan unduh biasa (`GET /api/tenant/export`) — server yang
- * menjaga izinnya dan mencatat auditnya. Permintaan penghapusan menyebut
+ * Ekspor = tautan unduh biasa (`GET /api/tenant/export`) selama pelaksananya
+ * Node, atau "minta → tunggu → unduh" sejak pelaksananya Go (jalur `bulk`,
+ * `export-panel.tsx`) — server yang menjaga izinnya dan mencatat auditnya. Permintaan penghapusan menyebut
  * KONSEKUENSINYA sebelum tombol ditekan (masa tenggang, anonimisasi, buku
  * yang TETAP tersimpan 10 tahun) dan menuntut konfirmasi eksplisit.
  *
@@ -26,13 +27,15 @@
 
 import { useEffect, useState } from "react";
 import { Flex, Typography, theme } from "antd";
-import { DownloadOutlined, SecurityScanOutlined } from "@ant-design/icons";
+import { SecurityScanOutlined } from "@ant-design/icons";
 import { Button } from "@sai/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@sai/ui/card";
 import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { formatDate } from "@sai/core/utils";
 import { useT } from "@sai/core/i18n/client";
 import { moneyPalette } from "@sai/ui/theme/antd-tokens";
+
+import { ExportPanel } from "./export-panel";
 
 const { Title, Text } = Typography;
 
@@ -41,7 +44,14 @@ interface DeletionState {
   graceDays: number;
 }
 
-export function PrivacySection({ canDelete }: { canDelete: boolean }) {
+export function PrivacySection({
+  canDelete,
+  exportRunner,
+}: {
+  canDelete: boolean;
+  /** `runner:` kind `tenant.data_export` — dibaca server (`tenantExportRunner`). */
+  exportRunner: "node" | "go";
+}) {
   const t = useT();
   const { token } = theme.useToken();
   const money = moneyPalette(token);
@@ -122,20 +132,11 @@ export function PrivacySection({ canDelete }: { canDelete: boolean }) {
         </Title>
       </CardHeader>
 
-      {/* Ekspor — tetap tersedia saat suspended; itulah gunanya secara hukum. */}
+      {/* Ekspor — tetap tersedia saat suspended; itulah gunanya secara hukum.
+          Bentuk tombolnya (unduh langsung / minta-tunggu-unduh) mengikuti
+          sakelar `runner:` kind `tenant.data_export` — `export-panel.tsx`. */}
       <CardContent>
-        <Flex wrap align="center" justify="space-between" gap={token.marginSM}>
-          <Text type="secondary" style={{ flex: "1 1 260px", lineHeight: 1.625 }}>
-            {t("tenantSettings.exportBody")}
-          </Text>
-          {/* `download` menempel di TOMBOLNYA sekarang, bukan di `<a>` anaknya
-              — `Button href` merender `<a>` itu sendiri, jadi atribut anchor
-              apa pun harus ikut pindah ke sini atau ia hilang tanpa suara. */}
-          <Button href="/api/tenant/export" download variant="outline" style={{ flexShrink: 0 }}>
-            <DownloadOutlined aria-hidden="true" />
-            {t("tenantSettings.exportButton")}
-          </Button>
-        </Flex>
+        <ExportPanel runner={exportRunner} body={t("tenantSettings.exportBody")} />
       </CardContent>
 
       {canDelete && (

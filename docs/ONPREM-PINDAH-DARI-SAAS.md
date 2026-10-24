@@ -135,6 +135,7 @@ ada model kendali yang tidak diputuskan atau tidak disebut di sini.
 | `SchedulerRun` / `ConformanceRun` / `BackupRun` / `SchemaMigrationRun` | **tidak** | jejak operasi server SaaS |
 | `Job` | **tidak** | antrean SaaS; ekspor menunggu antrean PT-nya kosong lebih dulu |
 | `RuntimeSample` | **tidak** | metrik proses SaaS |
+| `OutboxRelayBook` | **tidak** | jejak relay outbox server SaaS; tabel `outbox` di buku PT ikut dump buku, baris yang belum terbit direlay di on-premise |
 
 Model `SchedulerRun`, `ConformanceRun`, dan `BackupRun` diputuskan satu per
 satu di kode; tabel ini mengelompokkannya.

@@ -37,6 +37,7 @@ type JobKind string
 const (
 	KindCompanyProvision         JobKind = "company.provision"
 	KindDocumentGenerate         JobKind = "document.generate"
+	KindDocumentInvoiceSend      JobKind = "document.invoice_send"
 	KindEfakturRecord            JobKind = "efaktur.record"
 	KindImportProcess            JobKind = "import.process"
 	KindIntegrationBankFeed      JobKind = "integration.bank_feed"
@@ -53,6 +54,7 @@ const (
 	KindSchemaMigrate            JobKind = "schema.migrate"
 	KindTenantBackup             JobKind = "tenant.backup"
 	KindTenantConformance        JobKind = "tenant.conformance"
+	KindTenantDataExport         JobKind = "tenant.data_export"
 )
 
 // JobLane adalah satu PROSES pekerja. Isolasinya jalur, bukan layanan.
@@ -82,6 +84,7 @@ type KindSpec struct {
 var JobKinds = map[JobKind]KindSpec{
 	KindCompanyProvision:         {Lane: LaneInteractive, MaxAttempts: 1, WritesLedger: false},
 	KindDocumentGenerate:         {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
+	KindDocumentInvoiceSend:      {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindEfakturRecord:            {Lane: LaneInteractive, MaxAttempts: 5, WritesLedger: false},
 	KindImportProcess:            {Lane: LaneBulk, MaxAttempts: 1, WritesLedger: false},
 	KindIntegrationBankFeed:      {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
@@ -98,6 +101,7 @@ var JobKinds = map[JobKind]KindSpec{
 	KindSchemaMigrate:            {Lane: LaneSchema, MaxAttempts: 1, WritesLedger: false},
 	KindTenantBackup:             {Lane: LaneTenant, MaxAttempts: 2, WritesLedger: false},
 	KindTenantConformance:        {Lane: LaneTenant, MaxAttempts: 2, WritesLedger: false},
+	KindTenantDataExport:         {Lane: LaneBulk, MaxAttempts: 2, WritesLedger: false},
 }
 
 // LaneSpec: lebih dari satu proses jalur ber-SingleInstance adalah kesalahan
@@ -133,9 +137,9 @@ var JobLanes = map[JobLane]LaneSpec{
 
 // KindsByLane adalah klausa WHERE kind = ANY(…) milik setiap pelari.
 var KindsByLane = map[JobLane][]JobKind{
-	LaneBulk:        {KindImportProcess, KindMailBatch, KindReportPackage},
+	LaneBulk:        {KindImportProcess, KindMailBatch, KindReportPackage, KindTenantDataExport},
 	LaneIntegration: {KindIntegrationBankFeed, KindIntegrationEfakturCancel, KindIntegrationEfakturPoll, KindIntegrationEfakturSubmit},
-	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindEfakturRecord, KindReportExport, KindReportExportGo},
+	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindDocumentInvoiceSend, KindEfakturRecord, KindReportExport, KindReportExportGo},
 	LaneLedger:      {KindLedgerDunning, KindLedgerRecurring},
 	LaneSchedule:    {KindScheduleTick},
 	LaneSchema:      {KindSchemaMigrate},
@@ -188,6 +192,7 @@ const (
 // persis yang sakelar ini cegah. Padanan TS `KIND_RUNNERS`.
 var KindRunners = map[JobKind]KindRunner{
 	KindTenantConformance: RunnerGo,
+	KindTenantDataExport:  RunnerNode,
 }
 
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.

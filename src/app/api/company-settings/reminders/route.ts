@@ -33,12 +33,23 @@ export const runtime = "nodejs";
 const settingsSchema = z.object({
   enabled: z.boolean(),
   points: z.array(z.enum(REMINDER_POINTS.map((p) => p.key) as [string, ...string[]])),
+  /**
+   * Kirim faktur ke surel pelanggan SAAT diposting (outbox, 09 §4). OPSIONAL:
+   * klien lama yang tidak mengirimnya tidak boleh mematikan sakelar yang
+   * dinyalakan orang lain — tak disebut = tak diubah.
+   */
+  autoSendOnPost: z.boolean().optional(),
 });
 
 async function currentState() {
   const row = await prisma.companySetting.findFirst({
     orderBy: { id: "asc" },
-    select: { reminderEnabled: true, reminderPoints: true, reminderTestedAt: true },
+    select: {
+      reminderEnabled: true,
+      reminderPoints: true,
+      reminderTestedAt: true,
+      invoiceAutoSend: true,
+    },
   });
   return {
     enabled: row?.reminderEnabled ?? false,
@@ -51,6 +62,7 @@ async function currentState() {
       : REMINDER_POINTS.map((p) => p.key)
     ).filter((p) => REMINDER_POINTS.some((rp) => rp.key === p)),
     testedAt: row?.reminderTestedAt ?? null,
+    autoSendOnPost: row?.invoiceAutoSend ?? false,
   };
 }
 
@@ -80,6 +92,9 @@ export async function PUT(request: Request) {
     data: {
       reminderEnabled: parsed.data.enabled,
       reminderPoints: serializeReminderPoints(parsed.data.points),
+      ...(parsed.data.autoSendOnPost === undefined
+        ? {}
+        : { invoiceAutoSend: parsed.data.autoSendOnPost }),
     },
   });
 
@@ -92,6 +107,9 @@ export async function PUT(request: Request) {
     details: {
       reminderEnabled: parsed.data.enabled,
       reminderPoints: serializeReminderPoints(parsed.data.points),
+      ...(parsed.data.autoSendOnPost === undefined
+        ? {}
+        : { invoiceAutoSend: parsed.data.autoSendOnPost }),
     },
     request,
   });

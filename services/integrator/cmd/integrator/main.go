@@ -1,7 +1,8 @@
 // SVC-INTEGRATOR — jalur `tenant`, jalur `interactive` sisi Go, jalur
 // `schedule` (denyut penerbitan), dan jalur `integration` (e-Faktur lewat
 // PJAP) dalam SATU proses (keputusan pemilik 22 Okt
-// 2026: "1 image = 1 container"); jalur `bulk` ikut begitu ia punya kind.
+// 2026: "1 image = 1 container"); jalur `bulk` ikut sejak kind pertamanya
+// (`tenant.data_export`, ekspor data mandiri tenant — 23 Okt 2026).
 //
 //	svc-integrator   # di compose; `go run ./cmd/integrator` saat mengembangkan
 //

@@ -100,6 +100,10 @@ export async function bolehAmbilHasil(
     case "company.provision":
     case "import.process":
     case "mail.batch":
+    /* Diunduh lewat pintu TENANT-nya sendiri (`src/lib/tenant-export-job.ts`),
+       tidak pernah lewat rute per-PT — `JOB_RESULT_PERMISSION` menyatakannya
+       `null` di sini. */
+    case "tenant.data_export":
     case "tenant.backup":
     case "tenant.conformance":
     case "schema.migrate":
@@ -111,6 +115,7 @@ export async function bolehAmbilHasil(
     case "integration.efaktur_cancel":
     case "efaktur.record":
     case "integration.bank_feed":
+    case "document.invoice_send":
       return false;
   }
 }

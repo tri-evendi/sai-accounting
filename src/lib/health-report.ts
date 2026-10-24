@@ -44,6 +44,8 @@ import { mailHealth, type MailHealthStatus } from "@sai/platform/mail-health";
 import { currentLicenceStanding, type LicenceStanding } from "@/lib/entitlement-source";
 import type { LicenceNotice } from "@sai/core/licence";
 import { outboxCount, resolveMailConfig } from "@sai/platform/mailer-core";
+import { readOutboxRelay } from "@sai/platform/outbox-relay-store";
+import type { OutboxHealthStatus } from "@sai/core/outbox-health";
 
 /**
  * Kesiapan surel seperti yang boleh dilihat dari luar: satu kata.
@@ -82,6 +84,17 @@ export type CompanyStatus = { status: "ok" | "unknown" | "error" };
  * siap melapor sehat.
  */
 export type QueueStatus = { status: QueueHealthStatus | "unknown" };
+
+/**
+ * Outbox transaksional (09 §4) — SATU KATA, rambu #317: umur tertua dan jumlah
+ * baris yang tertahan menyiratkan volume pemakaian; angkanya di konsol
+ * `/scheduler`. `unknown` = belum ada jejak relay (belum pernah berjalan, atau
+ * migration kendali 0012 belum diterapkan) — bukan `ok`.
+ *
+ * ⚠ `outboxCount` di bidang `mail` adalah antrean SUREL berkas
+ * (`data/mail-outbox`), BUKAN tabel ini — dua "outbox" yang tak berhubungan.
+ */
+export type OutboxStatus = { status: OutboxHealthStatus };
 
 /**
  * Denyut cadangan TANPA sebab kegagalannya.
@@ -141,6 +154,7 @@ export type HealthReport =
       migrations: { status: MigrationsHealth };
       mail: MailStatus;
       licence: LicenceHealth;
+      outbox: OutboxStatus;
     };
 
 /**
@@ -209,6 +223,19 @@ async function queue(): Promise<QueueStatus> {
     return { status: queueHealth(await queueSnapshot()).status };
   } catch {
     return { status: "unknown" as const };
+  }
+}
+
+/**
+ * Relay outbox: jejak per buku di KENDALI, bukan sapuan buku PT — probe yang
+ * biayanya tumbuh dengan jumlah tenant adalah probe yang suatu hari menjadi
+ * beban yang ia ukur. Doktrin #137: dilaporkan, tidak ikut memutuskan.
+ */
+async function outbox(): Promise<OutboxStatus> {
+  try {
+    return { status: (await readOutboxRelay(controlDb)).health.status };
+  } catch {
+    return { status: "unknown" };
   }
 }
 
@@ -458,6 +485,7 @@ export async function healthReport(): Promise<HealthReport> {
     conformanceStatus,
     migrationsStatus,
     licenceStatus,
+    outboxStatus,
   ] = await Promise.all([
     lastSchedulerRun(),
     queue(),
@@ -468,6 +496,7 @@ export async function healthReport(): Promise<HealthReport> {
     lastConformanceRun(),
     lastMigrationRun(),
     licence(),
+    outbox(),
   ]);
 
   /*
@@ -491,5 +520,6 @@ export async function healthReport(): Promise<HealthReport> {
     migrations: migrationsStatus,
     mail: mailStatus,
     licence: licenceStatus,
+    outbox: outboxStatus,
   };
 }

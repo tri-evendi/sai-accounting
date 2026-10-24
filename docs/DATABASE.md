@@ -334,6 +334,27 @@ berbeda.
 - [ ] Skema Zod mencerminkan constraint DB (panjang, required, enum).
 - [ ] `bun run db:generate` dijalankan.
 
+### 9.1 Tabel `outbox` (buku PT, migration `0005_outbox`) — satu pintu tulis
+
+`outbox` adalah satu-satunya tabel buku yang ditulis oleh DUA pihak dengan
+aturan berbeda (09 §4):
+
+- **Menulis baris baru HANYA lewat `emitOutboxEvent(tx, …)`** di
+  `src/lib/outbox.ts`, dengan klien TRANSAKSI domainnya — ia melempar untuk
+  klien biasa, dan `tests/outbox-write-door.test.ts` menolak `outbox.create*`
+  atau `INSERT INTO outbox` di tempat lain. Peristiwa yang ditulis di luar
+  transaksi domainnya bisa terbit untuk tulisan yang di-rollback.
+- **Relay** (`src/lib/outbox-relay.ts`) hanya `UPDATE` (`published_at`,
+  `attempts`, `last_error`, `next_attempt_at`) dan `DELETE` baris yang SUDAH
+  terbit (retensi). Ia tidak pernah `INSERT`.
+- `event_type` = `VarChar` + `z.enum` dari `contract/kinds.yaml` →
+  `outbox.events`, tanpa CHECK (pola `jobs.kind`). `dedupe_key` UNIK.
+- Jam: kolom waktunya UTC (Prisma, atau `now() AT TIME ZONE 'UTC'` di relay) —
+  `outbox` bukan `jobs` (§4 "Kolom waktu").
+
+Jejak relay per buku ada di KENDALI (`outbox_relay_books`, migration `0012`),
+bukan di buku: pembaca kesehatan tidak boleh menyapu setiap buku PT.
+
 ---
 
 ## 10. Deviasi skema (tech debt) — lunas

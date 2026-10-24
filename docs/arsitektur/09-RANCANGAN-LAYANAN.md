@@ -188,7 +188,7 @@ satu commit, beberapa `command`.
 | Jalur | Bahasa | Isinya | Instans | Rahasia | Koneksi | Keadaan |
 |---|---|---|---|---|---|---|
 | `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna; penyediaan PT baru (`company.provision`, Node, Okt 2026) | berapa pun | sisi Node: kredensial PEMILIK `PROVISION_DATABASE_URL` (06 §3.10) | pooler | tahap 1c |
-| `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | 🔶 kerangka Go (`internal/bulklane`): pagar memori per pekerjaan di kontrak, **nol kind** — tidak dijalankan sampai kind pertama (di bawah) |
+| `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan, **ekspor data mandiri tenant** | berapa pun | — | pooler | ✅ jalur Go di `svc-integrator` (`internal/bulklane`) sejak kind pertamanya, `tenant.data_export` (23 Okt 2026); pagar memori per pekerjaan di kontrak. Sakelar `runner:` **bawaan `node`** — rute sinkron TS yang melayani sampai paritas produksi lulus (di bawah) |
 | `schedule` | **Go** | denyut penerbitan tiap jam — hanya MENERBITKAN | **satu** | — | pooler (pagar: **langsung**) | ✅ `svc-integrator` (Okt 2026) — penerbit per kind dipilih kontrak (`schedule.publisher`); **bawaan masih Node** (peran `scheduler`, `svc-worker`) |
 | `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node atau Go — sakelar `runner:`)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
 | `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate` (`db:migrate:release`): *bounded concurrency*, buku yang gagal tidak menahan rilis — §6 |
@@ -238,26 +238,47 @@ menulis riwayat kirim `invoice_sends` di buku PT — tulisan di luar daftar-izin
 Go), `watch:health` dan `prune:trails` (menghapus jejak putaran). Semuanya bukan
 "penerbitan baris `jobs`", jadi tidak satu pun milik jalur ini.
 
-**`bulk` — kerangka tanpa kind, dan itu keputusan.** Kontraknya kini lengkap:
-jalur jamak, satu pekerjaan per proses, dan **pagar memori per pekerjaan**
-(`memory_fence_mib: 512`, ditegakkan `jobs.Runner`): pekerjaan borongan yang
-membuat heap melewatinya dibatalkan dan digagalkan dengan sebab yang terbaca,
-SEBELUM OOM-killer membunuh seluruh `svc-integrator` beserta dump cadangan yang
-sedang berjalan (risiko 2 & 4 di bawah). Tidak satu pun dari tiga kind-nya
-boleh atau bisa dikerjakan Go hari ini: `import.process` menulis buku (I-2),
-`mail.batch` menulis `invoice_sends` dan memegang SMTP tenant, `report.package`
-tidak pernah ada (§9). Pelarinya karena itu TIDAK dijalankan
-(`bulklane.Enabled()` salah) — pelari tanpa kind adalah kode mati yang terlihat
-hidup.
+**`bulk` — kind pertamanya ekspor data mandiri tenant (keputusan pemilik 23
+Okt 2026).** Kontraknya: jalur jamak, satu pekerjaan per proses, dan **pagar
+memori per pekerjaan** (`memory_fence_mib: 512`, ditegakkan `jobs.Runner`):
+pekerjaan borongan yang membuat heap melewatinya dibatalkan dan digagalkan
+dengan sebab yang terbaca, SEBELUM OOM-killer membunuh seluruh `svc-integrator`
+beserta dump cadangan yang sedang berjalan (risiko 2 & 4 di bawah). Tiga kind
+lamanya tetap di luar Go: `import.process` menulis buku (I-2), `mail.batch`
+menulis `invoice_sends` dan memegang SMTP tenant, `report.package` tidak pernah
+ada (§9).
 
-**Kind pertama `bulk` yang akan masuk: ekspor data mandiri tenant** (#142,
-`src/lib/tenant-export.ts`) — hanya membaca, berkasnya besar (ZIP seluruh buku
-setiap PT + dokumen), dan hari ini di-stream sinkron di dalam permintaan
-`app-customer`. Tiga syaratnya, semuanya keputusan, bukan kode: (1) produk —
-unduhan langsung menjadi "pekerjaan, lalu unduh"; (2) jejak audit tenant
-ditulis PENERBIT (Node) saat menerbitkan, sebab Go tidak boleh menulis
-`tenant_audit_logs`; (3) paritas CSV byte demi byte dengan `toCsv` lewat skrip
-paritas, seperti `report-engine`, sebelum versi TS dicabut.
+**`tenant.data_export`** (#142) — hanya membaca, berkasnya besar (ZIP seluruh
+buku setiap PT + dokumen), tingkat TENANT (`company_id` NULL). Tiga syarat yang
+dulu menahannya, dan bagaimana masing-masing dipenuhi:
+
+| Syarat | Dipenuhi oleh |
+|---|---|
+| (1) produk: "pekerjaan, lalu unduh" | **diputuskan ya.** `POST /api/tenant/export` menerbitkan; layar Data & Privasi menunggu `GET /api/tenant/export/jobs` (kemajuan nyata dari pelari) lalu mengunduh `GET /api/tenant/export/jobs/<id>/result` — pintu hasil TINGKAT TENANT (izin `tenant.export`, `tenant_id` dibandingkan eksplisit; rute hasil per-PT tidak bisa melayaninya). Ekspor yang masih berjalan dipakai ulang, bukan digandakan |
+| (2) jejak audit tenant ditulis Node | penerbit (`POST`) menulis `tenant.export` saat MENERBITKAN; rute hasil menulis `tenant.export.download`. Pohon Go tetap hanya menulis `jobs`/`backup_runs` |
+| (3) paritas CSV byte demi byte | `bun run parity:tenant-export` — arsip TS (`buildTenantExport`) dan arsip Go (`internal/tenantexport`) atas tenant yang sama, dengan stempel "Dibuat" yang sama, dibandingkan SHA-256 SETIAP berkas di dalamnya (`cmd/parity zip-compare`) |
+
+Sakelarnya `runner:` kind itu di kontrak — pola `tenant.conformance`: `node`
+(bawaan) = `GET` sinkron TS melayani dan `POST` dijawab 409; `go` = sebaliknya,
+`GET` dijawab 409 `export_async`. Pekerjaan yang tiba di Go sementara nilainya
+`node` DIGAGALKAN dengan pesan yang terbaca (bukan dikerjakan, bukan
+diselesaikan tanpa berkas). Peralihan & jalan mundur: PRODUCTION.md §Ekspor
+data mandiri.
+
+Bentuk nilai CSV sisi TS **bukan** teks PostgreSQL melainkan `String()` atas
+nilai Prisma (`@prisma/adapter-pg`) — `numeric` lewat `Decimal.toString()`
+(nol di belakang dibuang), `timestamp` lewat `Date.toISOString()` (milidetik
+dipotong), `bytea` base64. Go membaca setiap kolom sebagai teks dengan setelan
+sesi yang dipaku (`DateStyle`, `TimeZone`, `bytea_output`) lalu membentuknya
+ulang per tipe (`internal/tenantexport/csv.go`); bentuk-bentuknya DIUKUR, bukan
+ditebak. Pengukuran itu menemukan dua cacat di sisi TS, keduanya diperbaiki
+bersama: `bytea` (logo perusahaan) terekspor sebagai daftar desimal karena
+adapter memulangkan `Uint8Array`, bukan `Buffer`; dan `Readable.from()` di rute
+sinkron menolak aliran `readable-stream@2` milik JSZip.
+
+Memori: arsip Go MENGALIR — baris dari kursor pgx, dokumen lewat `io.Copy`, ZIP
+langsung ke berkas di volume `hasil`. Diukur 23 Okt 2026: tenant dengan dokumen
+200 MB → RSS puncak 14,5 MB (sisi TS menyusun CSV satu tabel utuh di memori).
 
 Hanya satu jalur MEMBACA rahasia — jalur `tenant`. Sampai 22 Okt 2026 ia juga
 satu-satunya container yang memegangnya, dan container itu tidak memproses
@@ -536,7 +557,7 @@ cukup — `report.export` menjawab "boleh mengekspor laporan", bukan "boleh
 mengekspor laporan INI" (#355), sehingga pekerjaan yang terbit ketika sebuah
 modul masih aktif tetap bisa diunduh sesudah modul itu dimatikan.
 
-Yang **belum**, dan ia satu — bukan dua:
+Yang dulu **belum**, dan kini dibangun (23 Okt 2026):
 
 **Dua jawaban untuk *dual-write*.** Karena `jobs` di `control` sementara tulisan
 domain di basis data perusahaan, penerbitan tidak satu transaksi dengan tulisan
@@ -558,25 +579,41 @@ menjadikannya demikian. Relay memakai polling berinterval pendek, bukan CDC.
 > **Satu aturan yang tetap:** pekerjaan demi kenyamanan pengguna (ekspor, impor)
 > tidak butuh keduanya — yang hilang hanya berarti pengguna mengklik lagi.
 
-⚠ **Outbox TIDAK dibangun di tahap 1c, dan itu keputusan — bukan sisa.**
-Paragraf di atas menyebut sendiri bahwa ia "menunggu pemakai pertamanya", dan
-pemakai yang dinamainya adalah **"faktur diposting → terbitkan dokumen &
-email"** — yaitu fitur yang `src/lib/invoice-send.ts` sengaja menolak
-mengotomatiskan:
+✅ **Outbox DIBANGUN — keputusan pemilik 23 Okt 2026.** Sampai hari itu
+bagian ini mencatat "Outbox TIDAK dibangun di tahap 1c, dan itu keputusan":
+pemakai yang dinamainya — "faktur diposting → terbitkan dokumen & email" —
+adalah fitur yang `src/lib/invoice-send.ts` sengaja menolak mengotomatiskan,
+dan mekanisme tanpa konsumen adalah jalur yang tidak pernah dijalankan. **Yang
+berubah adalah keputusan produknya**, bukan tahapnya: pemilik memutuskan
+pengiriman faktur saat diposting dibangun, sehingga pemakai pertama kini ada —
+dan ia berdiri di belakang sakelar per PT yang bawaannya MATI, jadi tidak ada
+perilaku yang berubah diam-diam.
 
-> *"TIDAK ADA YANG DIKIRIM OTOMATIS DI SINI. Setiap fungsi di modul ini berawal
-> dari seseorang yang menekan tombol. Pengingat otomatis adalah #467, dan
-> digabung sekarang berarti satu bug di sini mengirimkan surel ke pelanggan
-> sungguhan tanpa ada yang memintanya."*
+| Bagian | Di mana | Sifat yang dijaga |
+|---|---|---|
+| Tabel `outbox` di SETIAP buku PT | migration buku `0005_outbox` | `dedupe_key` UNIK; indeks berpredikat `published_at IS NULL` satu-satunya yang dipindai relay; `attempts`/`last_error`/`next_attempt_at` untuk penerbitan yang gagal |
+| Kosakata peristiwa | `contract/kinds.yaml` → `outbox.events` (dibangkitkan ke `job-numbers.ts`) | tipe `<agregat>.<kata_kerja>`; konsumen wajib kind sah tanpa `schedule:`; ambang lag & retensi di kontrak |
+| Pintu tulis tunggal | `src/lib/outbox.ts` → `emitOutboxEvent(tx, …)` | MELEMPAR untuk klien non-transaksi (punya `$disconnect`); `createMany … skipDuplicates`, jadi tabrakan dedupe tidak membatalkan transaksi domain; penjaga statis `tests/outbox-write-door.test.ts` menolak penulis `outbox` lain |
+| Peristiwa pertama `invoice.posted` | pintu posting `src/lib/posting/index.ts` (`postForSource`/`repostForSource`) | ditulis di transaksi jurnalnya, hanya untuk jurnal PERTAMA faktur (kunci `invoice.posted:<id>`) — edit yang memposting ulang tidak menerbitkan lagi |
+| Relay | `src/lib/outbox-relay.ts` (satu buku) + `workers/outbox-relay.ts` (peran `outbox` di `svc-worker`) | pagar instans tunggal `sai.outbox.relay` (mekanisme pagar jalur); setiap buku registry lewat `companyContextOf`, `OUTBOX_RELAY_CONCURRENCY` (bawaan 3, plafon 8); `FOR UPDATE SKIP LOCKED`; `publishJob` dengan kunci `outbox:<companyId>:<outboxId>:<kind>` lalu `published_at` di transaksi buku yang sama; baris terbit dibuang sesudah `published_retention_days` (14) |
+| Konsumen pertama | kind `document.invoice_send` (jalur `interactive`) → `src/lib/invoice-auto-send.ts` | sakelar `company_settings.invoice_auto_send` BAWAAN FALSE (Pengaturan → pengingat); idempoten lewat kunci unik `invoice_sends (invoice_id, "on_post", "posted")` yang ditulis SEBELUM surel |
+| Kesehatan | jejak per buku `outbox_relay_books` (migration kendali `0012`) → `/api/health` → `outbox`, `watch:health`, konsol `/scheduler` | dua sinyal: umur baris tertua yang belum terbit DAN kesegaran jejak relay (relay mati = `late`); tidak ada pembaca yang menyapu buku PT |
 
-Membangun mekanisme untuk konsumen yang sengaja absen menghasilkan jalur yang
-tidak pernah dijalankan satu kali pun — dan jalur yang tidak pernah dijalankan
-tidak bisa dibedakan dari jalur yang rusak. Alasan yang sama menahan
-`contract/accounting.yaml` (§3.5).
+**Kenapa relay yang mati di tengah tidak menerbitkan dua kali.** Terbit
+(`jobs`, kendali, autocommit) dan tandai (`published_at`, buku) adalah dua
+basis data. Relay yang mati di antaranya meninggalkan pekerjaan yang sudah ada
+dan baris yang belum bertanda; putaran berikutnya menerbitkan lagi, `publishJob`
+menjawab "kunci sudah ada", dan barisnya ditandai tanpa pekerjaan kedua. Batas
+yang disebut: bila baris tertahan di celah itu LEBIH lama daripada retensi
+`done` di `jobs` (14 hari), kuncinya sudah dibuang di sana. Dibuktikan di
+PostgreSQL sungguhan oleh `tests/outbox.integration.test.ts` (atomisitas,
+crash terbit/tandai, dua relay serentak `SKIP LOCKED`, fan-out multi-buku,
+retensi).
 
-**Pemicunya karena itu BUKAN tahap, melainkan satu keputusan produk:** hari
-pertama ada pengiriman dokumen yang terjadi TANPA seseorang menekan tombol.
-Sebelum itu, rekonsiliasi sudah cukup untuk setiap produser yang ada.
+**Yang TETAP rekonsiliasi:** produser berjadwal (pengingat, dokumen berulang,
+dunning) — alasannya tabel di atas, dan itu tidak berubah. Pengiriman faktur
+dengan tombol (`invoice-send.ts`) juga tetap; kalimat "TIDAK ADA YANG DIKIRIM
+OTOMATIS DI SINI" tetap benar untuk berkas itu.
 
 ## 5. Dokumen dibuat di server
 
@@ -932,9 +969,9 @@ kehabisan waktu:
 
 | Tertahan | Kenapa, dan pemicunya |
 |---|---|
-| **Outbox + relay** | §4 menyebut sendiri ia "menunggu pemakai pertamanya", dan pemakai yang dinamainya adalah fitur yang `invoice-send.ts` SENGAJA menolak mengotomatiskan. Pemicunya keputusan produk, bukan tahap: hari pertama ada pengiriman dokumen tanpa seseorang menekan tombol |
+| **Outbox + relay** | ✅ **Dibangun 23 Okt 2026** (keputusan pemilik — pemicunya keputusan produk, persis seperti yang ditulis di sini): pengiriman faktur saat diposting, di belakang sakelar per PT yang bawaannya mati. Bentuknya §4 |
 | **`report.package`** | tidak pernah ada di aplikasi ini. Membangunnya berarti menambah FITUR di bawah nama "pindah ke server" — dua keputusan yang digabung menjadi satu |
-| Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. 🔶 **`bulk` tetap tanpa kind**: kerangkanya dan pagar memorinya ada, pelarinya tidak dijalankan sampai kind pertama (ekspor data mandiri #142, tiga syaratnya di §3.2) — pelari tanpa penerbit adalah kode mati yang terlihat hidup |
+| Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. ✅ **`bulk` berjalan sejak kind pertamanya** (23 Okt 2026): `tenant.data_export`, ekspor data mandiri #142 — pelari Go + pintu hasil tingkat tenant + paritas `parity:tenant-export` (lokal: setara). 🔶 Sakelar `runner:` masih **`node`** sampai paritas produksi lulus — §3.2, PRODUCTION.md §Ekspor data mandiri |
 
 Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 `stock-report`) — ketiganya bukan dokumen satuan, dan jalurnya `/api/reports/pdf`

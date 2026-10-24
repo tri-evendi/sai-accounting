@@ -27,7 +27,7 @@ eksplisit → tenggang 30 hari → eksekusi: nonaktif + anonimisasi (buku UTUH)
 | Aturan | Ditegakkan oleh |
 |---|---|
 | Suspensi = hanya-baca, bukan terkunci | guard #140 (`tenant-state.ts`) |
-| Ekspor tetap terbuka saat suspended | `requireTenantPermission` tidak memeriksa status; `api/tenant/export` tanpa branch status |
+| Ekspor tetap terbuka saat suspended | `requireTenantPermission` tidak memeriksa status; `api/tenant/export` (GET sinkron & POST pekerjaan), `api/tenant/export/jobs` dan `…/jobs/<id>/result` tanpa branch status; pelari Go `tenant.data_export` membaca tenant apa pun statusnya |
 | Tidak ada jalur hapus-buku tanpa permintaan | satu-satunya kode yang men-DROP basis data perusahaan adalah `scripts/execute-tenant-deletion.ts --drop-ledgers`, dan ia menolak tanpa baris permintaan `executed` |
 | Eksekusi menunggu tenggang | `executionVerdict` (murni, teruji) |
 | Penghancuran menunggu retensi | `ledgerDropVerdict` + `retention_until` = 10 tahun sejak entri jurnal termuda, dihitung SAAT eksekusi (`retentionUntilFrom`) |
@@ -37,7 +37,7 @@ eksplisit → tenggang 30 hari → eksekusi: nonaktif + anonimisasi (buku UTUH)
 
 | Hak | Mekanisme |
 |---|---|
-| Akses & portabilitas | `GET /api/tenant/export` (izin `tenant.export`, owner): ZIP berisi CSV SELURUH tabel di SETIAP PT — format terbuka, tanpa aplikasi ini |
+| Akses & portabilitas | izin `tenant.export` (owner): ZIP berisi CSV SELURUH tabel di SETIAP PT + berkas dokumennya — format terbuka, tanpa aplikasi ini. Dua pelaksana, satu sakelar (`runner:` kind `tenant.data_export`, `contract/kinds.yaml`): `node` = `GET /api/tenant/export` men-stream seketika; `go` = `POST` menerbitkan pekerjaan jalur `bulk`, layar menunggu, berkas diunduh dari `/api/tenant/export/jobs/<id>/result` selama retensi baris `jobs` (14 hari). Isi arsip kedua pelaksana setara byte demi byte (`bun run parity:tenant-export`) |
 | Penghapusan | `POST/DELETE /api/tenant/deletion-request` (izin `tenant.deletion`, owner): tenggang 30 hari, pemberitahuan konsekuensi ke semua owner, batal kapan pun sebelum eksekusi |
 | Anonimisasi | eksekusi mengganti email/nama/username menjadi `dihapus-<id>` (`anonymizedUserFields`), mengacak kata sandi, mencabut sesi — baris & id bertahan supaya jejak audit tidak menunjuk kekosongan |
 | Dasar pemrosesan & pemberitahuan kebocoran | dinyatakan di `/privacy` (DRAF); pemberitahuan kebocoran = proses operasional, belum ada otomasinya |
@@ -50,7 +50,10 @@ Jejaknya tabel `tenant_audit_logs` di basis data control
 alasan yang sama seperti #104: pembaca yang lupa menyaring tidak punya data
 untuk dibocorkan. Peristiwa yang dicatat: pendaftaran (beserta versi S&K/privasi
 yang disetujui), pembuatan PT, undangan, ganti paket, transisi status
-(scheduler, aktor `system`), ekspor, dan siklus permintaan penghapusan. Eksekusi
+(scheduler, aktor `system`), ekspor (`tenant.export` saat diminta — ditulis
+penerbit Node, sebab pelari Go tidak menulis jejak ini — dan
+`tenant.export.download` saat berkas hasil pekerjaan diunduh), dan siklus
+permintaan penghapusan. Eksekusi
 penghapusan tidak menghapus jejak ini, karena jejak inilah buktinya.
 
 ## 4. Persetujuan dokumen ber-versi

@@ -57,6 +57,15 @@ export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, Permission | null>>
   "import.process": null,
   "mail.batch": null,
 
+  /* Ekspor data mandiri tenant (#142) MENGHASILKAN berkas — tapi bukan berkas
+     satu PT. Barisnya tingkat TENANT (`company_id` NULL), jadi rute hasil
+     per-PT tidak pernah bisa melayaninya (perbandingan perusahaannya gugur).
+     Pintunya sendiri: `/api/tenant/export/jobs/<id>/result`, dijaga izin
+     TENANT `tenant.export` + perbandingan `tenant_id` — lihat
+     `src/lib/tenant-export-job.ts`. `null` DI SINI adalah pernyataan "bukan
+     lewat pintu per-PT", bukan "tidak bisa diunduh". */
+  "tenant.data_export": null,
+
   /* Penyediaan PT tidak menghasilkan berkas: hasilnya BARIS registry, dan
      layar menunggunya lewat rute statusnya sendiri (`/api/companies/
      provisioning/[id]`, penjaga tenant `company.create`), bukan rute hasil
@@ -84,6 +93,10 @@ export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, Permission | null>>
   "integration.efaktur_cancel": null,
   "efaktur.record": null,
   "integration.bank_feed": null,
+
+  /* Kirim faktur saat diposting (outbox, 09 §4): hasilnya SUREL dan satu
+     baris riwayat kirim di buku, bukan berkas yang diunduh. */
+  "document.invoice_send": null,
 };
 
 /** Apakah hasil jenis ini boleh diunduh lewat rute aplikasi? */

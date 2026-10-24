@@ -20,7 +20,21 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.20.0 — 2026-10-24 — belum digelar
+## 0.21.0 — 2026-10-24 — belum digelar
+
+Faktur yang baru diposting bisa dikirim otomatis ke surel pelanggan, dan unduhan data perusahaan diperbaiki.
+
+### Baru
+
+- Pengaturan pengingat punya pilihan baru: kirim faktur ke surel pelanggan saat diposting, sebagai lampiran PDF dan sekali per faktur. Pilihan ini mati sampai dinyalakan untuk tiap perusahaan.
+
+### Perbaikan
+
+- Unduhan data perusahaan di halaman Privasi tidak lagi gagal saat menyiapkan berkas zip, dan logo perusahaan di dalamnya kini tersimpan utuh.
+
+---
+
+## 0.20.0 — 2026-10-24 (5bfe19a)
 
 Konsol operator kini menilai antrean tiap jalur dengan ambangnya sendiri; tidak ada perubahan pada tampilan aplikasi.
 

@@ -1,74 +1,72 @@
-// Package bulklane: pelari jalur `bulk` sisi Go — KERANGKA, dengan NOL kind
-// hari ini, dan itu keputusan yang ditulis, bukan pekerjaan yang terlupa
-// (rancangan 09 §3.2, §9).
+// Package bulklane: pelari jalur `bulk` sisi Go (rancangan 09 §3.2, §9).
 //
-// ══ KENAPA KOSONG ══════════════════════════════════════════════════════════
-// Kontrak menaruh tiga kind di jalur ini, dan tidak satu pun boleh atau bisa
-// dikerjakan Go hari ini:
+// ══ KIND PERTAMANYA: EKSPOR DATA MANDIRI TENANT (#142) ═════════════════════
+// Keputusan pemilik 23 Okt 2026. `tenant.data_export` HANYA MEMBACA, berkasnya
+// besar (ZIP seluruh buku setiap PT + dokumen), dan sampai keputusan itu
+// di-stream SINKRON di dalam permintaan `app-customer`. Tiga syarat yang
+// dulu menahannya, dan bagaimana masing-masing dipenuhi:
 //
+//  1. Produk — ekspor menjadi "pekerjaan, lalu unduh": DIPUTUSKAN ya. Layar
+//     menerbitkan, menunggu kemajuan, lalu menampilkan tautan unduh
+//     (`privacy-section.tsx`).
+//  2. Jejak audit tenant (`tenant_audit_logs`, basis data kendali) ditulis
+//     PENERBIT Node saat menerbitkan (`src/lib/tenant-export-job.ts`) — pohon
+//     Go hanya menulis `jobs` dan `backup_runs` (`tests/services-go.test.ts`).
+//  3. CSV setara byte demi byte dengan `toCsv` TS — `bun run
+//     parity:tenant-export`. Sampai paritas produksi lulus, `runner:` kind ini
+//     di `contract/kinds.yaml` tetap `node`, rute sinkron TS yang melayani, dan
+//     pekerjaan yang tetap tiba di sini DIGAGALKAN dengan pesan yang terbaca —
+//     tepat satu pelaksana, tidak pernah dua.
+//
+// ══ KIND LAIN DI JALUR INI, DAN KENAPA TETAP DI LUAR GO ════════════════════
 //   - `import.process` MENULIS buku (data master, saldo awal). Pintu posting
-//     wajib tunggal dan ia TypeScript (I-2, aturan Go nomor 1) — impor tidak
-//     akan pernah pindah ke sini.
-//   - `mail.batch` (pengingat & pemberitahuan: `remind:customers`,
-//     `notify:invoice-due`, `notify:setup`) menulis riwayat kirim
-//     (`invoice_sends`) di buku PT dan membaca SMTP per tenant yang tersandi —
-//     tulisan di luar
-//     daftar-izin pohon Go (`jobs`, `backup_runs`), dan rahasia tenant di
-//     proses yang sudah memegang kunci cadangan. Tetap Node.
+//     wajib tunggal dan ia TypeScript (I-2, aturan Go nomor 1).
+//   - `mail.batch` menulis riwayat kirim (`invoice_sends`) di buku PT dan
+//     membaca SMTP per tenant yang tersandi — tulisan di luar daftar-izin
+//     pohon Go, dan rahasia tenant di proses yang sudah memegang kunci cadangan.
 //   - `report.package` tidak pernah ada di aplikasi ini (09 §9): membangunnya
 //     adalah FITUR baru, bukan pemindahan.
 //
-// ══ KIND PERTAMA YANG AKAN MASUK, DAN SYARATNYA ════════════════════════════
-// Ekspor data mandiri tenant (#142, `src/lib/tenant-export.ts`): HANYA
-// MEMBACA, berkasnya besar (ZIP seluruh buku setiap PT + dokumen), dan hari
-// ini di-stream SINKRON di dalam permintaan `app-customer`. Tiga hal menahannya,
-// dan ketiganya keputusan, bukan kode:
-//
-//  1. Produk: ekspor berubah dari unduhan langsung menjadi "pekerjaan, lalu
-//     unduh" — layar & salinan berubah.
-//  2. Jejak audit tenant ditulis SEBELUM byte pertama (`tenant_audit_logs`,
-//     basis data kendali) — Go tidak boleh menulisnya; penerbit (Node) yang
-//     harus menulis jejaknya saat MENERBITKAN.
-//  3. CSV-nya harus setara byte demi byte dengan `toCsv` TS — butuh skrip
-//     paritas seperti `report-engine` sebelum versi TS dicabut.
-//
-// ══ YANG SUDAH ADA, DAN BERLAKU BEGITU KIND PERTAMA MASUK ══════════════════
+// ══ YANG BERLAKU UNTUK SETIAP KIND DI SINI ═════════════════════════════════
 //   - pagar memori per pekerjaan dari kontrak (`memory_fence_mib`, ditegakkan
 //     `jobs.Runner`): pekerjaan borongan yang menggembung dibatalkan SEBELUM
 //     OOM-killer membunuh seluruh `svc-integrator` beserta dump cadangan yang
-//     sedang berjalan;
+//     sedang berjalan. Ekspor tenant karena itu MENGALIR — baris dari kursor,
+//     dokumen lewat `io.Copy`, ZIP langsung ke berkas (`internal/tenantexport`);
 //   - satu pekerjaan per proses (sama dengan setiap jalur); jalur jamak
 //     (`single_instance: false`) — skala = jumlah proses;
 //   - sambungan lewat PgBouncer (`CONTROL_DATABASE_URL`), seperti
-//     `interactive`: satu tenant per pekerjaan, bukan pencacahan server;
-//   - kesehatan & metrik: umur antrean, kedalaman, laju, dan histogram durasi
-//     per jalur di `/scheduler` sudah menghitung `bulk` dari kontrak — tidak
-//     ada yang perlu ditambahkan di sisi permukaan.
-//
-// `cmd/integrator` menjalankan jalur ini HANYA bila `Enabled()` — pelari
-// tanpa satu kind pun adalah kode mati yang terlihat hidup (09 §9), dan
-// `jobs.Runner` memang menolaknya.
+//     `interactive`;
+//   - kesehatan & metrik per jalur di `/scheduler` sudah menghitung `bulk`
+//     dari kontrak.
 package bulklane
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"io"
+	"log"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/contract"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/db"
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/document"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/jobs"
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/tenantexport"
 )
 
-// handlers: kind `bulk` yang dikerjakan Go. Kind pertama didaftarkan DI SINI
-// — dan `tests/kind-punya-pengklaim.test.ts` menolak bila Node juga
-// mengklaimnya.
-func handlers(_ *pgxpool.Pool) map[contract.JobKind]jobs.Handler {
-	return map[contract.JobKind]jobs.Handler{}
-}
+// Kinds: kind `bulk` yang dikerjakan Go — HARUS sama dengan kunci peta
+// `Handlers` di `Run` (dijaga `runner_test.go`). Peta itu ditulis di tempat
+// supaya `tests/kind-punya-pengklaim.test.ts` bisa membacanya dari teks.
+var Kinds = []contract.JobKind{contract.KindTenantDataExport}
 
 // Enabled melaporkan apakah jalur ini punya sedikitnya satu kind ber-handler.
-func Enabled() bool { return len(handlers(nil)) > 0 }
+// `cmd/integrator` tidak menjalankan jalur tanpa kind: pelari kosong adalah
+// kode mati yang terlihat hidup (09 §9).
+func Enabled() bool { return len(Kinds) > 0 }
 
 // Run menguras jalur `bulk` sampai SIGTERM/SIGINT atau sampai `stop` selesai.
 func Run(ctx, stop context.Context) error {
@@ -79,10 +77,75 @@ func Run(ctx, stop context.Context) error {
 	defer kolam.Close()
 
 	pelari := &jobs.Runner{
-		Lane:     contract.LaneBulk,
-		Queue:    jobs.New(kolam),
-		Handlers: handlers(kolam),
-		Stop:     stop,
+		Lane:  contract.LaneBulk,
+		Queue: jobs.New(kolam),
+		Handlers: map[contract.JobKind]jobs.Handler{
+			contract.KindTenantDataExport: handlerEkspor(kolam, document.ResultsRootDefault, tenantexport.DocumentsRootDefault, pelaksanaGo),
+		},
+		Stop: stop,
 	}
 	return pelari.Run(ctx)
+}
+
+// pelaksanaGo: apakah kontrak menyatakan Go pelaksana ekspor tenant hari ini.
+func pelaksanaGo() bool {
+	return contract.KindRunners[contract.KindTenantDataExport] == contract.RunnerGo
+}
+
+// selangKemajuan: kemajuan ditulis paling sering sekali per selang ini —
+// setiap tulisan satu UPDATE `jobs`, dan buku besar berisi puluhan tabel.
+const selangKemajuan = 2 * time.Second
+
+func handlerEkspor(kolam *pgxpool.Pool, hasilRoot, dokumenRoot string, pelaksanaGo func() bool) jobs.Handler {
+	return func(c jobs.Ctx) (*string, error) {
+		if !pelaksanaGo() {
+			// Terbit sebelum jalan mundur ke Node. Mengerjakannya berarti dua
+			// pelaksana untuk satu sakelar; menyelesaikannya tanpa berkas
+			// berarti tombol unduh yang tak pernah muncul. Gagal yang terbaca.
+			return nil, fmt.Errorf("pelaksana %s di contract/kinds.yaml adalah %s, bukan Go — "+
+				"pekerjaan ini tidak dikerjakan; minta ekspor lagi dari Pengaturan Tenant",
+				contract.KindTenantDataExport, contract.KindRunners[contract.KindTenantDataExport])
+		}
+
+		tenant, companies, err := tenantexport.LoadTenant(c.Ctx, kolam, c.Job.TenantID)
+		if err != nil {
+			return nil, err
+		}
+		now := time.Now()
+		filename, err := tenantexport.FileName(tenant.Slug, now)
+		if err != nil {
+			return nil, err
+		}
+
+		terakhir, kapan := -1, time.Time{}
+		lapor := func(persen int) {
+			if persen == terakhir || time.Since(kapan) < selangKemajuan {
+				return
+			}
+			terakhir, kapan = persen, time.Now()
+			_ = c.Progress(persen)
+		}
+
+		var sum tenantexport.Summary
+		ref, err := document.WriteResultStream(hasilRoot, c.Job.Kind, c.Job.ID, filename, func(w io.Writer) error {
+			bw := bufio.NewWriterSize(w, 256<<10)
+			s, err := tenantexport.Write(c.Ctx, bw, *tenant, companies, tenantexport.Options{
+				DocumentsRoot: dokumenRoot,
+				GeneratedAt:   now,
+				Progress:      lapor,
+			})
+			sum = s
+			if err != nil {
+				return err
+			}
+			return bw.Flush()
+		})
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("[bulk] #%d ekspor tenant %s: %d PT · %d tabel · %d baris · %d dokumen (%d tak ditemukan)",
+			c.Job.ID, tenant.Slug, sum.Companies, sum.Tables, sum.Rows, sum.Documents, sum.Missing)
+		_ = c.Progress(100)
+		return &ref, nil
+	}
 }

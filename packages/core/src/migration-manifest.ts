@@ -12,9 +12,9 @@
  * yang lupa diumumkan di sini membuat tes merah, bukan konsol yang diam.
  */
 export const MIGRATION_TERAKHIR = {
-  control: "0011_schema_migration_runs",
+  control: "0012_outbox_relay_books",
   platform: "0010_drop_site_contents",
-  company: "0004_efaktur_coretax",
+  company: "0005_outbox",
 } as const;
 
 export type JenisBasisData = keyof typeof MIGRATION_TERAKHIR;

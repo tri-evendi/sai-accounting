@@ -355,7 +355,8 @@ services/integrator/                 # pelari jalur GO — membaca buku, tidak p
     ├── tenantlane/                  # jalur `tenant` — cadangan per basis data
     ├── interactivelane/             # jalur `interactive` sisi Go — `report.export_go` (1d)
     ├── schedulelane/                # jalur `schedule` — denyut penerbitan (hanya menulis `jobs`); fikstur bersama TS ⇄ Go
-    ├── bulklane/                    # jalur `bulk` — KERANGKA, nol kind, tidak dijalankan (09 §3.2)
+    ├── bulklane/                    # jalur `bulk` — `tenant.data_export` (ekspor data mandiri, 23 Okt 2026; 09 §3.2)
+    ├── tenantexport/                # ZIP ekspor tenant MENGALIR — CSV setara byte dengan `toCsv` TS
     ├── jobs/                        # klaim · lease · reclaim — aturan di sekitar kueri `controlsql`
     ├── db/                          # kolam koneksi kendali, pembersih DSN
     ├── registry/                    # `companies` (kendali) — company_id → buku PT

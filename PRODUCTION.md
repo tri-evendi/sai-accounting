@@ -728,6 +728,123 @@ UPDATE jobs SET status = 'dead', finished_at = now(), updated_at = now(),
  WHERE kind = 'tenant.conformance' AND status = 'queued';
 ```
 
+### Transactional outbox — `invoice.posted` → send invoice on posting (Oct 2026)
+
+What ships (design: `docs/arsitektur/09-RANCANGAN-LAYANAN.md` §4):
+
+- **Migrations, both expand-only:** company `0005_outbox` (table `outbox` +
+  `company_settings.invoice_auto_send BOOLEAN NOT NULL DEFAULT false`) on
+  every book, control `0012_outbox_relay_books`. The normal `migrate` service
+  applies them; run it BEFORE the new `svc-worker` / `app-*` images start —
+  posting an invoice writes to `outbox` in the same transaction, so a book
+  without `0005` would fail the post (the per-company schema gate already
+  refuses books whose schema is behind).
+- **New `svc-worker` role `outbox`** (`bun run outbox:relay`), already in the
+  compose `command`. Optional env `OUTBOX_RELAY_CONCURRENCY` (default 3, max 8).
+  The HA override adds `outbox` to `WORKER_LEADER_ROLES`.
+- **No new database role or grant.** Tables created by `migrate` (as
+  `sai_owner`) reach `sai_app` through the default privileges.
+- **Behaviour does not change by itself:** every posted invoice now produces a
+  `document.invoice_send` job, but the job finishes `done` without sending
+  while the company's switch is off — and it is off by default. A company
+  turns it on under Settings → reminders ("Kirim faktur ke surel pelanggan saat
+  diposting"). Only an invoice's FIRST journal emits the event; editing and
+  re-posting never sends again.
+
+After the deploy:
+
+```bash
+# relay is running and has touched every book (expect one line per company)
+docker compose logs svc-worker | grep ' outbox *|' | tail -5
+curl -s https://<host>/api/health | jq .outbox.status   # expect "ok" ("unknown" until the first pass)
+```
+
+The console `/scheduler` → Outbox panel shows per book: rows not yet
+published, oldest age, last relay pass, last error. `lagging`/`late` there
+means rows are stuck (control refusing, unknown kind) or the relay is dead
+(trail older than `relay_stale_seconds`); `watch:health` alerts on the same.
+
+Rollback: the previous release ignores both tables. Unpublished rows simply
+wait; the next release that has the relay publishes them.
+
+### Ekspor data mandiri — switching the tenant data export from TS (sync) to Go (bulk lane) (Oct 2026)
+
+The tenant self-service export (#142, UU PDP access right: one ZIP with a CSV
+per table of every company of the tenant + the uploaded documents) has two
+implementations: `src/lib/tenant-export.ts`, streamed synchronously by
+`app-customer`, and `internal/tenantexport`, run as job kind
+`tenant.data_export` by the `bulk` lane in `svc-integrator` (the lane's first
+kind; it starts with this release). One contract value picks the runner:
+
+```yaml
+# contract/kinds.yaml
+  tenant.data_export:
+    runner: node   # node | go
+```
+
+| `runner` | What the privacy page does | What the other side does |
+|---|---|---|
+| `node` (default, today) | "Unduh Semua Data (ZIP)" is a plain link to `GET /api/tenant/export`, streamed on the spot | `POST /api/tenant/export` answers 409 `export_sync`; a stray `tenant.data_export` job reaching Go is **failed** with a readable message, never executed |
+| `go` | "Siapkan Ekspor Data (ZIP)" → `POST /api/tenant/export` publishes the job (an export already running for the tenant is reused) → the page polls `GET /api/tenant/export/jobs` (real progress from the runner) → "Unduh ZIP" from `GET /api/tenant/export/jobs/<id>/result` | `GET /api/tenant/export` answers 409 `export_async` |
+
+The tenant audit trail is written by Node either way (Go never writes
+`tenant_audit_logs`): `tenant.export` when requested, plus
+`tenant.export.download` when a job result is downloaded. The result file
+lives in the `hasil` volume (`tenant-data_export-<jobId>/ekspor-<slug>-<date>.zip`)
+for as long as its `jobs` row (14 days, `done_retention_days`), then the orphan
+sweep removes it. Only owners (`tenant.export`) of **that** tenant can download
+it — the per-company result route never serves it (`company_id` is NULL).
+
+**Precondition — parity on production data (read-only: no `jobs` row, no audit
+entry; writes two temporary ZIPs per tenant, deleted after comparing):**
+
+```bash
+# Build the Go tool once on the runner/dev box:
+cd services/integrator && CGO_ENABLED=0 go build -o /tmp/parity ./cmd/parity && cd -
+# The comparison needs the documents volume (svc-worker does not mount it):
+DOCS=$(docker volume ls --format '{{.Name}}' | grep -E '(^|_)documents$')
+docker compose run --rm --no-deps \
+  -v "$DOCS":/app/data/documents:ro -v /tmp/parity:/tmp/parity:ro \
+  svc-worker bun run parity:tenant-export -- --go-bin /tmp/parity --tmp /tmp
+# expect: "<n> buku × 1 ekspor: <n> setara · 0 berselisih · 0 gagal"
+```
+
+`<n>` is the number of tenants (the summary line says "buku"). Exit code
+non-zero on a single differing file or an unreadable book. ⚠ `--tmp` needs
+free space for **two** copies of the largest tenant's export (documents
+included) — check `df -h /` first; the disk is shared with PostgreSQL. One tenant
+at a time: `-- --tenant <slug>`.
+
+**Switch to Go:**
+
+1. In a PR: `runner: go` on `tenant.data_export`, `bun run contract:gen`,
+   commit the generated files. Release as usual, and swap **`svc-integrator`
+   before `app-customer`**: a new `app-customer` publishes jobs that an old
+   `svc-integrator` (no `bulk` lane) never claims.
+2. Check:
+   ```bash
+   docker compose logs --since 10m svc-integrator | grep '\[bulk\]'   # "#<id> ekspor tenant <slug>: … PT · … tabel · … baris"
+   ```
+   Privacy page (`/platform/privacy`) shows the request button; a request
+   reaches "Ekspor siap" and the ZIP downloads. Console `/scheduler`, lane
+   `bulk`: queue age stays green.
+
+**Switch back to Node (rollback)** — no data repair:
+
+- *Fast:* `SAI_TAG=sha-<previous> docker compose up -d --no-deps app-customer svc-integrator`.
+- *Durable:* revert the contract line, `bun run contract:gen`, release.
+
+A job queued just before the switch back is failed by Go with "pelaksana …
+adalah node" (the new image says `node`), and the page offers the direct
+download again. An image older than this change has no `bulk` lane; close a
+leftover row by hand:
+
+```sql
+UPDATE jobs SET status = 'dead', finished_at = now(), updated_at = now(),
+       last_error = 'pelaksana dikembalikan ke Node'
+ WHERE kind = 'tenant.data_export' AND status IN ('queued', 'failed');
+```
+
 ### Env allowlist, non-root containers, least-privilege roles (Oct 2026)
 
 Three hardening changes ship together; the first two take effect with the

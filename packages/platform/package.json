@@ -12,6 +12,7 @@
     "./cache-signals": "./src/cache-signals.ts",
     "./i18n/server": "./src/i18n/server.ts",
     "./invitation-store": "./src/invitation-store.ts",
+    "./job-durations": "./src/job-durations.ts",
     "./job-metrics": "./src/job-metrics.ts",
     "./job-queue": "./src/job-queue.ts",
     "./job-result-store": "./src/job-result-store.ts",

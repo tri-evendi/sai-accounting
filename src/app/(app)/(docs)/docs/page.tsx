@@ -80,6 +80,7 @@ import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 export const dynamic = "force-dynamic";
 
 const CABANG: Record<DocBranch, { judul: DictionaryKey; ringkas: DictionaryKey }> = {
+  mulai: { judul: "docs.branchStart", ringkas: "docs.branchStartDescription" },
   pelanggan: { judul: "docs.branchCustomer", ringkas: "docs.branchCustomerDescription" },
   pengguna: { judul: "docs.branchUser", ringkas: "docs.branchUserDescription" },
 };

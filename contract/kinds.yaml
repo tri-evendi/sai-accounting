@@ -43,6 +43,19 @@ lanes:
   interactive:
     description: ekspor & dokumen yang ditunggu pengguna di layar
     single_instance: false
+    # SLO yang DISAHKAN pemilik (docs/TATA-KELOLA.md §2, 24 Okt 2026): "Ekspor
+    # laporan (antrean `interactive`): p95 `started_at → finished_at` < 10
+    # detik", 30 hari bergulir, 5% pekerjaan boleh melampaui. Ini SASARAN,
+    # bukan `alarm:` turunan data — ia tidak menunggu 200 sampel untuk ada.
+    # Dinilai konsol `/scheduler` (tab Metrik) lewat `sloVerdict`
+    # (`@sai/core/queue-health`) atas p95 GABUNGAN jalur (`report.export` Node
+    # + `report.export_go` Go), dari `jobDurations` (`@sai/platform/job-metrics`).
+    # ⚠ Jendela yang bisa dinilai = min(window_days, numbers.done_retention_days):
+    # baris `done` dibuang sesudah 14 hari (09 §11).
+    slo:
+      duration_p95_ms: 10000
+      window_days: 30
+      decided: "2026-10-24"
   bulk:
     description: impor besar, paket laporan, surel borongan
     single_instance: false

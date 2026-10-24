@@ -239,8 +239,10 @@ describe("tautan kontekstual dari dalam aplikasi", () => {
   });
 
   it("alamat yang tak punya dokumen menjawab undefined, bukan halaman pertama", () => {
-    expect(docForPathname("/settings")).toBeUndefined();
-    expect(docForPathname("/t/acme/cv-maju/settings")).toBeUndefined();
+    /* `/glossary` berdiri di `NAV_TANPA_DOKUMEN` sebagai TETAP. (Sampai panduan
+       bergambar contohnya `/settings`, yang kini dijelaskan halaman Beranda.) */
+    expect(docForPathname("/glossary")).toBeUndefined();
+    expect(docForPathname("/t/acme/cv-maju/glossary")).toBeUndefined();
   });
 });
 

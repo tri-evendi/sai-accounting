@@ -30,6 +30,19 @@
 Pengukurannya sudah ada (alarm tiga denyut, `runtime_samples`, histogram antrean
 di `/scheduler`); yang diusulkan di sini adalah sasarannya.
 
+**Di mana SLO ekspor laporan diukur** (✅ 24 Okt 2026): konsol operator
+`/scheduler` → tab **Metrik** → panel "Durasi pekerjaan per jalur & jenis",
+baris tebal `interactive` — p95 `started_at → finished_at` atas GABUNGAN
+`report.export` (Node) dan `report.export_go` (Go), kolom "Di atas SLO" (porsi
+*error budget* terpakai), dan vonis **Dalam SLO / Melampaui SLO / Data belum
+cukup** (< 20 sampel). Angka sasarannya tinggal di satu tempat:
+`contract/kinds.yaml` → `lanes.interactive.slo` (dijaga
+`tests/durasi-slo.test.ts` agar sama dengan tabel di bawah). ⚠ Sasarannya 30
+hari bergulir, tetapi baris pekerjaan selesai disimpan 14 hari (§6) — jadi yang
+dinilai hari ini **14 hari terakhir**, dan layar menyebutnya. Menilai 30 hari
+penuh menuntut rollup harian (09 §11, "pemicu rollup") atau retensi `done` ≥ 30
+hari; keduanya keputusan tersendiri.
+
 | Permukaan | SLI | ✅ 24 Okt 2026 — Sasaran (30 hari bergulir) | *Error budget* |
 |---|---|---|---|
 | Aplikasi customer | `/api/health` = ok dari luar, per menit | 99,5% | ±3 jam 36 menit / 30 hari |

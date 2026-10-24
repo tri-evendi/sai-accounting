@@ -1,6 +1,6 @@
 {
   "name": "sai-luckyhands",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "private": true,
   "workspaces": [
     "packages/*",
@@ -15,6 +15,7 @@
     "start": "next start",
     "lint": "eslint",
     "brand:icons": "tsx scripts/build-brand-icons.ts",
+    "docs:screenshots": "tsx scripts/docs-screenshots.ts",
     "changelog:build": "bun run scripts/build-changelog.ts",
     "typecheck": "NODE_OPTIONS=--max-old-space-size=2048 tsc --noEmit",
     "_typecheck_note": "2048 MB sejak 17 Okt 2026 (naik dari 1536): kamus i18n bertambah ~300 kunci konsol operator dalam sehari dan tsc mati dengan FatalProcessOutOfMemory pada 1536 — terukur puncak 1,71 GB di HEAD tanpa perubahan lain, jadi penyebabnya ukuran kamus, bukan satu pola tipe. Sebelumnya 1536 MB, naik dari 768: sejak kamus i18n tumbuh (~2.500 kunci dot-path bertipe) + dimensi pusat biaya, tsc menembus batas 768 dan mati dengan V8 FatalProcessOutOfMemory (exit 134) — BUKAN dibunuh kernel. Terukur: 768 gagal walau 607 MB bebas; 1400 lolos. Kalau nanti gagal lagi, naikkan batasnya, JANGAN lepaskan --max-old-space-size: tanpa batas Node tumbuh sampai kernel membunuhnya, dan itu jauh lebih sulit dibaca. Sejak next.config.ts mematikan pemeriksaan tipe di dalam `next build`, perintah inilah satu-satunya gerbang tipe — ia HARUS bisa dijalankan.",
@@ -226,6 +227,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "js-yaml": "4.3.2",
+    "playwright-core": "1.56.1",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",

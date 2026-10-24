@@ -49,8 +49,17 @@
  *    dinyatakan sebagai bawaan, dengan penunjuk ke `/permissions` di dalam
  *    aplikasi tempat matriks efektif perusahaan itu sendiri terbaca.
  *
- * 5. **KENAPA MESINNYA BEGITU, bukan langkah-demi-langkah.** Dokumentasi tugas
- *    menua bersama tombolnya; alasan tidak. Tanpa tangkapan layar.
+ * 5. **KENAPA MESINNYA BEGITU — lalu langkahnya, bergambar.** Dokumentasi
+ *    tugas menua bersama tombolnya; alasan tidak. Karena itu setiap halaman
+ *    tetap MEMBUKA dengan alasannya.
+ *
+ *    Direvisi Okt 2026 (panduan bergambar): sesudah alasannya, halaman boleh
+ *    memuat langkah-langkah dan TANGKAPAN LAYAR. Yang membuat tangkapan layar
+ *    tidak menua diam-diam bukan disiplin melainkan mesin: setiap gambar lahir
+ *    dari resep di `scripts/docs-screenshots.ts` (`bun run docs:screenshots`)
+ *    dan `tests/docs-screenshots.test.ts` menolak gambar tanpa resep, resep
+ *    tanpa gambar, serta gambar yang tidak dirujuk. Tombol yang pindah
+ *    diperbaiki dengan menjalankan ulang satu perintah.
  *
  * ══ Kenapa MURNI ═══════════════════════════════════════════════════════════
  * Tanpa React, Prisma, atau `next/*` — persis seperti `lib/nav.ts`,
@@ -98,7 +107,13 @@ export function isDocsPath(pathname: string): boolean {
  * dokumentasi yang tak terpakai: pembaca "pelanggan" tidak pernah membuka
  * jurnal, pembaca "pengguna" tidak bisa mengganti paket.
  */
-export const DOC_BRANCHES = ["pelanggan", "pengguna"] as const;
+export const DOC_BRANCHES = ["mulai", "pelanggan", "pengguna"] as const;
+/*
+ * `mulai` (Okt 2026): cabang PERTAMA, sebab setiap pembaca melewatinya lebih
+ * dulu — masuk, kata sandi, undangan, dan panel akun di atas perusahaan.
+ * Urutan cabang adalah urutan perjalanan: masuk → akun & langganan → kerja
+ * harian di dalam perusahaan.
+ */
 export type DocBranch = (typeof DOC_BRANCHES)[number];
 
 export interface DocMeta {
@@ -301,9 +316,9 @@ const API = {
 
 const PAKET = {
   slug: "paket-dan-perusahaan",
-  judul: "Paket, kuota, dan PT kedua",
+  judul: "Paket, kuota, dan perusahaan kedua",
   ringkas:
-    "Apa yang sebenarnya dibatasi sebuah paket, dan kenapa setiap PT berdiri di bukunya sendiri.",
+    "Apa yang sebenarnya dibatasi sebuah paket, dan kenapa setiap perusahaan berdiri di bukunya sendiri.",
   cabang: "pelanggan",
   /*
    * `/companies/new` SUDAH TIDAK di sini: membuat PT hanya berlangsung di panel
@@ -369,13 +384,103 @@ const ALUR_USAHA = {
   navHrefs: [],
 } as const satisfies DocMeta;
 
+const MASUK_DAN_AKUN = {
+  slug: "masuk-dan-akun",
+  judul: "Masuk, kata sandi, dan undangan",
+  ringkas:
+    "Akun pertama lewat demo, masuk, membuka buku perusahaan, menerima undangan, lupa dan ganti kata sandi, serta keluar dengan aman.",
+  cabang: "mulai",
+  /*
+   * KOSONG: layar masuk, undangan, dan kata sandi bukan item menu — mereka
+   * dijangkau sebelum menu ada. `/select-company` tetap milik halaman paket.
+   */
+  navHrefs: [],
+} as const satisfies DocMeta;
+
+const PANEL_AKUN = {
+  slug: "panel-akun",
+  judul: "Panel akun: perusahaan, tim, dan identitas",
+  ringkas:
+    "Lantai di atas perusahaan — menambah perusahaan, mengundang tim, nama dan alamat akun, serta siapa boleh mengatur apa.",
+  cabang: "mulai",
+  /* KOSONG: panel akun punya menunya sendiri (`lib/panel-nav.tsx`), bukan `NAV_GROUPS`. */
+  navHrefs: [],
+} as const satisfies DocMeta;
+
+const LANGGANAN = {
+  slug: "langganan-dan-tagihan",
+  judul: "Uji coba, aktivasi, dan tagihan",
+  ringkas:
+    "Apa yang terjadi selama dan sesudah uji coba 30 hari, cara meminta aktivasi, membayar tagihan, dan naik-turun paket.",
+  cabang: "pelanggan",
+  navHrefs: [],
+} as const satisfies DocMeta;
+
+const MULAI_DI_PERUSAHAAN = {
+  slug: "mulai-di-perusahaan",
+  judul: "Beranda, menu, dan bantuan di dalam perusahaan",
+  ringkas:
+    "Membaca Beranda, kenapa menu tiap orang berbeda, menu Bantuan dan tur, Mode Akuntan, pemberitahuan, dan Pengaturan.",
+  cabang: "pengguna",
+  navHrefs: ["/dashboard", "/settings"],
+} as const satisfies DocMeta;
+
+const PEMBELIAN = {
+  slug: "alur-pembelian",
+  judul: "Pembelian, pemasok, utang, dan uang muka",
+  ringkas:
+    "Kenapa utang lahir saat pembelian dicatat, cara membayar pemasok, dan kenapa uang muka bukan beban.",
+  cabang: "pengguna",
+  navHrefs: ["/purchases/new", "/suppliers", "/payables", "/advances"],
+} as const satisfies DocMeta;
+
+const ASET_TETAP = {
+  slug: "aset-tetap",
+  judul: "Aset tetap dan penyusutan",
+  ringkas:
+    "Kenapa truk seharga ratusan juta tidak menjadi beban sekaligus, dan cara mendaftarkan, menyusutkan, serta melepas aset.",
+  cabang: "pengguna",
+  navHrefs: ["/fixed-assets"],
+} as const satisfies DocMeta;
+
+const MASTER_DATA = {
+  slug: "master-data",
+  judul: "Pelanggan, penerima barang, dan pusat biaya",
+  ringkas:
+    "Data induk yang dirujuk ratusan dokumen — kenapa yang sudah dipakai dinonaktifkan, bukan dihapus.",
+  cabang: "pengguna",
+  navHrefs: ["/customers", "/consignees", "/cost-centers"],
+} as const satisfies DocMeta;
+
+const EFAKTUR = {
+  slug: "efaktur",
+  judul: "Ekspor e-Faktur ke Coretax",
+  ringkas:
+    "Menyiapkan berkas faktur keluaran satu masa pajak untuk diimpor ke Coretax DJP — cara memakai layarnya, bukan aturan pajaknya.",
+  cabang: "pengguna",
+  navHrefs: ["/tax/efaktur"],
+} as const satisfies DocMeta;
+
 export const DOC_INDEX = [
+  // ── mulai ──
+  MASUK_DAN_AKUN,
+  PANEL_AKUN,
+  // ── pelanggan ──
+  LANGGANAN,
+  PAKET,
+  DATA_ANDA,
+  APA_YANG_BARU,
+  // ── pengguna ──
+  MULAI_DI_PERUSAHAAN,
   MESIN_AKUNTANSI,
   PERIODE,
   PERSETUJUAN,
   PENJUALAN,
+  PEMBELIAN,
+  MASTER_DATA,
   STOK,
   BIAYA_IMPOR,
+  ASET_TETAP,
   MANUFAKTUR,
   MODUL,
   ALUR_USAHA,
@@ -384,10 +489,8 @@ export const DOC_INDEX = [
   COCOK_ACCURATE,
   PERAN_IZIN,
   API,
-  PAKET,
   LAPORAN,
-  DATA_ANDA,
-  APA_YANG_BARU,
+  EFAKTUR,
 ] as const satisfies readonly DocMeta[];
 
 /**
@@ -451,26 +554,8 @@ export const NAV_TANPA_DOKUMEN: Readonly<Record<string, string>> = {
   // ── TETAP ────────────────────────────────────────────────────────────────
   "/glossary":
     "TETAP. Kamus Istilah menjelaskan dirinya sendiri — ia justru sumber yang dibaca halaman dokumen lewat blok `istilah` (#21/#1). Halaman dokumen tentang kamus hanya akan menyalin isinya.",
-  "/settings":
-    "TETAP. Layar preferensi tampilan & profil perusahaan: isinya daftar isian yang berubah tiap rilis dan tidak punya “kenapa mesinnya begitu” untuk diceritakan. Dokumen langkah-demi-langkah di sini adalah jenis dokumen yang paling cepat basi (keputusan 5).",
 
   // ── GELOMBANG BERIKUTNYA (utang yang diakui, issue #300) ────────────────
-  "/dashboard":
-    "Gelombang berikutnya. Beranda MERINGKAS modul lain, jadi “kenapa mesinnya begitu” miliknya adalah satu pertanyaan tersendiri — kenapa angka di kartu bisa berbeda dari laporan yang dicetak hari yang sama (dokumen yang masih tertahan persetujuan, periode berjalan yang belum ditutup). Cerita itu baru masuk akal setelah halaman Pusat Laporan ditulis.",
-  "/purchases/new":
-    "Gelombang berikutnya. Alur pembelian punya kembarannya di alur penjualan tetapi dengan uang muka dan alokasi ke pemasok — cerita tersendiri, bukan cermin.",
-  "/suppliers": "Gelombang berikutnya — bersama halaman alur pembelian.",
-  "/payables": "Gelombang berikutnya — bersama halaman alur pembelian.",
-  "/advances":
-    "Gelombang berikutnya. Uang muka adalah kelas kesalahan tersendiri (uang berpindah sebelum kewajibannya ada) dan pantas mendapat halamannya sendiri, bukan satu paragraf.",
-  "/fixed-assets":
-    "Gelombang berikutnya. Penyusutan adalah contoh terbaik “kenapa mesinnya begitu” yang tersisa: biaya yang tidak pernah menjadi pengeluaran kas.",
-  "/tax/efaktur":
-    "Gelombang berikutnya. Menyentuh aturan DJP yang berubah di luar kendali aplikasi ini; dokumen yang salah di sini lebih mahal daripada tidak ada dokumen.",
-  "/customers":
-    "Gelombang berikutnya — halaman master data bersama (pelanggan, penerima barang, pusat biaya): kenapa master dinonaktifkan, bukan dihapus.",
-  "/consignees": "Gelombang berikutnya — bersama halaman master data.",
-  "/cost-centers": "Gelombang berikutnya — bersama halaman master data.",
   "/documents":
     "Gelombang berikutnya. Arsip dokumen ekspor (B/L, COO, fumigasi) — aturannya lebih banyak milik pembeli & bea cukai daripada milik aplikasi ini.",
 };

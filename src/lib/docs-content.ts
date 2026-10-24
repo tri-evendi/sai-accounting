@@ -10,8 +10,11 @@
  * ditolak sebelum dijalankan.
  *
  * ══ Aturan menulis di sini ═════════════════════════════════════════════════
- *  • **Kenapa dulu, langkah belakangan** (keputusan 5 issue #300). Urutan
- *    tombol menua setiap rilis; alasan tidak. Tanpa tangkapan layar.
+ *  • **Kenapa dulu, langkah sesudahnya** (keputusan 5 issue #300, direvisi
+ *    Okt 2026). Setiap halaman tetap membuka dengan alasan; langkah-langkah
+ *    dan tangkapan layar menyusul di bawahnya. Tangkapan layar BOLEH — lewat
+ *    blok `gambar`, dan HANYA berkas yang dibangkitkan ulang oleh
+ *    `bun run docs:screenshots` (lihat blok `gambar` di bawah).
  *  • **Jangan menulis ulang definisi istilah.** Kamus (`lib/labels.ts`, #21/#1)
  *    sudah memilikinya — pakai blok `istilah`, yang MEMBACANYA. Definisi yang
  *    disalin ke sini ditolak `tests/docs.test.ts`.
@@ -113,7 +116,48 @@ export type DocBlock =
    * itu tinggal di sini bersama prosa lainnya — ia yang dibaca orang yang tidak
    * bisa melihat gambarnya, jadi ia harus berdiri sendiri sebagai kalimat.
    */
-  | { kind: "diagram"; nama: NamaDiagram; keterangan: string };
+  | { kind: "diagram"; nama: NamaDiagram; keterangan: string }
+  /**
+   * TANGKAPAN LAYAR — gambar layar aplikasi yang sesungguhnya.
+   *
+   * ══ Kenapa keputusan 5 (#300) direvisi, dan apa yang menahan risikonya ══
+   * Keputusan 5 menolak tangkapan layar karena tangkapan yang DIBUAT TANGAN
+   * menua diam-diam: tombolnya pindah, gambarnya tidak. Panduan bergambar
+   * (Okt 2026) membalik alasan itu dengan dua pagar, bukan dengan disiplin:
+   *
+   *  • setiap berkas DIBANGKITKAN oleh `scripts/docs-screenshots.ts`
+   *    (`bun run docs:screenshots`) dari aplikasi yang berjalan dengan data
+   *    demo fiktif — tangkapan yang basi diperbarui dengan satu perintah,
+   *    bukan dengan menyunting gambar;
+   *  • `tests/docs-screenshots.test.ts` menjaga TIGA ARAH: setiap `berkas`
+   *    yang dirujuk di sini ada di `public/docs/screenshots/`, setiap berkas di
+   *    sana dirujuk halaman mana pun, dan setiap berkas punya resep tangkapnya
+   *    di skrip — tidak ada gambar yatim yang tak bisa dibuat ulang.
+   *
+   * `berkas` adalah `<bagian>/<nama>` tanpa ekstensi, menunjuk
+   * `public/docs/screenshots/<bagian>/<nama>.webp`. `alt` WAJIB dan berdiri
+   * sendiri sebagai kalimat (pembaca layar tidak melihat gambarnya);
+   * `keterangan` opsional, tampil di bawah gambar dan ikut terindeks.
+   */
+  | { kind: "gambar"; berkas: string; alt: string; keterangan?: string }
+  /**
+   * Rujukan ke halaman panduan lain — "Lihat juga". Slug-nya bertipe
+   * `DocSlug`, jadi tautan ke halaman yang tidak ada ditolak `tsc`.
+   */
+  | { kind: "lihat-juga"; slug: readonly DocSlug[] };
+
+/**
+ * Ukuran SETIAP tangkapan layar — satu viewport tetap (1440×900, tema terang,
+ * bahasa `id`). Tetap supaya `width`/`height` gambar bisa ditulis tanpa
+ * membaca berkasnya saat render (tata letak tidak melompat), dan supaya
+ * penjaga bisa menolak berkas yang ditangkap dengan ukuran lain.
+ */
+export const UKURAN_TANGKAPAN = { lebar: 1440, tinggi: 900 } as const;
+
+/** Alamat publik satu tangkapan layar. */
+export function alamatTangkapan(berkas: string): string {
+  return `/docs/screenshots/${berkas}.webp`;
+}
 
 const MESIN_AKUNTANSI: readonly DocBlock[] = [
     {
@@ -157,6 +201,39 @@ const MESIN_AKUNTANSI: readonly DocBlock[] = [
       teks:
         "Daftar Akun (bagan akun) menentukan bentuk setiap laporan. Menambah akun berarti menambah baris di neraca atau laba/rugi; memindahkan sebuah akun ke tipe yang lain memindahkan angkanya antar-laporan. Karena itu halaman ini hanya terbuka untuk peran berakses penuh, dan hanya saat Mode Akuntan menyala. Kesalahan di sini tidak tampak sebagai kesalahan: hasilnya laporan yang wajar dengan angka di tempat yang salah.",
     },
+  { kind: "sub", judul: "Melihat jurnal, buku besar, dan daftar akun" },
+  {
+    kind: "paragraf",
+    teks:
+      "Ketiga layar ini baru tampil saat Mode Akuntan Anda menyala. Catatan Transaksi (Jurnal Umum) memuat setiap jurnal — yang lahir otomatis dari formulir maupun yang diketik manual — dengan nomor, tanggal, tipe, dan totalnya.",
+  },
+  {
+    kind: "gambar",
+    berkas: "akuntansi/jurnal",
+    alt: "Halaman Jurnal Umum berisi daftar jurnal contoh bertipe Penyesuaian, Penjualan, Kas/Bank, dan Pembelian beserta total rupiahnya.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Untuk jurnal manual, tekan Jurnal Baru, isi baris debit dan kredit sampai seimbang, lalu Simpan Jurnal.",
+      "Untuk membatalkan, buka jurnalnya dan tekan Balik Jurnal — jurnal pembalik bertanggal hari koreksi lahir di sebelahnya.",
+    ],
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Rincian per Akun (Buku Besar) menampilkan mutasi dan saldo berjalan satu akun untuk rentang tanggal yang Anda pilih, bisa disaring per pusat biaya. Daftar Akun (Akun Perkiraan) memuat kode, tipe, mata uang, dan saldo normal setiap akun; akun baru ditambahkan dengan Akun Baru atau diimpor dari Excel.",
+  },
+  {
+    kind: "gambar",
+    berkas: "akuntansi/buku-besar",
+    alt: "Halaman Buku Besar dengan pilihan akun, rentang tanggal, dan pusat biaya, menunggu akun dipilih.",
+  },
+  {
+    kind: "gambar",
+    berkas: "akuntansi/daftar-akun",
+    alt: "Halaman Akun Perkiraan berisi 43 akun bertingkat seperti Kas & Setara Kas, Kas Kecil, Bank, dan Piutang Usaha beserta tipe dan saldo normalnya.",
+  },
     { kind: "istilah", kunci: ["jurnal", "buku_besar", "akun_perkiraan"] },
   ];
 
@@ -183,6 +260,30 @@ const PERIODE: readonly DocBlock[] = [
         "Membuka kembali periode yang sudah dikunci memang mungkin, dan sengaja dibuat merepotkan: ia kewenangan peran berakses penuh dan tercatat di jejak audit. Kalau sebuah bulan perlu dibuka dua kali, biasanya yang bermasalah adalah waktu penutupannya, bukan bulannya.",
       nada: "peringatan",
     },
+  { kind: "sub", judul: "Langkah menutup sebuah bulan" },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Bantuan & Pengaturan → Kunci Bulan (halamannya berjudul Tutup Periode).",
+      "Tekan Tinjau pada bulan yang ingin ditutup. Ringkasan Periode memperlihatkan jumlah jurnal, total debit, total kredit, dan hasil pemeriksaan.",
+      "Perbaiki setiap pemeriksaan bertanda Harus diperbaiki — jurnal yang tidak seimbang atau neraca saldo yang tidak seimbang menahan penutupan. Tanda Perlu dicek boleh dilewati setelah Anda yakin.",
+      "Isi Catatan penutupan bila perlu, lalu tekan Tutup Periode dan konfirmasi.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "akuntansi/tutup-periode",
+    alt: "Halaman Tutup Periode dengan daftar bulan berstatus Terbuka dan Ringkasan September berisi pemeriksaan jurnal seimbang, neraca saldo seimbang, saldo aset wajar, dan tombol Tutup Periode.",
+    keterangan: "Pemeriksaan “Saldo aset wajar” di contoh ini menandai saldo bank negatif — perlu dicek, tetapi tidak menahan penutupan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Bulan sebelumnya yang masih terbuka diberi peringatan: tutuplah berurutan.",
+      "Buka Kembali Periode menuntut alasan (minimal lima karakter) dan tercatat di jejak audit.",
+      "Halaman yang sama memuat Revaluasi saldo valas (jurnal akhir bulan yang dibalik otomatis tanggal 1) dan Tutup buku tahunan, yang butuh akun Laba Ditahan sudah dipetakan.",
+    ],
+  },
     { kind: "istilah", kunci: ["tutup_periode", "saldo_awal"] },
   ];
 
@@ -211,6 +312,35 @@ const PERSETUJUAN: readonly DocBlock[] = [
         "Menyetujui adalah tindakan yang mengikat dan tercatat namanya. Itu sebabnya keputusan diambil di dalam dialog konfirmasi, bukan dari satu ketukan di baris daftar.",
       ],
     },
+  { kind: "sub", judul: "Memasang aturan dan memutuskan pengajuan" },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Persetujuan → Aturan Persetujuan.",
+      "Pilih Jenis dokumen (kontrak, faktur, atau pembayaran), isi Mulai nilai dalam rupiah, dan pilih Peran penyetuju.",
+      "Tekan Simpan Aturan. Aturan berlaku untuk dokumen yang dibuat SESUDAHNYA.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "akuntansi/aturan-persetujuan",
+    alt: "Halaman Aturan Persetujuan dengan daftar aturan yang masih kosong dan formulir Tambah Aturan berisi jenis dokumen, mulai nilai, dan peran penyetuju.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Penyetuju membuka Persetujuan → Perlu Persetujuan. Bagian Menunggu Keputusan Anda memuat pengajuan yang menunggu peran Anda; Setujui memposting jurnalnya, Tolak mengembalikan dokumen tanpa jurnal. Catatan keputusan ikut tersimpan. Pengajuan Saya dan Riwayat Keputusan ada di halaman yang sama.",
+  },
+  {
+    kind: "gambar",
+    berkas: "akuntansi/persetujuan",
+    alt: "Halaman Perlu Persetujuan dengan bagian Menunggu Keputusan Anda dan Pengajuan Saya yang masih kosong.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Tanpa satu aturan pun, semua dokumen langsung masuk jurnal. Dokumen yang terbit dari Transaksi Berulang SELALU menunggu persetujuan, berapa pun nilainya.",
+  },
   ];
 
 const PENJUALAN: readonly DocBlock[] = [
@@ -239,6 +369,94 @@ const PENJUALAN: readonly DocBlock[] = [
         "Valas menyimpan tiga angka sekaligus: mata uang, kurs, dan nilai rupiahnya. Tanpa ketiganya, laba selisih kurs tidak bisa dihitung, dan sebuah angka tanpa mata uang di aplikasi ekspor bisa terbaca tujuh belas ribu kali lebih besar dari yang dimaksud.",
       ],
     },
+  { kind: "sub", judul: "Langkah: mencatat penjualan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Catat Penjualan adalah wisaya lima langkah. Tidak ada yang tersimpan sampai Selesai & Simpan di langkah terakhir, jadi Anda bebas mundur-maju.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Pelanggan — mulai dari kontrak bila ada (pelanggan, mata uang, dan barangnya ikut terisi), atau pilih pelanggan terdaftar, atau isi pelanggan baru.",
+      "Barang & Harga — barang, jumlah, dan harga.",
+      "Surat Jalan (opsional) — kirim barangnya sekalian; stok berkurang dan HPP terjurnal.",
+      "Tagihan — tanggal, jatuh tempo, PPN, dan mata uang.",
+      "Ringkasan — periksa, lalu Selesai & Simpan.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/catat-penjualan",
+    alt: "Wisaya Catat Penjualan langkah 1 dari 5 dengan pilihan kontrak sumber dan pelanggan terdaftar atau baru.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Tagihan Penjualan memuat setiap faktur dengan status pembayarannya — Lunas, Sebagian, Belum Bayar, Jatuh Tempo. Selain wisaya, Buat Tagihan membuka formulir langsung yang bisa menarik baris dari kontrak.",
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/tagihan",
+    alt: "Daftar Tagihan Penjualan berisi enam faktur contoh dengan tanggal, jumlah barang, nilai, dan status Sah, serta tombol Catat Penjualan (dipandu) dan Buat Tagihan.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Halaman rinci faktur adalah tempat pekerjaan sesudahnya: Tambah Pembayaran saat uang diterima, Kirim ke Pelanggan lewat surel, kompensasi uang muka, Pratinjau & Cetak PDF, dan Ulangi faktur ini untuk membuat templat transaksi berulang.",
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/tagihan-rinci",
+    alt: "Halaman rinci sebuah tagihan contoh dengan informasi tagihan, baris barang, DPP, PPN 11 persen, total, dan bagian Pembayaran.",
+  },
+  { kind: "sub", judul: "Kontrak, surat jalan, piutang, retur, dan transaksi berulang" },
+  {
+    kind: "paragraf",
+    teks:
+      "Kontrak (modul Perdagangan) mencatat kesepakatan sebelum barang dikirim. Statusnya Menunggu, Sah, Selesai, atau Dibatalkan; halaman rincinya memuat rantai dokumen dan sisa per barang, dengan tombol untuk membuat surat jalan dan faktur dari kontrak itu.",
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/kontrak",
+    alt: "Halaman Kontrak dengan saringan status, grafik status kontrak dan aktivitas bulanan, serta tombol Buat Kontrak.",
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/surat-jalan",
+    alt: "Halaman Surat Jalan yang masih kosong dengan tombol Buat Surat Jalan dan penjelasan bahwa surat jalan mengurangi stok dan mengakui HPP.",
+    keterangan: "Menerbitkan surat jalan mengurangi stok dan menjurnal HPP; jumlah besar diminta konfirmasi lebih dulu.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Pelanggan Belum Bayar adalah laporan umur piutang per tanggal — faktur dan kontrak yang masih bersisa, dikelompokkan menurut umurnya, bisa diunduh Excel atau PDF.",
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/piutang",
+    alt: "Laporan Pelanggan Belum Bayar dengan kartu umur piutang 0–30 sampai lebih dari 90 hari, total outstanding, dan grafik sebaran umur.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Barang Dikembalikan memisahkan retur penjualan dan retur pembelian. Buat Retur memilih dokumen sumber, lalu jumlah yang diretur per baris — tidak boleh melebihi sisa yang bisa diretur. Retur penjualan mengembalikan stok dan menerbitkan nota.",
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/retur",
+    alt: "Halaman Retur dengan tab Retur Penjualan dan Retur Pembelian yang masih kosong serta tombol Buat Retur.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Transaksi Berulang menerbitkan faktur atau jurnal menurut jadwal (mingguan, bulanan, tahunan). Templat dibuat dari faktur yang sudah ada lewat Ulangi faktur ini. Kemunculan yang jatuh di bulan terkunci ditahan, bukan dipaksakan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/transaksi-berulang",
+    alt: "Halaman Transaksi Berulang yang masih kosong dengan penjelasan bahwa dokumen dari templat selalu menunggu persetujuan.",
+  },
     { kind: "istilah", kunci: ["kontrak", "faktur", "surat_jalan", "piutang", "retur"] },
     {
       kind: "paragraf",
@@ -279,6 +497,54 @@ const STOK: readonly DocBlock[] = [
         "Barang tanpa dasar biaya muncul sebagai “—”, tidak pernah sebagai nol. Nol berarti “gratis”, dan menjumlahkannya sebagai nol menyusutkan nilai persediaan tanpa satu pun tanda di layar. Jumlah baris yang dikecualikan selalu disebut di bawah tabelnya.",
       nada: "peringatan",
     },
+  { kind: "sub", judul: "Layar-layar stok" },
+  {
+    kind: "paragraf",
+    teks:
+      "Stok Barang meringkas jumlah barang, kondisi stok (aman, menipis, habis), nilai persediaan dengan biaya rata-rata, dan stok terbanyak.",
+  },
+  {
+    kind: "gambar",
+    berkas: "stok/ringkasan",
+    alt: "Halaman Stok Barang dengan kartu jumlah barang, stok aman, menipis, habis, nilai persediaan, grafik kondisi stok, dan stok terbanyak.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Stok & Aset → Tambah / Kurangi Stok.",
+      "Pilih barang (atau Barang Baru), lalu Jenis Pergerakan: Barang Masuk, Barang Keluar, atau Hasil Proses (susut).",
+      "Isi jumlah. Untuk barang masuk, Harga Pokok per Unit WAJIB — ia yang menghitung HPP rata-rata saat barang keluar.",
+      "Opsional: pemasok pengirim dan Bayar dari kas/bank bila barangnya dibayar tunai. Tekan Simpan Pergerakan Stok.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "stok/tambah-kurangi",
+    alt: "Formulir Catat Pergerakan Stok dengan isian barang, jenis pergerakan Barang Masuk, jumlah, harga pokok per unit, pemasok pengirim, dan bayar dari kas.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Riwayat Stok (kartu stok) menampilkan saldo awal, masuk, keluar, dan saldo akhir per barang untuk minggu, bulan, tahun, atau rentang khusus, dan bisa dicetak atau diunduh Excel.",
+  },
+  {
+    kind: "gambar",
+    berkas: "stok/riwayat",
+    alt: "Halaman Riwayat Stok bulanan untuk Oktober berisi tiga barang contoh dengan saldo awal, masuk, keluar, dan saldo akhir.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Hitung Ulang Stok. Cetak Lembar Hitung bila penghitungan dilakukan di gudang.",
+      "Isi Hitung Fisik untuk setiap barang yang dihitung; kolom Selisih terisi sendiri. Barang yang dikosongkan tidak diubah.",
+      "Tekan Simpan Penyesuaian dan konfirmasi. Riwayatnya terbaca di Lihat Riwayat Hitung Ulang.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "stok/hitung-ulang",
+    alt: "Halaman Hitung Ulang Stok dengan tabel stok sistem dan kolom hitung fisik untuk tiga barang contoh, serta tombol Cetak Lembar Hitung.",
+  },
     { kind: "istilah", kunci: ["persediaan", "kartu_stok", "stok_opname"] },
   ];
 
@@ -324,6 +590,21 @@ const BIAYA_IMPOR: readonly DocBlock[] = [
     teks:
       "Setelah dokumennya disimpan, dua hal terjadi sekaligus dan keduanya bisa diperiksa. Nilai persediaan barang yang masih di gudang naik — terlihat di Kartu Stok sebagai baris penyesuaian nilai yang TIDAK menambah kuantitas apa pun. Dan bagian yang sudah terjual berpindah dari Persediaan ke Selisih Harga Pokok di laporan laba/rugi bulan itu.",
   },
+  { kind: "sub", judul: "Langkah menyebar biaya impor" },
+  {
+    kind: "langkah",
+    butir: [
+      "Catat dulu tagihan biayanya (freight, bea masuk) sebagai pembelian dari pemasok jasanya.",
+      "Buka Pembelian → Biaya Impor, lalu buat penyebaran baru dan pilih tagihan yang disebar.",
+      "Pilih Dasar sebar — menurut nilai barang atau menurut berat — dan centang penerimaan barang yang menanggung biaya itu.",
+      "Tekan Simpan & Sebar.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "pembelian/biaya-impor",
+    alt: "Formulir Sebar Biaya Impor dengan pilihan tagihan yang disebar, tanggal dokumen, dasar sebar menurut nilai barang, dan daftar penerimaan barang contoh beserta sisa di gudang.",
+  },
   { kind: "istilah", kunci: ["persediaan", "kartu_stok", "hpp"] },
 ];
 
@@ -363,6 +644,20 @@ const MODUL: readonly DocBlock[] = [
     teks:
       "Mengubahnya adalah kewenangan yang sama dengan mengubah profil perusahaan, dan hanya pemegang kewenangan itu yang melihat menunya. Perubahannya dicatat di jejak audit — sebuah menu yang hilang tanpa ada yang mengaku mematikannya adalah kebingungan yang mahal.",
   },
+  { kind: "sub", judul: "Menyalakan atau mematikan modul" },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Bantuan & Pengaturan → Modul Usaha.",
+      "Pilih kategori usaha untuk set modul yang lazim, atau nyalakan dan matikan modul satu per satu. Akuntansi Inti selalu aktif.",
+      "Tekan Simpan Perubahan dan konfirmasi.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/modul-usaha",
+    alt: "Halaman Modul Usaha dengan lima kategori usaha — Perdagangan Komoditas, Distribusi, Jasa, Pabrik, Pilih Sendiri — masing-masing menjelaskan modul yang dinyalakan dan dimatikan.",
+  },
 ];
 
 const KAS: readonly DocBlock[] = [
@@ -398,6 +693,45 @@ const KAS: readonly DocBlock[] = [
         "Tanggal yang ditulis 05/08/2026 bisa berarti 5 Agustus atau 8 Mei. Aplikasi memutuskannya dari seluruh berkas — satu baris bertanggal 31 sudah cukup menjelaskan sisanya — dan bila berkasnya tidak memuat petunjuk apa pun, ia mengatakannya di layar alih-alih menebak diam-diam.",
       ],
     },
+  { kind: "sub", judul: "Langkah: mencatat uang masuk dan keluar" },
+  {
+    kind: "paragraf",
+    teks:
+      "Buku Kas & Bank menampilkan saldo per jenis kas dan mata uang, serta daftar transaksi yang bisa disaring jenis kas, mata uang, tahun, dan bulan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "kas/buku-kas",
+    alt: "Halaman Buku Kas & Bank dengan saldo Bank (IDR), saringan jenis kas dan periode, dan daftar empat transaksi beban contoh.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Dari Beranda pilih Terima Uang atau Bayar — atau Catat Transaksi di Buku Kas & Bank.",
+      "Pilih Jenis Kas (Bank, Kas Besar, Kas Kecil), tanggal, dan keterangan.",
+      "Isi SATU kolom saja: uang masuk atau uang keluar.",
+      "Pilih kategorinya — atau, dengan Mode Akuntan, akun lawannya. Pratinjau jurnal memperlihatkan dampaknya sebelum disimpan.",
+      "Tekan Simpan Transaksi.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "kas/catat-transaksi",
+    alt: "Formulir Terima Uang dengan jenis kas Bank, tanggal, keterangan, kolom debit uang masuk dan kredit uang keluar, serta pilihan akun lawan.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Cocokkan Rekening Koran → Rekonsiliasi Baru. Pilih rekening, awal dan akhir periode, serta saldo awal dan akhir menurut rekening koran; tekan Buat & Lanjut.",
+      "Tambahkan baris rekening koran satu per satu atau Impor CSV dari internet banking.",
+      "Pasangkan setiap baris koran dengan transaksi buku. Yang tidak berpasangan biasanya transaksi yang belum dicatat — catat, lalu pasangkan.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "kas/rekonsiliasi",
+    alt: "Formulir Rekonsiliasi Baru dengan mata uang rekening, awal dan akhir periode, saldo awal dan akhir menurut koran, dan tombol Buat & Lanjut.",
+  },
     { kind: "istilah", kunci: ["kas_bank", "rekonsiliasi_bank"] },
   ];
 
@@ -443,6 +777,38 @@ const SALDO_AWAL: readonly DocBlock[] = [
         "Nama yang sudah ada dilewati, tidak pernah ditimpa. Mengunggah berkas yang sama dua kali tidak menggandakan apa pun, dan tidak menghapus suntingan yang Anda buat sesudahnya.",
       ],
     },
+  { kind: "sub", judul: "Wisaya penyiapan, langkah demi langkah" },
+  {
+    kind: "paragraf",
+    teks:
+      "Perusahaan yang baru dibuat langsung membuka Setup Perusahaan & Saldo Awal; halaman lain menunggu sampai wisaya selesai. Wisaya ini hanya dijalankan sekali.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Identitas — nama, alamat, NPWP, dan apakah perusahaan PKP.",
+      "Modul Usaha — pilih kategori usaha.",
+      "Mata Uang & Tahun Buku.",
+      "Bagan Akun — terima bagan bawaan atau sesuaikan.",
+      "Saldo Awal — kas & bank, piutang per pelanggan, persediaan per barang, utang per pemasok; aset tetap lewat berkas. Pilih Mulai tanpa saldo awal bila memang belum ada.",
+      "Tinjau, lalu Simpan & Selesai: satu jurnal saldo awal yang seimbang lahir, dan Anda bisa langsung mulai bekerja.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/setup",
+    alt: "Wisaya Setup Perusahaan & Saldo Awal langkah 1 dari 6, Identitas, dengan nama perusahaan contoh, alamat, NPWP, dan centang PKP.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Impor Data Awal memindahkan daftar pelanggan, pemasok, dan barang dari Excel. Unduh templat untuk jenis data yang dipilih, isi, lalu Unggah & impor. Berkas .xlsx paling besar 5 MB; bila ada satu baris yang salah, tidak ada yang disimpan, dan nama yang sudah ada dilewati. Saldo awal TIDAK lewat layar ini — ia milik wisaya penyiapan, yang punya templat per bagiannya sendiri.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/impor-data-awal",
+    alt: "Halaman Impor Data Awal dengan langkah unduh templat Pelanggan dan langkah unggah berkas yang sudah diisi.",
+  },
     { kind: "istilah", kunci: ["saldo_awal", "neraca"] },
   ];
 
@@ -462,7 +828,7 @@ const PERAN_IZIN: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Izin PERUSAHAAN menentukan apa yang boleh Anda lakukan di dalam buku PT ini, dan datang dari keanggotaan Anda di PT itu. Izin AKUN (tenant) berlaku bahkan ketika Anda belum punya satu pun PT: boleh membuat perusahaan baru, boleh menyentuh langganan, boleh mengundang orang. Keduanya tidak pernah dicampur. Kalau izin membuat perusahaan harus datang dari keanggotaan di sebuah perusahaan, pelanggan baru tidak akan pernah bisa mulai.",
+        "Izin PERUSAHAAN menentukan apa yang boleh Anda lakukan di dalam buku perusahaan ini, dan datang dari keanggotaan Anda di perusahaan itu. Izin AKUN (tenant) berlaku bahkan ketika Anda belum punya satu pun perusahaan: boleh membuat perusahaan baru, boleh menyentuh langganan, boleh mengundang orang. Keduanya tidak pernah dicampur. Kalau izin membuat perusahaan harus datang dari keanggotaan di sebuah perusahaan, pelanggan baru tidak akan pernah bisa mulai.",
     },
     { kind: "sub", judul: "Mode Akuntan bukan peran" },
     {
@@ -484,6 +850,50 @@ const PERAN_IZIN: readonly DocBlock[] = [
         "Mencabut berlaku seketika. Catatannya tetap tersimpan: siapa menerbitkan, kapan terakhir dipakai, kapan dicabut.",
       ],
     },
+  { kind: "sub", judul: "Mengundang pengguna ke perusahaan" },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Bantuan & Pengaturan → Pengguna di perusahaan yang dituju.",
+      "Tekan Undang Pengguna, isi email dan pilih Peran.",
+      "Tekan Kirim Undangan. Penerima mendapat surel dan menentukan kata sandinya sendiri; undangannya tampil di Undangan Menunggu sampai diterima atau dicabut.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/undang-pengguna",
+    alt: "Formulir Undang Pengguna Baru dengan email contoh, peran Manajer Keuangan, dan tombol Kirim Undangan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/undangan-menunggu",
+    alt: "Halaman Manajemen Pengguna dengan kursi terpakai 2 dari 15 dan satu undangan menunggu beserta tanggal berlakunya.",
+    keterangan: "Undangan yang belum diterima ikut memakai kursi paket. Cabut undangan yang tidak jadi agar kursinya kembali.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Hanya pemilik dan admin akun yang bisa mengundang.",
+      "Atur Ulang Kata Sandi pada seorang pengguna memberinya kata sandi sementara yang wajib diganti saat masuk berikutnya, dan mengeluarkan sesinya.",
+      "Izin Khusus pada seorang pengguna menimpa perannya untuk satu izin: Ikuti peran, Selalu boleh, atau Selalu tidak.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/pengguna",
+    alt: "Halaman Manajemen Pengguna dengan kartu kursi terpakai dan tabel pengguna berisi nama pengguna, email, peran Direktur Utama, dan status Aktif.",
+  },
+  { kind: "sub", judul: "Mengubah matriks izin" },
+  {
+    kind: "paragraf",
+    teks:
+      "Hak Akses menampilkan matriks peran × izin untuk perusahaan ini. Centang atau hapus centang, lalu Simpan Perubahan; sel yang berbeda dari bawaan ditandai diubah, dan Reset ke bawaan mengembalikannya. Perubahan berlaku paling lama satu menit kemudian dan tercatat di jejak audit. Kelola Peran di atas matriks menambah peran baru — peran baru lahir tanpa izin sama sekali.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/hak-akses",
+    alt: "Halaman Hak Akses dengan bagian Kelola Peran berisi empat peran sistem dan formulir peran baru, di atas matriks izin.",
+  },
   ];
 
 /**
@@ -526,7 +936,7 @@ const API: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Alamat API tidak memuat nama tenant maupun nama PT. Sebuah token diterbitkan DI DALAM satu perusahaan dan selamanya membaca buku perusahaan itu saja. Konsekuensinya: kalau Anda memegang tiga PT, Anda memerlukan tiga token, dan sebuah program yang menarik ketiganya menyimpan ketiganya. Itu disengaja — alamat yang bisa menyebut PT lain adalah satu salah ketik antara buku yang benar dan buku tetangganya.",
+        "Alamat API tidak memuat nama tenant maupun nama perusahaan. Sebuah token diterbitkan DI DALAM satu perusahaan dan selamanya membaca buku perusahaan itu saja. Konsekuensinya: kalau Anda memegang tiga perusahaan, Anda memerlukan tiga token, dan sebuah program yang menarik ketiganya menyimpan ketiganya. Itu disengaja — alamat yang bisa menyebut perusahaan lain adalah satu salah ketik antara buku yang benar dan buku tetangganya.",
     },
     { kind: "sub", judul: "Satu permintaan, dari awal sampai jawabannya" },
     {
@@ -606,19 +1016,34 @@ const API: readonly DocBlock[] = [
       teks:
         "Yang tidak akan Anda temukan di sini: janji waktu tanggap, jaminan ketersediaan, dan versi kedua. `v1` di alamatnya adalah janji yang sudah dibuat — bentuk jawaban yang sudah terbit tidak diubah diam-diam; kolom baru boleh muncul, kolom yang ada tidak dicabut tanpa alamat versi baru.",
     },
+  { kind: "sub", judul: "Menerbitkan dan mencabut token" },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Bantuan & Pengaturan → Token API.",
+      "Isi Nama (mis. nama sistem yang memakainya) dan pilih Berperan sebagai.",
+      "Tekan Terbitkan dan SALIN tokennya saat itu juga — ia hanya ditampilkan sekali.",
+      "Untuk menghentikan akses, tekan Cabut pada baris token; penolakan berlaku seketika.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/token-api",
+    alt: "Halaman Token API dengan formulir Terbitkan token baru berisi nama dan peran, serta daftar token yang masih kosong.",
+  },
   ];
 
 const PAKET: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Satu akun pelanggan boleh memegang beberapa perusahaan (PT). Yang membedakan paket adalah kuota, bukan fitur mana yang dinyalakan: berapa perusahaan dan berapa pengguna yang boleh ada di dalamnya. Kuota diperiksa saat Anda menambah, bukan sebagai tagihan kejutan di akhir bulan.",
+        "Satu akun pelanggan boleh memegang beberapa perusahaan. Yang membedakan paket adalah kuota, bukan fitur mana yang dinyalakan: berapa perusahaan dan berapa pengguna yang boleh ada di dalamnya. Kuota diperiksa saat Anda menambah, bukan sebagai tagihan kejutan di akhir bulan.",
     },
-    { kind: "sub", judul: "Kenapa setiap PT punya buku yang benar-benar terpisah" },
+    { kind: "sub", judul: "Kenapa setiap perusahaan punya buku yang benar-benar terpisah" },
     {
       kind: "paragraf",
       teks:
-        "Buku besar setiap PT hidup di basis datanya sendiri, bukan sebagai kolom penanda perusahaan di dalam satu tabel bersama. Bedanya terlihat saat terjadi kesalahan. Dengan satu tabel bersama, sebuah kueri yang lupa menyaring perusahaan akan mengembalikan transaksi PT lain tanpa memunculkan galat. Dengan basis data terpisah, tidak ada yang bisa dikembalikan: jalur yang kehilangan konteks perusahaan langsung GAGAL di tempat kejadiannya.",
+        "Buku besar setiap perusahaan hidup di basis datanya sendiri, bukan sebagai kolom penanda perusahaan di dalam satu tabel bersama. Bedanya terlihat saat terjadi kesalahan. Dengan satu tabel bersama, sebuah kueri yang lupa menyaring perusahaan akan mengembalikan transaksi perusahaan lain tanpa memunculkan galat. Dengan basis data terpisah, tidak ada yang bisa dikembalikan: jalur yang kehilangan konteks perusahaan langsung GAGAL di tempat kejadiannya.",
     },
     {
       kind: "diagram",
@@ -629,24 +1054,30 @@ const PAKET: readonly DocBlock[] = [
     {
       kind: "poin",
       butir: [
-        "Yang berpindah saat Anda berganti perusahaan adalah seluruh buku, bukan sebuah penyaring. Nama PT yang sedang dibuka karena itu selalu terlihat di bilah atas.",
-        "Pengguna, daftar perusahaan, dan keanggotaan tinggal di satu tempat bersama — orang yang sama boleh masuk ke beberapa PT dengan peran yang berbeda di masing-masing.",
+        "Yang berpindah saat Anda berganti perusahaan adalah seluruh buku, bukan sebuah penyaring. Nama perusahaan yang sedang dibuka karena itu selalu terlihat di bilah atas.",
+        "Pengguna, daftar perusahaan, dan keanggotaan tinggal di satu tempat bersama — orang yang sama boleh masuk ke beberapa perusahaan dengan peran yang berbeda di masing-masing.",
         "Alamat setiap halaman memuat nama akun dan nama perusahaan, jadi tautan yang Anda salin selalu menunjuk buku yang sama saat dibuka orang lain.",
         "Nama perusahaan boleh diganti kapan saja; alamat pendeknya (slug) tidak — ia ikut menyusun nama basis datanya, dan setiap tautan yang pernah dibagikan berdiri di atasnya.",
       ],
     },
+  {
+    kind: "catatan",
+    teks:
+      "Kuota yang sedang terpakai terbaca di panel Akun & Perusahaan; perbandingan paket dan cara naik-turun paket dijelaskan di halaman uji coba, aktivasi, dan tagihan.",
+  },
+  { kind: "lihat-juga", slug: ["langganan-dan-tagihan", "panel-akun"] },
   ];
 
 const DATA_ANDA: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Seluruh pembukuan setiap PT Anda bisa diunduh sendiri, kapan saja, tanpa meminta kepada siapa pun. Itu keputusan yang sengaja: data pembukuan adalah milik Anda, dan hak untuk mengambilnya tidak boleh bergantung pada hubungan yang sedang baik dengan penyedia layanannya.",
+        "Seluruh pembukuan setiap perusahaan Anda bisa diunduh sendiri, kapan saja, tanpa meminta kepada siapa pun. Itu keputusan yang sengaja: data pembukuan adalah milik Anda, dan hak untuk mengambilnya tidak boleh bergantung pada hubungan yang sedang baik dengan penyedia layanannya.",
     },
     {
       kind: "poin",
       butir: [
-        "Ekspor tetap bekerja ketika langganan sedang tertunggak dan seluruh PT dalam keadaan hanya-baca. Justru dalam keadaan itulah ia paling dibutuhkan.",
+        "Ekspor tetap bekerja ketika langganan sedang tertunggak dan seluruh perusahaan dalam keadaan hanya-baca. Justru dalam keadaan itulah ia paling dibutuhkan.",
         "Permintaan penghapusan akun adalah permintaan, bukan tombol yang langsung menghapus — ia mengakhiri kontrak, dan pelaksanaannya berjalan sebagai proses dengan tenggang waktu.",
         "Sebagian jejak audit dianonimkan, tidak ikut terhapus. Catatan tentang siapa menyetujui sebuah pembayaran adalah bagian dari pembukuan pihak lain juga, dan menghapusnya melubangi buku yang masih harus dipertanggungjawabkan.",
       ],
@@ -656,6 +1087,25 @@ const DATA_ANDA: readonly DocBlock[] = [
       teks:
         "Naskah hukumnya — Syarat Layanan dan Kebijakan Privasi — berdiri sebagai halaman tersendiri dan bisa dibaca sebelum Anda menyetujuinya. Halaman ini menjelaskan mekanismenya di dalam produk; kalau keduanya berselisih, yang mengikat adalah naskah hukumnya.",
     },
+  { kind: "sub", judul: "Mengunduh seluruh data" },
+  {
+    kind: "langkah",
+    butir: [
+      "Sebagai pemilik akun, buka panel akun → Data & Privasi.",
+      "Tekan Siapkan Ekspor Data (ZIP). Penyiapannya berjalan di latar dan menunjukkan persentasenya.",
+      "Tekan Unduh ZIP. Isinya berkas CSV untuk setiap tabel setiap perusahaan, yang terbuka di Excel atau LibreOffice. Berkasnya disimpan tujuh hari.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/data-privasi",
+    alt: "Halaman Data & Privasi dengan tombol Siapkan Ekspor Data (ZIP) dan kotak merah Minta Penghapusan Akun.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Minta Penghapusan Akun menutup seluruh akses dan menganonimkan data pribadi setelah masa tenggang 30 hari; selama tenggang itu permintaan bisa dibatalkan, dan semua pemilik diberi tahu lewat surel. Buku pembukuannya sendiri tidak ikut terhapus — undang-undang mewajibkannya disimpan sepuluh tahun.",
+  },
   ];
 
 /** Isi setiap halaman, dikunci pada daftar isi lewat `DocSlug`. */
@@ -725,6 +1175,60 @@ const LAPORAN: readonly DocBlock[] = [
       teks:
         "Laporan tidak pernah menghitung ulang apa pun sendiri. Ia menjumlahkan jurnal yang sudah ada. Kalau sebuah angka terasa salah, yang perlu dicari adalah transaksi mana yang menyusunnya, bukan rumusnya. Setiap laporan bisa ditelusuri sampai ke barisnya.",
     },
+  { kind: "sub", judul: "Membuka dan mengekspor laporan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Pusat Laporan mengelompokkan semua laporan per kategori: Keuangan, Penjualan, Pembelian, Stok, Kas & Bank, dan Pajak. Neraca Saldo hanya tampil saat Mode Akuntan menyala.",
+  },
+  {
+    kind: "gambar",
+    berkas: "laporan/pusat-laporan",
+    alt: "Pusat Laporan dengan tombol Paket laporan dan kartu Neraca Saldo, Laba / Rugi, Beban menurut Sifat, Laba Rugi per Proyek, Perubahan Ekuitas, Neraca, Arus Kas, dan Realisasi vs Anggaran.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Tekan Buka laporan pada kartunya.",
+      "Atur periode (atau Per Tanggal untuk neraca), pusat biaya, dan pembanding bila perlu, lalu Tampilkan.",
+      "Baca Ringkasan Bahasa Sehari-hari di atas tabel, lalu ekspor dengan Pratinjau & Cetak (PDF) atau Unduh Excel.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "laporan/laba-rugi",
+    alt: "Laporan Laba / Rugi Januari sampai Oktober dengan ringkasan bahasa sehari-hari, kartu uang masuk, laba kotor, uang keluar, selisih, dan tabel pendapatan serta beban pokok.",
+  },
+  {
+    kind: "gambar",
+    berkas: "laporan/neraca",
+    alt: "Laporan Neraca per tanggal dengan ringkasan harta, utang, dan modal, serta rincian akun aset.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Di Pusat Laporan, tekan Paket laporan.",
+      "Pilih periode — bulanan, kuartalan, tahunan, atau rentang khusus.",
+      "Centang laporannya. Set bawaan memilih Neraca, Laba/Rugi, Arus Kas, Perubahan Ekuitas, Neraca Saldo, Piutang, dan Utang; paling banyak 20 laporan.",
+      "Pilih format PDF, Excel, atau keduanya, lalu tekan Buat paket dan tunggu persentasenya selesai.",
+      "Unduh berkas ZIP-nya. Paket disimpan tujuh hari.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "laporan/paket-laporan",
+    alt: "Dialog Unduh paket laporan dengan pilihan periode bulanan September, daftar laporan yang dicentang, dan format PDF serta Excel.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Anggaran & Target (menu Rencana & Target) menyimpan anggaran per akun dan target penjualan, lalu membandingkannya dengan realisasi. Menyimpan anggaran tidak memposting jurnal apa pun.",
+  },
+  {
+    kind: "gambar",
+    berkas: "laporan/anggaran",
+    alt: "Halaman Anggaran & Target dengan tiga kartu: Realisasi vs Anggaran, Anggaran Akun, dan Target Penjualan.",
+  },
     { kind: "istilah", kunci: ["laba_rugi", "neraca", "tutup_periode"] },
   ];
 
@@ -768,7 +1272,7 @@ const COCOK_ACCURATE: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Tombol Ekspor Accurate menghasilkan halaman cetak berformat Excel, bukan tabel: nama PT dan judul laporan diulang di setiap halaman, judul kolomnya berdiri di baris kelima dan muncul lagi tiap ganti halaman, dan kolom keterangan memuat dua baris dalam satu sel. Semua itu dirapikan otomatis saat dibaca — jadi unggah apa adanya, jangan dirapikan dulu di Excel.",
+      "Tombol Ekspor Accurate menghasilkan halaman cetak berformat Excel, bukan tabel: nama perusahaan dan judul laporan diulang di setiap halaman, judul kolomnya berdiri di baris kelima dan muncul lagi tiap ganti halaman, dan kolom keterangan memuat dua baris dalam satu sel. Semua itu dirapikan otomatis saat dibaca — jadi unggah apa adanya, jangan dirapikan dulu di Excel.",
   },
   {
     kind: "paragraf",
@@ -795,6 +1299,11 @@ const COCOK_ACCURATE: readonly DocBlock[] = [
     kind: "paragraf",
     teks:
       "Berkas itu tidak diunggah balik ke mana pun. Ia bahan untuk diperiksa mata manusia, lalu dimasukkan lewat wisaya saldo awal — pintu yang sama yang dipakai perusahaan baru, dan yang sengaja hanya bisa dilalui sekali.",
+  },
+  {
+    kind: "gambar",
+    berkas: "akuntansi/cocokkan-accurate",
+    alt: "Halaman Integrasi Accurate dengan pemberitahuan bahwa halaman ini hanya membaca, petunjuk menyiapkan berkas Rincian Buku Besar, dan kotak unggah berkas .xlsx.",
   },
   { kind: "istilah", kunci: ["buku_besar", "saldo_awal", "neraca_saldo"] },
 ];
@@ -916,6 +1425,40 @@ const MANUFAKTUR: readonly DocBlock[] = [
     teks:
       "Berbeda dari modul lain, Manufaktur harus dinyalakan sendiri di halaman Modul Usaha, dan memilih kategori usaha Manufaktur saat setup sudah menyalakannya. Perusahaan dagang tidak akan pernah menemukannya muncul begitu saja. Saat dinyalakan, tiga akun ditambahkan ke Daftar Akun bila belum ada: Barang Dalam Proses, Beban Upah Langsung, dan Beban Overhead Pabrik — tanpa ketiganya jurnal di atas tidak punya tempat mendarat.",
   },
+  { kind: "sub", judul: "Mengisi ketiga layarnya" },
+  {
+    kind: "paragraf",
+    teks:
+      "Stasiun Kerja mencatat kode, tarif upah per jam, dan overhead per jam setiap tempat kerja. Isi dulu sebelum resep, sebab langkah kerja resep menunjuk stasiun.",
+  },
+  {
+    kind: "gambar",
+    berkas: "manufaktur/stasiun-kerja",
+    alt: "Formulir stasiun kerja baru di perusahaan manufaktur contoh, dengan isian kode, nama, tarif upah, dan overhead per jam.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Resep Produksi menyebut barang yang dibuat, hasil sekali jalan, bahan beserta susutnya, dan langkah kerja di stasiun mana.",
+  },
+  {
+    kind: "gambar",
+    berkas: "manufaktur/resep",
+    alt: "Formulir Resep Produksi Baru dengan bagian barang yang dibuat, bahan beserta persentase susut, dan langkah kerja.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buat perintah produksi dari sebuah resep dan jumlah yang direncanakan (status Draf).",
+      "Tekan Keluarkan bahan saat bahan diambil dari gudang — stok bahan berkurang dan pindah ke Barang Dalam Proses.",
+      "Tekan Catat hasil & selesaikan dengan jumlah jadi dan jam kerja sungguhan — barang jadi masuk stok dengan harga pokoknya.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "manufaktur/perintah-produksi",
+    alt: "Halaman Perintah Produksi di perusahaan manufaktur contoh.",
+  },
 ];
 
 const APA_YANG_BARU: readonly DocBlock[] = [
@@ -1024,7 +1567,723 @@ const ALUR_USAHA: readonly DocBlock[] = [
   },
 ];
 
+/* ════════════════════════════════════════════════════════════════════════════
+ * PANDUAN BERGAMBAR (Okt 2026) — urutan perjalanan pengguna:
+ *   1. masuk & akun → 2. panel akun (tenant) → 3. langganan → 4. di dalam
+ *   perusahaan. Setiap halaman: tujuan, prasyarat, langkah bergambar, kalau
+ *   gagal, dan rujukan. Tangkapan layarnya dibangkitkan `bun run docs:screenshots`.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+const MASUK_DAN_AKUN: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Setiap orang yang memakai aplikasi ini punya SATU akun pribadi: satu alamat email, satu kata sandi. Akun itu tinggal di satu akun pelanggan (tenant) — wadah milik usaha Anda yang memuat semua perusahaan dan seluruh tim. Di dalam wadah itu satu orang boleh menjadi anggota beberapa perusahaan sekaligus, dengan peran yang berbeda di masing-masing. Karena itu tidak ada akun bersama untuk satu bagian: setiap catatan di jejak audit menyebut nama orangnya.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Halaman ini untuk semua pengguna. Tidak ada prasyarat selain email yang terdaftar — atau undangan yang masih berlaku.",
+  },
+  { kind: "sub", judul: "Akun pertama: lewat demo, bukan formulir daftar" },
+  {
+    kind: "paragraf",
+    teks:
+      "Pada pemasangan yang umum, pendaftaran mandiri DITUTUP. Membuka akun dimulai dari percakapan singkat — berapa perusahaan, berapa pengguna, dan dari sistem apa datanya dipindahkan — supaya kuota, migrasi, dan cara pembayarannya disepakati lebih dulu. Halaman Daftar karena itu menampilkan cara menghubungi tim, bukan formulir.",
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/daftar-demo",
+    alt: "Halaman daftar yang ditutup berjudul Jadwalkan demo atau minta penawaran, dengan tombol Hubungi lewat WhatsApp dan Kirim surel.",
+    keterangan: "Tombol yang muncul mengikuti saluran yang disiapkan pengelola layanan; yang tidak disiapkan tidak ditampilkan.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Hubungi tim lewat tombol WhatsApp, surel, atau Jadwalkan demo di halaman Daftar.",
+      "Sesudah demo, pengelola layanan membuatkan akun UJI COBA atas nama usaha Anda — tanpa kartu dan tanpa tagihan otomatis.",
+      "Pemilik akun menerima surel berjudul “Akun … siap dicoba”. Buka tautan di dalamnya.",
+      "Buat kata sandi Anda di halaman Buat Kata Sandi Baru, lalu tekan Simpan Kata Sandi.",
+      "Masuk dengan email dan kata sandi itu. Anda mendarat di panel Akun & Perusahaan.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/atur-sandi-baru",
+    alt: "Halaman Buat Kata Sandi Baru dengan kolom Kata Sandi Baru, Ulangi Kata Sandi Baru, dan tombol Simpan Kata Sandi.",
+  },
+  {
+    kind: "catatan",
+    nada: "peringatan",
+    teks:
+      "Tautan atur kata sandi berlaku 60 menit dan hanya bisa dipakai sekali. Kalau sudah kedaluwarsa, jangan minta surel sambutan dikirim ulang — pakai “Lupa kata sandi” di halaman masuk dengan email yang sama; hasilnya sama.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Bila pengelola layanan membuka pendaftaran mandiri, halaman Daftar berisi formulir: nama Anda, nama akun, email, kata sandi, dan persetujuan syarat & kebijakan privasi. Aplikasi lalu mengirim tautan aktivasi yang berlaku 24 jam; akun baru lahir setelah Anda menekan Aktifkan akun saya di halaman tautan itu, dan langsung berstatus uji coba.",
+  },
+  { kind: "sub", judul: "Masuk" },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka halaman masuk dan isi Email atau Nama Pengguna. Isian yang memuat @ dicari sebagai email; tanpa @ dicari sebagai nama pengguna lama.",
+      "Isi Kata Sandi, lalu tekan Masuk.",
+      "Pemilik dan admin akun mendarat di panel Akun & Perusahaan. Staf yang hanya anggota satu perusahaan langsung dibawa ke Beranda perusahaan itu.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/login",
+    alt: "Halaman Masuk dengan kolom Email atau Nama Pengguna, Kata Sandi, tombol Masuk, dan tautan Lupa kata sandi.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "“Nama pengguna atau kata sandi salah” — periksa huruf besar-kecil kata sandi. Aplikasi sengaja tidak memberi tahu mana yang salah, supaya orang lain tidak bisa menebak email mana yang terdaftar.",
+      "Terlalu banyak percobaan: setelah sepuluh kali gagal untuk satu akun dalam 15 menit, percobaan berikutnya ditolak sementara. Tunggu, atau atur ulang kata sandi.",
+      "Langsung dibawa ke halaman Ganti Kata Sandi: kata sandi Anda baru saja diatur ulang oleh admin. Ganti dulu, baru halaman lain terbuka.",
+    ],
+  },
+  { kind: "sub", judul: "Membuka buku perusahaan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Masuk ke aplikasi belum membuka buku. Saat pertama kali membuka sebuah perusahaan pada hari itu, aplikasi menanyakan kata sandi Anda sekali lagi. Alasannya sama dengan mesin ATM yang menanyakan PIN walau kartunya sudah di dalam: sesi yang tertinggal terbuka di komputer bersama tidak boleh cukup untuk membaca angka perusahaan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/buka-buku",
+    alt: "Layar Buka buku perusahaan yang meminta Sandi Anda untuk membuka pembukuan sebuah perusahaan contoh, dengan tombol Buka buku.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Sandinya sama dengan sandi masuk Anda — bukan sandi terpisah per perusahaan.",
+      "Buku yang sudah dibuka tetap terbuka sekitar delapan jam, terpisah untuk setiap perusahaan.",
+      "Salah ketik berkali-kali dibatasi seperti di halaman masuk: sepuluh kali dalam 15 menit.",
+    ],
+  },
+  { kind: "sub", judul: "Memilih perusahaan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Kalau Anda anggota lebih dari satu perusahaan, halaman Pilih Perusahaan menampilkan semuanya. Tekan Buka pada perusahaan yang ingin dikerjakan. Untuk berpindah di tengah pekerjaan, pakai Ganti perusahaan di menu nama Anda (pojok kanan atas) atau ikon panah di sebelah nama perusahaan di bilah atas.",
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/pilih-perusahaan",
+    alt: "Halaman Pilih Perusahaan berisi empat perusahaan contoh, masing-masing dengan tombol Buka, serta tombol Akun & Perusahaan dan Keluar.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "“Belum ada perusahaan untuk akun ini” berarti akun Anda belum menjadi anggota perusahaan mana pun. Pemilik atau admin akun perlu mengundang Anda dari halaman Pengguna di perusahaan yang dituju.",
+  },
+  { kind: "sub", judul: "Menerima undangan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Staf baru tidak dibuatkan kata sandi oleh siapa pun. Admin mengundang alamat emailnya; orang yang diundang menerima surel “Undangan bergabung ke …” dan menentukan kata sandinya sendiri.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka tautan di surel undangan. Tautan berlaku tujuh hari dan hanya sekali pakai.",
+      "Isi Nama Tampilan (boleh dikosongkan), lalu kata sandi minimal 8 karakter dua kali.",
+      "Tekan Buat Akun & Bergabung, lalu masuk dengan email dan kata sandi itu.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/terima-undangan",
+    alt: "Halaman Terima Undangan untuk email contoh, dengan kolom Nama Tampilan, kata sandi dan ulangannya, serta tombol Buat Akun & Bergabung.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "“Tautan undangan tidak berlaku” — undangan sudah dipakai, dicabut, atau lewat tujuh hari. Minta admin mengirim undangan baru.",
+      "“Kuota pengguna langganan ini sudah penuh” — semua kursi paket terpakai. Admin perlu mencabut undangan yang tidak jadi, menghapus pengguna yang sudah tidak aktif, atau menaikkan paket.",
+      "Kalau email Anda sudah punya akun di akun pelanggan yang SAMA, Anda tidak diminta membuat akun lagi — Anda langsung ditambahkan dan menerima surel pemberitahuan. Satu email hanya bisa hidup di satu akun pelanggan.",
+    ],
+  },
+  { kind: "sub", judul: "Lupa kata sandi" },
+  {
+    kind: "langkah",
+    butir: [
+      "Di halaman masuk, tekan “Lupa kata sandi? Atur ulang lewat email”.",
+      "Isi email akun Anda dan tekan Kirim Tautan.",
+      "Buka surel atur ulang dalam 60 menit, buat kata sandi baru, lalu masuk.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/lupa-sandi",
+    alt: "Halaman Lupa Kata Sandi dengan kolom Email berisi alamat contoh dan tombol Kirim Tautan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/lupa-sandi-terkirim",
+    alt: "Konfirmasi Periksa kotak masuk Anda yang menyebut tautan atur ulang berlaku 60 menit.",
+    keterangan:
+      "Jawabannya selalu sama, terdaftar atau tidak — supaya halaman ini tidak bisa dipakai menebak email siapa yang punya akun.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Setiap permintaan baru membatalkan tautan yang lebih lama. Pakai surel yang paling akhir.",
+      "Menyimpan kata sandi baru lewat tautan ini mengeluarkan SEMUA sesi lama Anda di perangkat lain — berguna kalau Anda curiga kata sandi diketahui orang.",
+      "Surel tidak datang: periksa folder spam, pastikan ejaan email benar, dan tunggu beberapa menit sebelum meminta lagi (permintaan dibatasi tiga kali per 15 menit per email).",
+    ],
+  },
+  { kind: "sub", judul: "Mengganti kata sandi" },
+  {
+    kind: "paragraf",
+    teks:
+      "Ganti kata sandi kapan saja lewat menu nama Anda → Ubah Kata Sandi, atau tombol Ganti Kata Sandi di halaman Pengaturan. Isi kata sandi saat ini, kata sandi baru, dan ulangannya; daftar periksa di bawah kolom menyala satu per satu ketika syaratnya terpenuhi.",
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/ganti-sandi",
+    alt: "Halaman Ganti Kata Sandi Anda dengan kolom kata sandi saat ini, kata sandi baru, ulangannya, dan daftar periksa syarat.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Syaratnya: 8 sampai 128 karakter, dan berbeda dari kata sandi saat ini. Tidak ada aturan wajib huruf besar atau simbol — kalimat panjang yang mudah Anda ingat lebih kuat daripada kata pendek yang rumit.",
+      "Bila admin mengatur ulang kata sandi Anda, Anda mendapat kata sandi sementara dan WAJIB menggantinya saat masuk berikutnya.",
+      "Mengganti kata sandi dari halaman ini tidak mengeluarkan sesi di perangkat lain. Kalau tujuannya mengusir sesi yang mencurigakan, pakai Lupa kata sandi.",
+    ],
+  },
+  { kind: "sub", judul: "Keluar dan keamanan sesi" },
+  {
+    kind: "paragraf",
+    teks:
+      "Tekan nama Anda di pojok kanan atas, lalu Keluar. Menu yang sama memuat pilihan bahasa (Indonesia, English, 中文) dan tampilan (terang, gelap, ikut sistem), Ganti perusahaan bila Anda anggota lebih dari satu perusahaan, Akun & Perusahaan, dan Ubah Kata Sandi.",
+  },
+  {
+    kind: "gambar",
+    berkas: "auth/menu-pengguna",
+    alt: "Menu nama pengguna yang terbuka, berisi nama dan peran, pilihan bahasa dan tampilan, Ganti perusahaan, Akun & Perusahaan, Ubah Kata Sandi, dan Keluar.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Sesi berakhir sendiri paling lama 24 jam setelah masuk. Perubahan peran atau pencabutan akses berlaku dalam hitungan menit, tanpa menunggu Anda keluar.",
+      "Aplikasi pelanggan belum memakai verifikasi dua langkah (kode authenticator). Lindungi akun dengan kata sandi yang hanya dipakai di sini, dan selalu Keluar dari komputer bersama.",
+      "Admin yang mengubah peran Anda atau mengatur ulang kata sandi Anda otomatis mengeluarkan sesi Anda — masuk lagi untuk mendapatkan hak yang baru.",
+    ],
+  },
+  { kind: "lihat-juga", slug: ["panel-akun", "peran-dan-izin", "langganan-dan-tagihan"] },
+];
+
+const PANEL_AKUN: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Panel akun adalah lantai di ATAS perusahaan. Di sini diatur hal yang berlaku untuk seluruh usaha Anda: perusahaan mana saja yang ada, siapa timnya, nama dan alamat akun, langganan, serta ekspor data. Pembukuan sehari-hari tidak pernah dikerjakan di sini — begitu Anda menekan Buka pada sebuah perusahaan, Anda masuk ke bukunya.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Siapa melihat apa: setiap anggota akun bisa membuka panel ini dan daftar perusahaannya. Menambah perusahaan dan mengundang tim adalah hak pemilik dan admin akun. Identitas akun, langganan, ekspor data, dan penghapusan akun hanya untuk PEMILIK akun.",
+  },
+  { kind: "sub", judul: "Akun & Perusahaan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Halaman pertama sesudah masuk. Kartu Pemakaian menunjukkan berapa perusahaan dan pengguna yang sudah terpakai dari kuota paket, status langganan, dan tagihan berikutnya. Di bawahnya, Perusahaan Anda memuat setiap perusahaan beserta tombol Buka.",
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/beranda",
+    alt: "Panel Akun & Perusahaan dengan kartu pemakaian perusahaan dan pengguna, status Masa Uji Coba, tagihan berikutnya, dan empat perusahaan contoh.",
+    keterangan: "Bilah oranye “Hampir penuh” muncul saat kuota hampir habis; merah saat sudah penuh.",
+  },
+  { kind: "sub", judul: "Menambah perusahaan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Setiap perusahaan — PT, PT Perorangan, CV, firma, atau usaha perorangan — mendapat basis datanya sendiri, jadi membuatnya butuh beberapa detik dan diperlihatkan langkah demi langkah.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Di panel akun, tekan Tambah Perusahaan.",
+      "Isi Nama perusahaan. Slug (alamat pendek) terisi sendiri dari namanya; ubah bila perlu — huruf kecil, angka, dan tanda hubung.",
+      "Tekan Buat Perusahaan dan tunggu sampai keempat tahap penyiapan selesai.",
+      "Pilih Siapkan buku perusahaan ini untuk menjalankan wisaya penyiapan: identitas, modul, tahun buku, bagan akun, dan saldo awal.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/tambah-perusahaan",
+    alt: "Formulir Tambah Perusahaan dengan nama perusahaan contoh, slug yang terisi otomatis, nama basis data, dan tombol Buat Perusahaan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Slug tidak bisa diganti sesudahnya — ia menjadi bagian alamat setiap halaman dan nama basis datanya. Nama perusahaan boleh diganti kapan saja.",
+      "“Kuota perusahaan paket Anda sudah terpakai penuh” — naikkan paket di Langganan & Paket, atau hubungi tim.",
+      "“Langganan Anda sedang tidak aktif” — uji coba sudah berakhir atau langganan ditangguhkan; perusahaan baru tidak bisa dibuat sampai akun aktif lagi.",
+      "Orang yang membuat perusahaan otomatis menjadi Administrator Sistem di dalamnya.",
+    ],
+  },
+  { kind: "sub", judul: "Tim" },
+  {
+    kind: "paragraf",
+    teks:
+      "Keanggotaan dicatat PER PERUSAHAAN, sebab peran seseorang bisa berbeda di tiap buku: kepala gudang di satu perusahaan, hanya pembaca laporan di perusahaan lain. Halaman Tim karena itu berisi satu tombol per perusahaan yang membawa Anda ke halaman Pengguna perusahaan itu, tempat undangan dikirim.",
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/tim",
+    alt: "Halaman Tim berisi tombol Undang staf ke masing-masing perusahaan contoh.",
+  },
+  { kind: "sub", judul: "Identitas akun" },
+  {
+    kind: "paragraf",
+    teks:
+      "Nama akun adalah nama yang dilihat seluruh anggota. Alamat akun (slug) muncul di setiap tautan buku Anda dan boleh diganti paling sering sekali dalam 30 hari; alamat lama tetap diteruskan ke yang baru, jadi tautan yang pernah disimpan tidak putus.",
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/identitas-akun",
+    alt: "Halaman Identitas akun dengan isian Nama akun dan bagian Alamat akun beserta peringatan bahwa alamat hanya bisa diganti sekali dalam 30 hari.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Bagian Surel Keluar di halaman yang sama mengatur server surel milik usaha Anda untuk mengirim faktur dan pengingat ke pelanggan. Bawaannya Tahan dulu: surel tidak dikirim ke mana pun sampai Anda memilih Kirim lewat SMTP dan menekan Kirim uji ke saya. Surel akun — atur ulang sandi, undangan, aktivasi — tidak memakai server ini.",
+  },
+  { kind: "sub", judul: "Pemberitahuan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Panel akun tidak punya kotak pemberitahuan sendiri. Kabar seputar akun — uji coba yang hampir habis, permintaan penghapusan — dikirim lewat surel ke pemilik. Pemberitahuan pekerjaan (persetujuan, jatuh tempo) tinggal di dalam setiap perusahaan, di ikon kotak masuk pada bilah atas.",
+  },
+  { kind: "lihat-juga", slug: ["langganan-dan-tagihan", "paket-dan-perusahaan", "data-anda", "mulai-di-perusahaan"] },
+];
+
+const LANGGANAN: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Akun baru selalu dimulai dengan UJI COBA: 30 hari, kuota paket Pro, tanpa kartu dan tanpa tagihan otomatis. Tidak ada yang ditagihkan diam-diam ketika uji coba habis. Yang terjadi justru sebaliknya — buku menjadi hanya-baca sampai Anda sendiri meminta aktivasi. Dengan begitu tidak ada tagihan yang lahir untuk layanan yang belum Anda putuskan untuk dipakai.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Halaman Langganan & Paket hanya terbuka untuk PEMILIK akun. Anggota lain melihat statusnya di panel Akun & Perusahaan.",
+  },
+  { kind: "sub", judul: "Selama uji coba" },
+  {
+    kind: "paragraf",
+    teks:
+      "Langganan & Paket menunjukkan paket, status Masa Uji Coba, tanggal berakhirnya, hitung mundur hari, dan harga paket bila diaktifkan. Pengingat juga dikirim ke surel pemilik tujuh, tiga, dan satu hari sebelum uji coba berakhir.",
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/langganan",
+    alt: "Halaman Langganan & Paket saat uji coba, dengan kotak Uji coba berakhir dalam 21 hari, tombol Minta aktivasi, dan riwayat tagihan yang masih kosong.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Langganan & Paket dari panel akun.",
+      "Tekan Minta aktivasi. Permintaan Anda tercatat dan tim akan menghubungi Anda; tautan WhatsApp atau surel ikut ditampilkan bila tersedia.",
+      "Setelah kesepakatan, pengelola layanan mengaktifkan akun atau memperpanjang uji coba. Tagihan pertama muncul di Riwayat Tagihan.",
+    ],
+  },
+  { kind: "sub", judul: "Sesudah uji coba berakhir: hanya-baca" },
+  {
+    kind: "paragraf",
+    teks:
+      "Begitu uji coba lewat, status berubah menjadi “Uji coba berakhir (hanya-baca)”. Semua data tetap ada; Anda masih bisa membuka setiap perusahaan, membaca laporan, dan mengekspor. Yang berhenti hanyalah MENULIS: formulir pencatatan membawa Anda kembali ke Beranda, dan simpanan apa pun ditolak dengan pesan bahwa buku berstatus hanya-baca.",
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/hanya-baca",
+    alt: "Panel akun sebuah akun contoh yang uji cobanya sudah berakhir, dengan pita peringatan bahwa buku besar hanya-baca dan status Uji coba berakhir.",
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/langganan-berakhir",
+    alt: "Halaman Langganan & Paket setelah uji coba berakhir, dengan kotak Masa uji coba sudah berakhir dan tombol Minta aktivasi.",
+  },
+  {
+    kind: "catatan",
+    nada: "peringatan",
+    teks:
+      "Hanya-baca bukan berarti dihapus. Pada sebagian pemasangan, pengelola layanan menyalakan penghapusan otomatis bagi uji coba yang dibiarkan beku lama (bawaannya 90 hari); bila itu berlaku, Anda menerima surel peringatan 14 dan 3 hari sebelumnya. Ekspor data Anda lebih dulu bila belum yakin akan melanjutkan.",
+  },
+  { kind: "sub", judul: "Tagihan dan pembayaran" },
+  {
+    kind: "paragraf",
+    teks:
+      "Setelah aktif, setiap tagihan langganan tercatat di Riwayat Tagihan dengan nomor, jatuh tempo, total, dan status. Pada pembayaran manual, tombol Bayar menampilkan instruksi transfer dari pengelola layanan, dan tagihan ditandai lunas oleh mereka setelah dana diterima. Bila gerbang pembayaran dipasang, tersedia pilihan virtual account atau QRIS.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Isi Profil Pajak (NPWP, nama, dan alamat sesuai NPWP) bila usaha Anda butuh Faktur Pajak atas tagihan langganan.",
+      "Tagihan yang lewat jatuh tempo memberi tenggang 14 hari; sesudahnya langganan ditangguhkan dan buku menjadi hanya-baca dengan cara yang sama seperti uji coba yang berakhir.",
+      "Ekspor data tetap bisa dalam setiap keadaan hanya-baca.",
+    ],
+  },
+  { kind: "sub", judul: "Naik atau turun paket" },
+  {
+    kind: "paragraf",
+    teks:
+      "Paket & Harga membandingkan paket yang tersedia dan menandai paket saat ini. Naik paket membuat tagihan selisih prorata untuk sisa periode; kuotanya naik setelah tagihan itu lunas. Turun paket berlaku segera, tetapi ditolak bila pemakaian Anda masih melebihi kuota paket tujuan — nonaktifkan dulu pengguna atau perusahaan yang berlebih. Paket berharga negosiasi diatur lewat tim penjualan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "tenant/paket",
+    alt: "Halaman Paket & Harga dengan tiga kartu paket Starter, Pro yang bertanda Paket saat ini, dan Business, masing-masing dengan kuota perusahaan dan pengguna.",
+  },
+  { kind: "lihat-juga", slug: ["paket-dan-perusahaan", "data-anda", "panel-akun"] },
+];
+
+const MULAI_DI_PERUSAHAAN: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Begitu sebuah perusahaan dibuka, layar berganti menjadi meja kerja perusahaan itu. Nama perusahaan yang sedang dibuka selalu tampil di kiri atas bilah atas — setiap angka yang Anda lihat milik buku itu saja. Menu di kiri dikelompokkan menurut pekerjaan (Penjualan, Pembelian, Kas & Bank, Stok & Aset, Laporan), bukan menurut istilah akuntansi.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Menu yang tampil berbeda untuk setiap orang. Sebuah butir muncul hanya bila peran Anda punya izinnya, modulnya menyala untuk perusahaan ini, dan — untuk menu akuntansi — Mode Akuntan Anda menyala. Menyembunyikan menu hanyalah tampilan; yang benar-benar menolak adalah server.",
+  },
+  { kind: "sub", judul: "Beranda" },
+  {
+    kind: "paragraf",
+    teks:
+      "Beranda adalah ringkasan, bukan laporan. Dari atas ke bawah: Aksi Cepat untuk pekerjaan yang paling sering (Catat Penjualan, Catat Pembelian, Terima Uang, Bayar, Tambah Stok), Rutinitas bulan lalu yang belum dikunci, panel Alur Kerja, hal yang perlu diperhatikan, lalu ringkasan uang, stok, dan penjualan dalam bahasa sehari-hari. Setiap kartu menautkan laporan sumbernya.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/beranda",
+    alt: "Beranda perusahaan contoh dengan Aksi Cepat Catat Penjualan, Catat Pembelian, Terima Uang, Bayar, Tambah Stok, Buat Kontrak, dan daftar Rutinitas bulan lalu.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Perusahaan yang baru disiapkan dan belum punya transaksi menampilkan panel Langkah Pertama sebagai gantinya: penyiapan & saldo awal, tambah pelanggan, tambah pemasok, catat stok awal, penjualan pertama, dan penerimaan pertama.",
+  },
+  { kind: "sub", judul: "Bantuan, tur, dan Alur Kerja" },
+  {
+    kind: "paragraf",
+    teks:
+      "Tombol Bantuan di bilah atas memuat Kamus Istilah, halaman panduan untuk layar yang sedang dibuka, daftar isi panduan, dan Ulangi tur halaman ini. Beberapa halaman — Beranda, Persetujuan, Buat Tagihan, Pusat Laporan, Perintah Produksi — punya tur singkat yang muncul sendiri pada kunjungan pertama; Lewati menutupnya, dan ia bisa diulang lewat menu Bantuan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/menu-bantuan",
+    alt: "Menu Bantuan yang terbuka dari bilah atas, berisi Kamus Istilah, panduan halaman ini, daftar isi panduan, dan Ulangi tur halaman ini.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/tur-beranda",
+    alt: "Tur Kenalan dengan Beranda langkah 1 dari 5 yang tampil di atas Beranda, dengan tombol Lewati dan Lanjut.",
+    keterangan: "Tur yang sudah dilihat diingat per peramban, jadi ia muncul lagi bila Anda memakai komputer lain.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Panel Alur Kerja di Beranda menyusun urutan kerja yang lazim — alur penjualan, alur pembelian, tutup buku bulanan, alur stok, alur kas & bank — sebagai tautan bertingkat. Alur hanya tampil bila modulnya menyala, dan langkah yang tidak boleh Anda kerjakan disembunyikan.",
+  },
+  { kind: "sub", judul: "Mode Akuntan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Mode Akuntan mengubah TAMPILAN untuk Anda seorang di perusahaan ini: menu Catatan Transaksi (jurnal), Rincian per Akun (buku besar), Daftar Akun, Cocokkan dengan Accurate, dan laporan Neraca Saldo muncul, serta formulir memakai label debit/kredit. Ia tidak mengubah data dan tidak memberi hak baru. Bawaannya menyala untuk Direktur Utama dan Administrator Sistem, mati untuk peran lain.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/mode-akuntan",
+    alt: "Dialog konfirmasi Matikan Mode Akuntan yang menjelaskan menu akuntansi akan disembunyikan, dengan tombol Batal dan Ya, matikan.",
+  },
+  { kind: "sub", judul: "Pemberitahuan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Ikon kotak masuk di bilah atas membuka Pemberitahuan: kabar yang ditujukan kepada Anda, seperti dokumen yang menunggu persetujuan atau penyiapan yang belum selesai. Membuka halaman ini menandai semuanya terbaca.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/pemberitahuan",
+    alt: "Halaman Pemberitahuan yang masih kosong dengan tulisan Belum ada pemberitahuan.",
+  },
+  { kind: "sub", judul: "Pengaturan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Pengaturan (menu Bantuan & Pengaturan) memuat profil Anda dan tombol Ganti Kata Sandi, logo perusahaan untuk kop dokumen PDF, tarif PPN, pengingat jatuh tempo, catatan audit keamanan, dan pembersihan data contoh. Bagian yang mengubah perusahaan hanya bisa disunting peran yang berwenang mengatur perusahaan; yang lain melihatnya sebagai bacaan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/pengaturan",
+    alt: "Halaman Pengaturan dengan pemberitahuan modul yang tidak aktif, bagian Profil berisi tombol Ganti Kata Sandi, dan bagian Logo perusahaan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Logo: PNG atau JPEG, paling besar 512 KB. Ia dicetak di kepala faktur, kontrak, surat jalan, retur, dan laporan.",
+      "Menu yang Anda cari tidak ada? Periksa Modul Usaha — modul yang dimatikan menyembunyikan menunya untuk semua orang — lalu Hak Akses untuk peran Anda.",
+      "Halaman bertuliskan “Fitur ini belum aktif” berarti modulnya dimatikan untuk perusahaan ini, bukan bahwa data Anda hilang.",
+    ],
+  },
+  { kind: "lihat-juga", slug: ["modul-usaha", "peran-dan-izin", "saldo-awal", "membaca-laporan"] },
+];
+
+const PEMBELIAN: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Pembelian kelihatannya cermin penjualan, tetapi uangnya bergerak dengan urutan yang berbeda. Utang kepada pemasok lahir saat Anda MENCATAT pembelian, bukan saat membayar; dan sering kali uang sudah keluar lebih dulu sebagai uang muka, sebelum ada utang apa pun untuk dilunasi. Karena itu pembelian dibagi menjadi pencatatan, pembayaran, dan kompensasi uang muka — tiga langkah yang masing-masing meninggalkan jejaknya sendiri.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Prasyarat: modul Pembelian menyala, dan peran Anda boleh mencatat pembelian serta mengubah data pemasok (pembayaran dicatat dari halaman pemasok).",
+  },
+  { kind: "sub", judul: "Mencatat pembelian" },
+  {
+    kind: "paragraf",
+    teks:
+      "Catat Pembelian adalah wisaya lima langkah. Tidak ada yang tersimpan sampai tombol Selesai & Simpan di langkah terakhir; Anda boleh mundur-maju, dan isian sementara diingat peramban selama 12 jam.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Pemasok — pilih yang sudah terdaftar, atau isi datanya untuk pemasok baru.",
+      "Barang & Harga — barang, jumlah, dan harga per satuan.",
+      "Barang Masuk (opsional) — terima barangnya sekalian ke gudang supaya stok bertambah.",
+      "Catat Pembelian — tanggal, jatuh tempo, PPN Masukan, mata uang & kurs, serta ongkos sampai gudang yang dibagi menurut nilai barang atau berat.",
+      "Ringkasan — periksa, lalu tekan Selesai & Simpan.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "pembelian/catat-pembelian",
+    alt: "Wisaya Catat Pembelian langkah 1 dari 5, memilih pemasok yang sudah terdaftar atau mengisi pemasok baru.",
+  },
+  { kind: "sub", judul: "Pemasok" },
+  {
+    kind: "paragraf",
+    teks:
+      "Daftar Pemasok memuat nama, alamat, telepon, surel, dan jumlah transaksi. Halaman rinci seorang pemasok berisi riwayat transaksi, panel uang muka pembelian, dan alokasi pembayaran — pembayaran mana melunasi pembelian mana.",
+  },
+  {
+    kind: "gambar",
+    berkas: "pembelian/pemasok",
+    alt: "Daftar Pemasok berisi dua pemasok contoh beserta alamat, telepon, dan jumlah transaksinya, dengan tombol Tambah Pemasok.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Menghapus pemasok yang SUDAH punya transaksi atau uang muka tidak menghapusnya — ia dinonaktifkan, supaya transaksi lama tetap menyebut namanya. Pemasok yang belum pernah dipakai benar-benar terhapus.",
+  },
+  { kind: "sub", judul: "Tagihan yang harus dibayar" },
+  {
+    kind: "paragraf",
+    teks:
+      "Tagihan Harus Dibayar adalah laporan umur utang per tanggal yang Anda pilih: sisa utang per pembelian, dikelompokkan 0–30, 31–60, 61–90, dan lebih dari 90 hari. Centang “Hanya yang sudah jatuh tempo” untuk daftar yang perlu segera dibayar. Laporannya bisa diunduh Excel atau dicetak PDF.",
+  },
+  {
+    kind: "gambar",
+    berkas: "pembelian/utang",
+    alt: "Laporan Tagihan yang Harus Dibayar dengan kartu umur 0–30, 31–60, 61–90, lebih dari 90 hari, total outstanding, dan grafik sebaran umur.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Pembelian → Pemasok, lalu tekan nama pemasok yang dibayar.",
+      "Tekan Tambah Transaksi dan pilih Jenis Transaksi Pembayaran — ia mengurangi Hutang Usaha dan saldo kas sekaligus.",
+      "Isi tanggal, nilai, dan mata uang, alokasikan nilainya ke pembelian yang dilunasi, lalu simpan.",
+    ],
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Uang keluar yang dicatat lewat Kas & Bank → Catat Transaksi tidak terikat ke pemasok mana pun, jadi tidak mengurangi sisa utang di laporan ini — untuk melunasi pemasok, pakai halaman pemasok. Lencana “Perkiraan” di laporan utang berarti ada pembayaran yang belum dialokasikan ke dokumen tertentu — totalnya tetap benar, rincian per dokumennya diperkirakan.",
+  },
+  { kind: "sub", judul: "Uang muka" },
+  {
+    kind: "paragraf",
+    teks:
+      "Uang muka adalah uang yang berpindah SEBELUM fakturnya ada — dibayar ke pemasok atau diterima dari pelanggan. Ia dicatat sebagai uang titipan (aset atau kewajiban), bukan sebagai beban atau pendapatan, sampai dikompensasikan ke faktur yang bersangkutan.",
+  },
+  {
+    kind: "gambar",
+    berkas: "pembelian/uang-muka",
+    alt: "Halaman Uang Muka dengan saringan Semua, Penjualan (diterima), Pembelian (dibayar), ringkasan uang muka belum dikompensasi, dan tombol Catat Uang Muka.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Tekan Catat Uang Muka, pilih jenisnya (penjualan atau pembelian), pihaknya, kontrak bila ada, nilai, dan mata uang.",
+      "Tekan Simpan Uang Muka.",
+      "Saat faktur atau pembeliannya terbit, buka dokumen itu dan pakai Kompensasi uang muka. Membatalkan kompensasi membalik jurnalnya, tidak menghapusnya.",
+    ],
+  },
+  { kind: "lihat-juga", slug: ["kas-dan-bank", "biaya-impor", "stok", "alur-penjualan"] },
+];
+
+const ASET_TETAP: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Membeli truk Rp 300 juta tidak membuat perusahaan rugi Rp 300 juta bulan itu. Uangnya keluar sekali, tetapi truknya dipakai bertahun-tahun, jadi biayanya dibagi sepanjang umur pakainya: itulah penyusutan. Ia satu-satunya biaya besar yang TIDAK pernah menjadi pengeluaran kas — uangnya sudah keluar saat pembelian; yang dicatat tiap bulan hanyalah bagian biaya yang menjadi jatah bulan itu.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Prasyarat: modul Aset Tetap menyala. Mendaftarkan aset, menjalankan penyusutan, memindahkan, dan melepas aset butuh izin menulis aset tetap.",
+  },
+  {
+    kind: "catatan",
+    nada: "peringatan",
+    teks:
+      "Mendaftarkan aset TIDAK membuat jurnal. Biaya perolehannya dicatat lewat pembelian atau kas seperti biasa; daftar aset hanya mencatat apa yang dimiliki agar penyusutan dan pelepasannya bisa dijurnal.",
+  },
+  { kind: "sub", judul: "Kategori lebih dulu" },
+  {
+    kind: "paragraf",
+    teks:
+      "Kategori menentukan metode, umur manfaat bawaan, dan tiga akun: akun aset, akun akumulasi penyusutan, dan akun beban penyusutan. Setiap aset wajib punya kategori, jadi periksa dulu halaman Kategori. Bila sudah ada kategori umum seperti Bangunan, Kendaraan, dan Peralatan Kantor, cukup periksa akunnya; bila kosong, buat kategori dulu dengan Simpan Kategori.",
+  },
+  {
+    kind: "gambar",
+    berkas: "aset/kategori",
+    alt: "Halaman Kategori Aset dengan formulir kategori baru dan daftar kategori Bangunan, Kendaraan, Komputer & Elektronik, Mesin & Peralatan, Peralatan Kantor.",
+  },
+  { kind: "sub", judul: "Mendaftarkan aset" },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Barang Milik Perusahaan, lalu Aset Baru.",
+      "Pilih kategori, isi nama aset, tanggal perolehan, lokasi, nilai perolehan, dan nilai residu.",
+      "Periksa umur manfaat (bulan) dan akun-akunnya yang terisi dari kategori, lalu tekan Simpan Aset.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "aset/baru",
+    alt: "Formulir Daftarkan Aset Tetap dengan isian kategori, nama aset, tanggal perolehan, nilai perolehan, umur manfaat 240 bulan, dan tiga akun dari kategori.",
+  },
+  { kind: "sub", judul: "Penyusutan bulanan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Di halaman daftar aset, kartu Jalankan penyusutan bulanan menerima bulan dan tahun. Menekan Jalankan memposting satu jurnal penyusutan untuk bulan itu: beban penyusutan di debit, akumulasi penyusutan di kredit. Bulan yang sudah diposting tidak diposting dua kali.",
+  },
+  {
+    kind: "gambar",
+    berkas: "aset/daftar",
+    alt: "Halaman Aset Tetap dengan kartu jumlah aset, nilai perolehan, akumulasi penyusutan, nilai buku, dan kartu Jalankan penyusutan bulanan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Jalankan penyusutan sebelum menutup bulan — bulan yang terkunci menolak jurnal baru, termasuk penyusutan.",
+      "Pindah lokasi di halaman rinci aset tidak membuat jurnal; ia hanya mengubah catatan lokasi (lihat Aset per Lokasi).",
+      "Catat Pelepasan saat aset dijual atau dibuang: jurnalnya mengeluarkan nilai perolehan dan akumulasinya, dan selisihnya menjadi laba atau rugi pelepasan.",
+    ],
+  },
+  { kind: "lihat-juga", slug: ["periode-terkunci", "mesin-akuntansi", "membaca-laporan"] },
+];
+
+const MASTER_DATA: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Pelanggan, penerima barang, dan pusat biaya adalah data induk: nama yang dirujuk oleh ratusan dokumen. Karena itu nama yang sudah dipakai tidak pernah benar-benar dihapus. Faktur tahun lalu harus tetap bisa menyebut pembelinya, walau pembeli itu sudah lama tidak berlangganan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Pelanggan yang sudah punya faktur, uang muka, atau retur — bila dihapus — dinonaktifkan: ia hilang dari pilihan formulir baru, tetapi dokumen lamanya utuh.",
+      "Pelanggan yang belum pernah dipakai benar-benar terhapus.",
+      "Penerima barang yang sudah disebut di kontrak juga hanya dinonaktifkan. Pusat biaya selalu dinonaktifkan, tidak dihapus.",
+    ],
+  },
+  { kind: "sub", judul: "Pelanggan" },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Penjualan → Pelanggan, lalu Tambah Pelanggan.",
+      "Isi nama, alamat, telepon, surel, dan penanggung jawab. NPWP dan NITKU dibutuhkan bila fakturnya akan diekspor ke e-Faktur.",
+      "Tekan Simpan Pelanggan.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "penjualan/pelanggan",
+    alt: "Daftar Pelanggan berisi tiga pelanggan contoh beserta alamat dan telepon, dengan tombol Tambah Pelanggan.",
+  },
+  { kind: "sub", judul: "Penerima barang dan pusat biaya" },
+  {
+    kind: "paragraf",
+    teks:
+      "Penerima Barang (modul Perdagangan) adalah pihak yang menerima kiriman — sering berbeda dari pembeli pada transaksi ekspor — dan dirujuk kontrak serta surat jalan. Pusat Biaya mengelompokkan pendapatan dan beban per proyek, cabang, atau divisi, bertingkat bila perlu, dan menjadi saringan di laporan seperti Laba Rugi per Proyek.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Mengisi banyak pelanggan, pemasok, atau barang sekaligus lebih cepat lewat Impor Data Awal (berkas Excel). Lihat halaman saldo awal.",
+  },
+  { kind: "lihat-juga", slug: ["alur-penjualan", "saldo-awal", "membaca-laporan"] },
+];
+
+const EFAKTUR: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Aplikasi ini tidak menggantikan Coretax DJP. Ia menyiapkan BERKAS faktur keluaran satu masa pajak dalam templat impor resmi Coretax, supaya Anda tidak mengetik ulang setiap faktur. Aturan perpajakannya — siapa wajib membuat faktur, kapan, dan dengan kode apa — tetap milik DJP dan konsultan pajak Anda; halaman ini hanya menjelaskan cara memakai layarnya.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Prasyarat: modul Pajak (e-Faktur) menyala dan peran Anda boleh membaca data pajak. Pelanggan perlu NPWP/NITKU yang lengkap agar fakturnya bisa diekspor.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Laporan → Ekspor e-Faktur.",
+      "Lengkapi Identitas Pajak Penjual — NPWP Penjual wajib — lalu tekan Simpan Identitas Pajak.",
+      "Isi Masa Pajak (dari tanggal, sampai tanggal) dan tekan Terapkan.",
+      "Periksa daftar “Perlu dilengkapi” dan “Perlu diperiksa”, perbaiki datanya di faktur atau pelanggan.",
+      "Tekan Unduh XML Coretax, lalu unggah di Coretax lewat e-Faktur → Pajak Keluaran → Impor Data.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "pajak/efaktur",
+    alt: "Halaman e-Faktur (Coretax DJP) dengan bagian Identitas Pajak Penjual berisi NPWP contoh dan bagian Masa Pajak dengan tombol Terapkan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Faktur ekspor yang sudah ber-PEB tidak diimpor — ia ditarik lewat Prepopulated PEB di Coretax.",
+      "Unduh CSV tersedia untuk pemeriksaan di lembar kerja; yang diunggah ke Coretax adalah berkas XML.",
+      "Bila sambungan PJAP dipasang, faktur bisa dikirim langsung dan statusnya (antre, menunggu DJP, disetujui, ditolak) terbaca di layar yang sama.",
+    ],
+  },
+  { kind: "lihat-juga", slug: ["alur-penjualan", "membaca-laporan"] },
+];
+
 export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
+  "masuk-dan-akun": MASUK_DAN_AKUN,
+  "panel-akun": PANEL_AKUN,
+  "langganan-dan-tagihan": LANGGANAN,
+  "mulai-di-perusahaan": MULAI_DI_PERUSAHAAN,
+  "alur-pembelian": PEMBELIAN,
+  "aset-tetap": ASET_TETAP,
+  "master-data": MASTER_DATA,
+  "efaktur": EFAKTUR,
   "mesin-akuntansi": MESIN_AKUNTANSI,
   "periode-terkunci": PERIODE,
   "persetujuan": PERSETUJUAN,

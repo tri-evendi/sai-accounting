@@ -120,6 +120,10 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
        Baris catatannya DITERJEMAHKAN; yang di sini hanya judul kolomnya. */
     "operator.scheduler.metricsColP95",
     "operator.scheduler.metricsColP99",
+    /* Idem untuk panel sebaran durasi: "p50 (ms)" dan "SLO p95 (ms)" — `SLO`
+       singkatan yang dipakai apa adanya di kedua bahasa (TATA-KELOLA §2). */
+    "operator.scheduler.durationsColP50",
+    "operator.scheduler.durationsColSlo",
     // Istilah teknis yang dipakai apa adanya dalam bahasa Indonesia — sama
     // seperti "slug" di dunia URL berbahasa Inggris.
     "companies.slugLabel",

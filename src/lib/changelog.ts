@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.20.0",
+    tanggal: "2026-10-24",
+    ringkas: "Konsol operator kini menilai antrean tiap jalur dengan ambangnya sendiri; tidak ada perubahan pada tampilan aplikasi.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Konsol operator: halaman Penjadwal menampilkan ambang peringatan tiap jalur antrean beserta batas durasinya, dan menandai jalur yang melambat.",
+      },
+    ],
+  },
+  {
     versi: "0.19.1",
     tanggal: "2026-10-23",
+    sha: "882d801",
     ringkas: "Ekspor Rekap Penjualan, Rekap Pembelian, Kas & Bank, dan Realisasi Anggaran kini disiapkan di latar.",
     butir: [
       {

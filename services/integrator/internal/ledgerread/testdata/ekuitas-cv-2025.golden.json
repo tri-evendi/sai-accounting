@@ -1,0 +1,89 @@
+{
+  "from": "2024-12-31T17:00:00Z",
+  "to": "2025-12-31T16:59:59.999Z",
+  "components": [
+    {
+      "code": "311001",
+      "name": "Modal Andi",
+      "opening": "0.00",
+      "additions": "53750000.01",
+      "reductions": "1000000.00",
+      "closing": "52750000.01"
+    },
+    {
+      "code": "311002",
+      "name": "Modal Budi",
+      "opening": "0.00",
+      "additions": "32499750.00",
+      "reductions": "500000.00",
+      "closing": "31999750.00"
+    },
+    {
+      "code": "311003",
+      "name": "Modal Citra",
+      "opening": "0.00",
+      "additions": "21250250.00",
+      "reductions": "0.00",
+      "closing": "21250250.00"
+    },
+    {
+      "code": "312001",
+      "name": "Prive Andi",
+      "opening": "0.00",
+      "additions": "1000000.00",
+      "reductions": "1000000.00",
+      "closing": "0.00"
+    },
+    {
+      "code": "312002",
+      "name": "Prive Budi",
+      "opening": "0.00",
+      "additions": "500000.00",
+      "reductions": "500000.00",
+      "closing": "0.00"
+    }
+  ],
+  "unclosedIncome": {
+    "opening": "0.00",
+    "movement": "0.00",
+    "closing": "0.00"
+  },
+  "totalOpening": "0.00",
+  "totalClosing": "106000000.01",
+  "unknownTypes": [],
+  "partners": [
+    {
+      "name": "Andi",
+      "role": "aktif",
+      "shareBp": 5000,
+      "isActive": true,
+      "opening": "0.00",
+      "profitShare": "3750000.01",
+      "contributions": "50000000.00",
+      "drawings": "1000000.00",
+      "closing": "52750000.01"
+    },
+    {
+      "name": "Budi",
+      "role": "komanditer",
+      "shareBp": 3333,
+      "isActive": true,
+      "opening": "0.00",
+      "profitShare": "2499750.00",
+      "contributions": "30000000.00",
+      "drawings": "500000.00",
+      "closing": "31999750.00"
+    },
+    {
+      "name": "Citra",
+      "role": "komanditer",
+      "shareBp": 1667,
+      "isActive": true,
+      "opening": "0.00",
+      "profitShare": "1250250.00",
+      "contributions": "20000000.00",
+      "drawings": "0.00",
+      "closing": "21250250.00"
+    }
+  ]
+}

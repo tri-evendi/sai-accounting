@@ -151,7 +151,7 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 		// Satu lembar = satu buku kerja — persis `document.<Laporan>Workbook`
 		// (pembuat = nama perusahaan, dibuat = `now`), sehingga berkas
 		// `report.export_go` tidak berubah oleh pemisahan lembar dari bukunya.
-		wb := document.Workbook{Creator: l.Company, Created: now, Sheets: []document.Sheet{l.Sheet}}
+		wb := document.Workbook{Creator: l.Company, Created: now, Sheets: append([]document.Sheet{l.Sheet}, l.Extra...)}
 		data, err := wb.Bytes()
 		if err != nil {
 			return nil, err
@@ -177,7 +177,11 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 // memanggil fungsi ini per laporan, dengan muatan yang bentuknya sama persis
 // dengan `report.export_go` (`GoExportPayload`, dihitung penerbit TS).
 type Lembar struct {
-	Sheet   document.Sheet
+	Sheet document.Sheet
+	// Extra: lembar TAMBAHAN berkas ekspor (rincian modal per pemilik di
+	// Laporan Perubahan Ekuitas buku CV/Firma/perorangan). Paket laporan
+	// hanya memakai `Sheet`; berkas `report.export_go` memakai keduanya.
+	Extra   []document.Sheet
 	Title   string
 	Company string
 }
@@ -432,7 +436,8 @@ func perubahanEkuitas(ctx context.Context, company *registry.Company, m muatanEk
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	return Lembar{Sheet: document.EquityStatementSheet(es, name, period, now), Title: contract.EquityStatementTitle, Company: name}, nil
+	sheets := document.EquityStatementSheets(es, name, period, now)
+	return Lembar{Sheet: sheets[0], Extra: sheets[1:], Title: contract.EquityStatementTitle, Company: name}, nil
 }
 
 // umur: Umur Piutang / Umur Utang per `asOfInstant`. Parameter halaman yang

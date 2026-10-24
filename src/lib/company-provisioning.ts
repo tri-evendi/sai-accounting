@@ -70,6 +70,7 @@ import {
 } from "@sai/db/server";
 
 import { controlDb } from "@sai/core/control-db";
+import { DEFAULT_LEGAL_FORM, type LegalForm } from "@sai/core/legal-form";
 import {
   appRoleForNewBook,
   DEFAULT_DB_INSTANCE_LABEL,
@@ -213,6 +214,8 @@ export interface ProvisionInput {
   name: string;
   /** Opsional — diturunkan dari slug bila tidak diisi. */
   databaseName?: string;
+  /** Bentuk usaha (24 Okt 2026). Tidak disebut = `pt`, bawaan kolomnya. */
+  legalForm?: LegalForm;
   /** Pengguna yang membuat; ia menjadi anggota pertama perusahaan itu. */
   createdByUserId: number;
   /** Peran yang diberikan ke pembuatnya di perusahaan baru. */
@@ -443,6 +446,7 @@ export async function provisionCompany(
         databaseName,
         dbInstanceKey: dbInstance?.key ?? null,
         tenantId: input.tenantId,
+        legalForm: input.legalForm ?? DEFAULT_LEGAL_FORM,
         isActive: true,
         memberships: {
           create: {

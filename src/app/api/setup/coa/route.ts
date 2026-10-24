@@ -50,6 +50,9 @@ import { businessModulesPayloadSchema } from "@/lib/validations/modules";
 import { isSetupComplete } from "@/lib/opening-balance";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
+import { setupEquitySchema } from "@/lib/validations/legal-form";
+import { resolveSetupEquity } from "@/lib/setup-equity";
+import { LEGAL_FORM_ERROR_KEYS } from "@/lib/legal-form-messages";
 
 export async function POST(request: Request) {
   const result = await requireApiPermission("setup.manage");
@@ -89,8 +92,39 @@ export async function POST(request: Request) {
     );
   }
 
+  /*
+   * Bentuk usaha + pemilik/sekutu (24 Okt 2026): templat EKUITAS ikut disemai
+   * di sini, saat bagan akun pertama kali lahir. `equity` opsional — klien
+   * lama memakai bentuk usaha di registry.
+   */
+  const equityRaw = (body as { equity?: unknown } | null)?.equity;
+  const equityParsed = equityRaw === undefined ? null : setupEquitySchema.safeParse(equityRaw);
+  if (equityParsed && !equityParsed.success) {
+    return NextResponse.json(
+      { error: t("validation.invalidInput"), details: translateFieldErrors(equityParsed.error, dictionary) },
+      { status: 400 }
+    );
+  }
+  const equity = await resolveSetupEquity(
+    equityParsed?.data,
+    {
+      userId: result.session.user.id,
+      username: result.session.user.name ?? result.session.user.email ?? result.session.user.id,
+    },
+    request
+  );
+  if (!equity.ok) {
+    return NextResponse.json(
+      {
+        error: equity.issues.map((k) => t(LEGAL_FORM_ERROR_KEYS[k])).join(" "),
+        errors: equity.issues,
+      },
+      { status: equity.status }
+    );
+  }
+
   const modules = normalizeEnabledModules(parsed.data.modules as BusinessModule[]);
-  const seeded = await seedCoaForModules(prisma, modules);
+  const seeded = await seedCoaForModules(prisma, modules, equity.equity);
 
   /*
    * Yang dipulangkan adalah apa yang DIBUTUHKAN LANGKAH BERIKUTNYA, bukan

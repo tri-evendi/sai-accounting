@@ -51,6 +51,14 @@ import { Alert, Flex, Typography, theme } from "antd";
 import { CheckCircleOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Button } from "@sai/ui/button";
 import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import {
+  DEFAULT_LEGAL_FORM,
+  LEGAL_FORMS,
+  LEGAL_FORM_LABEL_KEYS,
+  isLegalForm,
+  type LegalForm,
+} from "@sai/core/legal-form";
 import { fieldGrid } from "@/lib/layout-width";
 import { useT } from "@sai/core/i18n/client";
 import { companyToAdoptAfterCreate } from "@/lib/company-selection";
@@ -130,6 +138,9 @@ export function CompanyForm({
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  /* Bentuk usaha (24 Okt 2026) — menentukan templat ekuitas yang disemai
+     wisaya. Bawaan PT: formulir yang dilewati begitu saja tetap membuat PT. */
+  const [legalForm, setLegalForm] = useState<LegalForm>(DEFAULT_LEGAL_FORM);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<ProvisionState>(IDLE);
   const [announcement, setAnnouncement] = useState<string | null>(null);
@@ -328,7 +339,7 @@ export function CompanyForm({
       const res = await fetch("/api/companies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), slug: effectiveSlug }),
+        body: JSON.stringify({ name: name.trim(), slug: effectiveSlug, legalForm }),
       });
       const data = await res.json().catch(() => null);
       if (res.status !== 202 || typeof data?.jobId !== "number") {
@@ -458,6 +469,23 @@ export function CompanyForm({
             </Text>
           </Flex>
         </div>
+
+        <Flex vertical gap={token.marginXXS} style={{ maxWidth: 480 }}>
+          <Select
+            id="company-legal-form"
+            label={t("legalForm.label")}
+            value={legalForm}
+            onChange={(e) => {
+              if (isLegalForm(e.target.value)) setLegalForm(e.target.value);
+            }}
+            disabled={running}
+            aria-describedby="company-legal-form-help"
+            options={LEGAL_FORMS.map((f) => ({ value: f, label: t(LEGAL_FORM_LABEL_KEYS[f]) }))}
+          />
+          <Text id="company-legal-form-help" type="secondary" style={{ fontSize: token.fontSizeSM }}>
+            {t("legalForm.createHelp")}
+          </Text>
+        </Flex>
 
         {previewDatabase && (
           <Text type="secondary">

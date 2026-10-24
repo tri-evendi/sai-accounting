@@ -1,0 +1,89 @@
+{
+  "from": "2025-06-30T17:00:00Z",
+  "to": "2026-03-31T16:59:59.999Z",
+  "components": [
+    {
+      "code": "311001",
+      "name": "Modal Andi",
+      "opening": "50000000.00",
+      "additions": "3750000.01",
+      "reductions": "1000000.00",
+      "closing": "52750000.01"
+    },
+    {
+      "code": "311002",
+      "name": "Modal Budi",
+      "opening": "30000000.00",
+      "additions": "2499750.00",
+      "reductions": "500000.00",
+      "closing": "31999750.00"
+    },
+    {
+      "code": "311003",
+      "name": "Modal Citra",
+      "opening": "20000000.00",
+      "additions": "6250250.00",
+      "reductions": "0.00",
+      "closing": "26250250.00"
+    },
+    {
+      "code": "312001",
+      "name": "Prive Andi",
+      "opening": "0.00",
+      "additions": "1000000.00",
+      "reductions": "1200000.00",
+      "closing": "-200000.00"
+    },
+    {
+      "code": "312002",
+      "name": "Prive Budi",
+      "opening": "0.00",
+      "additions": "500000.00",
+      "reductions": "500000.00",
+      "closing": "0.00"
+    }
+  ],
+  "unclosedIncome": {
+    "opening": "7500000.01",
+    "movement": "-6500000.01",
+    "closing": "1000000.00"
+  },
+  "totalOpening": "107500000.01",
+  "totalClosing": "111800000.01",
+  "unknownTypes": [],
+  "partners": [
+    {
+      "name": "Andi",
+      "role": "aktif",
+      "shareBp": 5000,
+      "isActive": true,
+      "opening": "50000000.00",
+      "profitShare": "3750000.01",
+      "contributions": "0.00",
+      "drawings": "1200000.00",
+      "closing": "52550000.01"
+    },
+    {
+      "name": "Budi",
+      "role": "komanditer",
+      "shareBp": 3333,
+      "isActive": true,
+      "opening": "30000000.00",
+      "profitShare": "2499750.00",
+      "contributions": "0.00",
+      "drawings": "500000.00",
+      "closing": "31999750.00"
+    },
+    {
+      "name": "Citra",
+      "role": "komanditer",
+      "shareBp": 1667,
+      "isActive": true,
+      "opening": "20000000.00",
+      "profitShare": "1250250.00",
+      "contributions": "5000000.00",
+      "drawings": "0.00",
+      "closing": "26250250.00"
+    }
+  ]
+}

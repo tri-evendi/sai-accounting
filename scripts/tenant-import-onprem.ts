@@ -328,6 +328,9 @@ async function main(): Promise<void> {
           databaseName: c.databaseName,
           isActive: c.isActive,
           isDemo: c.isDemo,
+          /* Bentuk usaha (control 0014). Bundel dari versi sebelum kolom ini
+             tidak membawanya — dan semua PT lama memang `pt`. */
+          legalForm: (c as { legalForm?: string }).legalForm ?? "pt",
           tenantId: t.id,
           /* Instans bawaan pemasangan ini — satu server, tanpa `db_instances`. */
           dbInstanceKey: null,

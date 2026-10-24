@@ -357,6 +357,37 @@ bukan di buku: pembaca kesehatan tidak boleh menyapu setiap buku PT.
 
 ---
 
+### 9.2 Bentuk usaha — `companies.legal_form` (kendali 0014) + `company_partners` (buku 0007)
+
+Keputusan pemilik 24 Okt 2026: selain PT, buku harus benar untuk PT
+Perorangan, CV, Firma, dan usaha perorangan (UD).
+
+- **`companies.legal_form`** (KENDALI) — `pt` · `pt_perorangan` · `cv` ·
+  `firma` · `perorangan` · `lainnya`, `NOT NULL DEFAULT 'pt'` + CHECK. Di
+  registry, bukan di `company_settings`, karena dipilih saat perusahaan DIBUAT
+  — sebelum buku punya baris setelan — dan terbaca konsol operator. Kosakata &
+  model ekuitas: `packages/core/src/legal-form.ts`.
+- **`company_partners`** (BUKU) — pemilik/sekutu: `name`, `role`
+  (`aktif`/`komanditer`, CV saja), `share_bp` (porsi laba, basis poin, jumlah
+  sekutu AKTIF tepat 10000 — dijaga `src/lib/partners.ts`, CHECK tidak bisa
+  lintas baris), `capital_account_id` / `drawing_account_id` (FK RESTRICT ke
+  `accounts`), `sort_order`, `is_active`. Di buku, bukan di kendali, karena
+  menunjuk akun buku itu (FK tidak menyeberangi basis data), dibaca DI DALAM
+  transaksi tutup buku, ikut pindah bersama bukunya, dan dibaca pembaca laporan
+  Go yang hanya menjangkau basis data perusahaan. PT tidak punya baris.
+- **Mengganti bentuk usaha tidak menulis ulang jurnal** dan tidak mengubah
+  bagan akun yang ada; ia hanya memengaruhi tutup buku tahunan berikutnya dan
+  rincian Laporan Perubahan Ekuitas. Templat ekuitas per bentuk hanya disemai
+  sekali, saat buku dibuat (`coa-template.ts`, `EquityTemplateInput`):
+  penyalaan modul belakangan menyemai TANPA akun ekuitas (`null`).
+- **Tutup buku:** PT/PT Perorangan/lainnya → slot `retained_earnings` (tidak
+  berubah). CV/Firma/perorangan → laba dibagi ke modal sekutu aktif per porsi
+  dalam sen bulat (`allocateByShare`: dipotong ke arah nol, sisa ke porsi
+  TERBESAR, seri → `sort_order` terkecil), lalu prive tiap sekutu ditutup ke
+  modalnya (D Modal, K Prive) — `planPartnerYearClose`.
+
+---
+
 ## 10. Deviasi skema (tech debt) — lunas
 
 Deviasi lama (kolom waktu atau `is_active` yang hilang, index kurang, nama tabel

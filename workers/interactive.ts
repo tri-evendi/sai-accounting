@@ -48,7 +48,7 @@ import { writeJobResult, writeJobResultStream } from "@sai/platform/job-result-s
 import { isExportable, reportById } from "../src/lib/report-catalog";
 import { reportEngine } from "../src/lib/report-engine";
 import { buildReportPayload } from "../src/lib/report-payload";
-import { buildReportSheet } from "../src/lib/report-export";
+import { buildReportSheets } from "../src/lib/report-export";
 import { STATEMENT_TITLES } from "../src/lib/statement-layout";
 import { buildWorkbookBuffer } from "../src/lib/xlsx";
 import { getCompanyIdentity } from "../src/lib/company-identity";
@@ -136,7 +136,7 @@ async function eksporLaporan(ctx: JobContext): Promise<string | null> {
     const payload = await runReadOnly(() => buildReportPayload(report, params));
 
     await ctx.progress(55);
-    const sheet = buildReportSheet(payload);
+    const sheets = buildReportSheets(payload);
 
     /* ⚠ TIDAK ada batas baris di sini, dan itu disengaja: batas di rute
        sinkron ADA untuk melindungi event loop, dan jalur ini justru yang
@@ -145,7 +145,7 @@ async function eksporLaporan(ctx: JobContext): Promise<string | null> {
        menjatuhkan pelari dan pekerjaannya dipulangkan `reclaimStaleJobs`
        dengan `attempts + 1`, bukan menjatuhkan aplikasi. */
     await ctx.progress(70);
-    const buffer = await buildWorkbookBuffer([sheet], await getCompanyIdentity());
+    const buffer = await buildWorkbookBuffer(sheets, await getCompanyIdentity());
     return new Uint8Array(buffer);
   });
 

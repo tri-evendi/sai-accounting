@@ -121,7 +121,18 @@ const REFUSAL_TEXT: Record<string, string> = {
 function provisionCompany(tenantSlug: string, profile: DemoCompanyProfile): void {
   const result = spawnSync(
     "npx",
-    ["tsx", "scripts/create-company.ts", "--slug", profile.slug, "--name", profile.name, "--tenant", tenantSlug],
+    [
+      "tsx",
+      "scripts/create-company.ts",
+      "--slug",
+      profile.slug,
+      "--name",
+      profile.name,
+      "--tenant",
+      tenantSlug,
+      "--bentuk-usaha",
+      profile.legalForm ?? "pt",
+    ],
     { stdio: "inherit", env: process.env }
   );
   if (result.status !== 0) {
@@ -148,7 +159,12 @@ async function truncateBook(): Promise<number> {
 /** Wisaya penyiapan versi skrip: bagan akun + profil pajak + saldo awal. */
 async function setupBook(profile: DemoCompanyProfile, today: Date): Promise<void> {
   const modules = normalizeEnabledModules(BUSINESS_MODULES.filter((m) => m !== "manufacturing"));
-  await seedCoaForModules(prisma, modules);
+  /* Templat ekuitas menurut bentuk usaha profil — CV contoh mendapat modal &
+     prive per sekutu, persis seperti wisaya. */
+  await seedCoaForModules(prisma, modules, {
+    legalForm: profile.legalForm ?? "pt",
+    partners: profile.partners ?? [],
+  });
 
   const bank = await prisma.account.findFirst({
     where: { type: "cash_bank", isActive: true },
@@ -441,6 +457,13 @@ async function main(): Promise<void> {
       if (!company) throw new Error(`PT "${profile.slug}" tidak terdaftar sesudah penyediaan.`);
     }
     if (!company.isActive) throw new Error(`PT "${profile.slug}" nonaktif — skrip berhenti.`);
+    /* PT contoh yang lahir sebelum profilnya punya bentuk usaha: registry
+       diselaraskan dengan profil (tenant DEMO saja — `demoSeedRefusal` sudah
+       menolak tenant lain di atas). Bukunya mengikuti saat `--reset`. */
+    await controlDb.company.update({
+      where: { id: company.id },
+      data: { legalForm: profile.legalForm ?? "pt", name: profile.name },
+    });
 
     /* Owner tenant menjadi anggota setiap PT contoh (Direktur Utama), supaya
        demo bisa dibuka dari akun yang sama. */

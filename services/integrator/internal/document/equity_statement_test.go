@@ -84,3 +84,40 @@ func TestEquityStatementSheetShape(t *testing.T) {
 		t.Fatalf("buku kosong: %d baris badan", len(empty.Rows[6:]))
 	}
 }
+
+// Bentuk usaha (24 Okt 2026): teks porsi dan label pemilik — padanan
+// `shareBpText` / `equityPartnerLabel` TS, karakter demi karakter.
+func TestEquityPartnerLabels(t *testing.T) {
+	for bp, want := range map[int]string{10000: "100", 5000: "50", 3333: "33,33", 3330: "33,3", 1667: "16,67", 5: "0,05", 0: "0"} {
+		if got := ShareBpText(bp); got != want {
+			t.Errorf("ShareBpText(%d) = %q, mau %q", bp, got, want)
+		}
+	}
+	aktif := "aktif"
+	if got := EquityPartnerLabel(ledgerread.EquityPartner{Name: "Andi", Role: &aktif, ShareBp: 5000, IsActive: true}); got != "Andi (sekutu aktif, 50%)" {
+		t.Errorf("label = %q", got)
+	}
+	if got := EquityPartnerLabel(ledgerread.EquityPartner{Name: "Sari", ShareBp: 10000}); got != "Sari (100%) — nonaktif" {
+		t.Errorf("label nonaktif = %q", got)
+	}
+}
+
+// Buku PT: tidak ada lembar kedua — berkasnya tetap SATU lembar.
+func TestEquityPartnerSheetOnlyWithPartners(t *testing.T) {
+	if sheets := EquityStatementSheets(&ledgerread.EquityStatement{}, "PT Uji", "Periode", time.Unix(0, 0)); len(sheets) != 1 {
+		t.Fatalf("PT: %d lembar, mau 1", len(sheets))
+	}
+	es := &ledgerread.EquityStatement{Partners: []ledgerread.EquityPartner{
+		{Name: "A", ShareBp: 6000, IsActive: true, Opening: 100_00, ProfitShare: 60_00, Drawings: 10_00, Closing: 150_00},
+		{Name: "B", ShareBp: 4000, IsActive: true, Opening: 50_00, ProfitShare: 40_00, Contributions: 5_00, Closing: 95_00},
+	}}
+	sheets := EquityStatementSheets(es, "CV Uji", "Periode", time.Unix(0, 0))
+	if len(sheets) != 2 || sheets[1].Name != contract.EquityPartnerSheetName {
+		t.Fatalf("CV: %d lembar", len(sheets))
+	}
+	body := sheets[1].Rows[6:]
+	total := body[len(body)-1]
+	if total[0].Text != contract.EquityPartnerTotalLabel || !total[0].Style.Font.Bold || total[5].Number != "245" {
+		t.Errorf("total pemilik = %q / %q", total[0].Text, total[5].Number)
+	}
+}

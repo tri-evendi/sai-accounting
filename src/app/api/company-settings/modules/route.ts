@@ -108,7 +108,9 @@ export async function PUT(request: Request) {
    */
   const added = [...modules].filter((m) => !previous.has(m));
   const seeded =
-    added.length > 0 ? await seedCoaForModules(prisma, added) : { created: 0, existing: 0 };
+    /* `null` = tanpa akun ekuitas: bagan ekuitas milik bentuk usaha dan hanya
+       disemai sekali, saat buku dibuat (`coa-template.ts`). */
+    added.length > 0 ? await seedCoaForModules(prisma, added, null) : { created: 0, existing: 0 };
 
   await prisma.companySetting.update({
     where: { id: existing.id },

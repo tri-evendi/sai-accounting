@@ -173,6 +173,21 @@ const equityChanges = z.object({
   unclosedIncome: z.object({ opening: money, movement: money, closing: money }),
   totalOpening: money,
   totalClosing: money,
+  /* Bentuk usaha (24 Okt 2026): rincian per pemilik/sekutu — hanya CV/Firma/
+     perorangan; tidak ada di muatan PT. */
+  partners: rows(
+    z.object({
+      name: z.string(),
+      role: z.string().nullable(),
+      shareBp: z.number().int(),
+      isActive: z.boolean(),
+      opening: money,
+      profitShare: money,
+      contributions: money,
+      drawings: money,
+      closing: money,
+    })
+  ).optional(),
 });
 
 /**

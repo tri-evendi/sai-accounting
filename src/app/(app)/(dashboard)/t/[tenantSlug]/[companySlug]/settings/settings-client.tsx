@@ -29,6 +29,8 @@ import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { CompanyLogoPanel } from "@/components/settings/company-logo-panel";
 import { TaxSettingsPanel } from "@/components/settings/tax-settings-panel";
+import { LegalFormPanel } from "@/components/settings/legal-form-panel";
+import { BusinessProfilePanel } from "@/components/settings/business-profile-panel";
 import { ReminderSettingsPanel } from "@/components/settings/reminder-settings-panel";
 import {
   SampleDataPanel,
@@ -167,6 +169,21 @@ export function SettingsClient({
       {canManageModules && (
         <div id="logo" style={blockGap}>
           <CompanyLogoPanel />
+        </div>
+      )}
+
+      {/* Bentuk usaha (24 Okt 2026) — bentuk usaha + pemilik/sekutu & porsi
+          labanya. Izin yang sama dengan kartu profil perusahaan lain. */}
+      {canManageModules && (
+        <div id="legal-form" style={blockGap}>
+          <LegalFormPanel />
+        </div>
+      )}
+
+      {/* Identitas legal + PPh Final UMKM (PP 55/2022) — PR B bentuk usaha. */}
+      {canManageModules && (
+        <div id="business-profile" style={blockGap}>
+          <BusinessProfilePanel />
         </div>
       )}
 

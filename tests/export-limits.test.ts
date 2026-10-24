@@ -220,7 +220,7 @@ describe("rute ekspor: batas ada SEBELUM urai, dan dihitung pada lembarnya", () 
   });
 
   it("pemeriksaan baris berdiri SEBELUM buku kerja dirakit", () => {
-    expect(RUTE.indexOf("EXPORT_MAX_ROWS")).toBeLessThan(RUTE.indexOf("buildWorkbookBuffer(["));
+    expect(RUTE.indexOf("EXPORT_MAX_ROWS")).toBeLessThan(RUTE.indexOf("buildWorkbookBuffer(sheets"));
   });
 });
 

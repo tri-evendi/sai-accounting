@@ -1684,6 +1684,36 @@ model YearClose {
   @@map("year_closes")
 }
 
+/// PEMILIK / SEKUTU dan porsi labanya (bentuk usaha, company 0007).
+///
+/// CV/Firma: satu baris per sekutu, masing-masing dengan akun Modal & Prive
+/// sendiri. Usaha perorangan: satu baris "Pemilik" (100%). PT: TIDAK ADA baris
+/// — buku tanpa baris di sini menutup laba ke Laba Ditahan seperti sebelumnya.
+///
+/// Dibaca tutup buku tahunan (`lib/year-close-service.ts`) untuk membagi laba
+/// per porsi dan menutup prive ke modal, serta Laporan Perubahan Ekuitas (TS
+/// dan Go) untuk rincian per pemilik. FK akun RESTRICT ditulis di migration
+/// (pola `fixed_asset_categories`), bukan relasi Prisma.
+model CompanyPartner {
+  id               Int     @id @default(autoincrement())
+  name             String  @db.VarChar(150)
+  /// 'aktif' | 'komanditer' (CV); NULL untuk sekutu firma dan pemilik tunggal.
+  role             String? @db.VarChar(20)
+  /// Porsi laba dalam basis poin — 10000 = 100%. Jumlah sekutu AKTIF harus
+  /// tepat 10000 (dijaga `lib/partners.ts`; CHECK tidak bisa lintas baris).
+  shareBp          Int     @map("share_bp")
+  capitalAccountId Int     @unique @map("capital_account_id")
+  drawingAccountId Int?    @unique @map("drawing_account_id")
+  sortOrder        Int     @default(0) @map("sort_order")
+  isActive         Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("company_partners")
+}
+
 /// REVALUASI POS MONETER VALAS (issue #554) — satu baris per (periode, mata uang).
 ///
 /// PSAK 10 menuntut pos moneter valas dijabarkan ulang pada kurs penutup setiap
@@ -1895,6 +1925,20 @@ model CompanySetting {
   /// Alamat sesuai NPWP, when it differs from `address`. NULL → falls back to
   /// `address`. Reported on the seller identity line of any e-Faktur output.
   taxAddress String? @map("tax_address") @db.Text
+  // ── Bentuk usaha (PR B, 24 Okt 2026) — identitas legal & PPh Final UMKM ──
+  /// Nomor Induk Berusaha (OSS). Opsional.
+  nib                  String?   @db.VarChar(20)
+  /// Nomor akta / pernyataan pendirian (PT Perorangan: pernyataan pendirian).
+  deedNumber           String?   @map("deed_number") @db.VarChar(100)
+  /// Nomor SK / pengesahan Kemenkumham.
+  ministryDecreeNumber String?   @map("ministry_decree_number") @db.VarChar(100)
+  /// Tanggal pendirian (tanggal saja).
+  establishedOn        DateTime? @map("established_on") @db.Date
+  /// Memakai PPh Final 0,5% (PP 55/2022) — alat bantu laporan, bukan posting.
+  /// Bawaan FALSE (company 0008).
+  pphFinalUmkm         Boolean   @default(false) @map("pph_final_umkm")
+  /// Tahun pajak pertama memakai PPh Final UMKM — dasar pengingat batas waktu.
+  pphFinalUmkmStartYear Int?     @map("pph_final_umkm_start_year")
   // ── issue #99 — Modul per kategori usaha ───────────────────────────────────
   /// Kategori usaha chosen in the setup wizard (`commodity_trading`,
   /// `distribution`, `services`, `custom` — see `lib/business-modules.ts`).

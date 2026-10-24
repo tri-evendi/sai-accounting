@@ -34,6 +34,20 @@ import { Money } from "@sai/ui/money";
 import { Label } from "@sai/ui/label";
 import { Textarea } from "@sai/ui/textarea";
 import { Select } from "@sai/ui/select";
+import {
+  initialPartnerRows,
+  PartnersEditor,
+  rowsToDrafts,
+  type PartnerRow as OwnerRow,
+} from "@/components/settings/partners-editor";
+import { validatePartners } from "@/lib/partners";
+import {
+  equityModelFor,
+  isLegalForm,
+  LEGAL_FORMS,
+  LEGAL_FORM_LABEL_KEYS,
+  type LegalForm,
+} from "@sai/core/legal-form";
 import { useToast } from "@sai/ui/toast";
 import { WizardSteps } from "@sai/ui/wizard-steps";
 import { fieldGrid, formGrid } from "@/lib/layout-width";
@@ -52,6 +66,7 @@ import {
   type BusinessCategory,
   type BusinessModule,
 } from "@/lib/business-modules";
+import { EQUITY_HINT_KEYS, LEGAL_FORM_ERROR_KEYS } from "@/lib/legal-form-messages";
 
 const { Title, Text } = Typography;
 
@@ -165,6 +180,8 @@ export function SetupWizard({
   defaults,
   currencies,
   coaCount: seededCoaCount,
+  legalForm: registeredLegalForm,
+  savedPartners,
   cashAccounts: seededCashAccounts,
   customers,
   suppliers,
@@ -174,6 +191,10 @@ export function SetupWizard({
   currencies: string[];
   /** Jumlah akun saat halaman dirender; bisa BERTAMBAH di tengah wisaya (#416). */
   coaCount: number;
+  /** Bentuk usaha di registry (dipilih saat perusahaan dibuat). */
+  legalForm: LegalForm;
+  /** Pemilik/sekutu yang sudah tersimpan (wisaya yang dilanjutkan). */
+  savedPartners: { name: string; role: string | null; shareBp: number }[];
   cashAccounts: CashAccount[];
   customers: Party[];
   suppliers: Party[];
@@ -202,6 +223,8 @@ export function SetupWizard({
    * render pertama.
    */
   const [coaCount, setCoaCount] = useState(seededCoaCount);
+  /** Bagan akun sudah ada → templat ekuitas sudah diterapkan → terkunci. */
+  const equityLocked = coaCount > 0;
   const [cashAccounts, setCashAccounts] = useState<CashAccount[]>(seededCashAccounts);
   const [seedingCoa, setSeedingCoa] = useState(false);
   /** Penyemaian sudah pernah dicoba di sesi ini — penjaga anti-lingkaran (#416). */
@@ -251,6 +274,23 @@ export function SetupWizard({
    * perusahaan non-PKP tidak lagi mendapat 11% yang salah sejak faktur pertama.
    */
   const [isPkp, setIsPkp] = useState(true);
+  /*
+   * Bentuk usaha + pemilik/sekutu (24 Okt 2026). Templat EKUITAS disemai
+   * bersama bagan akun saat meninggalkan langkah modul; sesudah itu pilihannya
+   * TERKUNCI di sini (perubahan berikutnya lewat Pengaturan, tanpa menyemai
+   * ulang) — dua templat ekuitas yang bertumpuk tidak bisa dibereskan siapa pun.
+   */
+  const [legalForm, setLegalForm] = useState<LegalForm>(registeredLegalForm);
+  const [owners, setOwners] = useState<OwnerRow[]>(() =>
+    savedPartners.length > 0
+      ? savedPartners.map((p, i) => ({
+          key: i + 1,
+          name: p.name,
+          role: p.role === "aktif" || p.role === "komanditer" ? p.role : null,
+          percent: String(p.shareBp / 100),
+        }))
+      : initialPartnerRows(registeredLegalForm)
+  );
   const [baseCurrency, setBaseCurrency] = useState(defaults.baseCurrency);
   const [fiscalYearStart, setFiscalYearStart] = useState(`${new Date().getFullYear()}-01-01`);
 
@@ -592,7 +632,10 @@ export function SetupWizard({
       const res = await apiFetch("/api/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          equity: { legalForm, partners: rowsToDrafts(legalForm, owners) },
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -650,6 +693,14 @@ export function SetupWizard({
     if (current === "identity" && name.trim().length === 0) {
       errors.name = t("validation.companyNameRequired");
     }
+    /* Pemilik/sekutu: aturan yang SAMA dengan server (`validatePartners`).
+       Hanya selama templatnya belum disemai — sesudahnya isiannya terkunci. */
+    if (current === "identity" && !equityLocked) {
+      const issues = validatePartners(legalForm, rowsToDrafts(legalForm, owners));
+      if (issues.length > 0) {
+        errors["legal-form"] = issues.map((k) => t(LEGAL_FORM_ERROR_KEYS[k])).join(" ");
+      }
+    }
     /*
      * Mata uang dasar TIDAK divalidasi di sini: pemilihnya diisi dari
      * `CURRENCIES` tanpa opsi kosong dan berangkat dari "IDR", jadi keadaan
@@ -690,6 +741,7 @@ export function SetupWizard({
         body: JSON.stringify({
           businessCategory: category || null,
           modules: normalizeEnabledModules(modules),
+          equity: { legalForm, partners: rowsToDrafts(legalForm, owners) },
         }),
       });
       if (!res.ok) {
@@ -949,6 +1001,47 @@ export function SetupWizard({
                 maxLength={30}
                 placeholder={t("setup.npwpPlaceholder")}
               />
+              {/* Bentuk usaha (24 Okt 2026) — menentukan bagan EKUITAS:
+                  Modal & Laba Ditahan (PT), modal & prive per sekutu
+                  (CV/Firma), atau modal & prive pemilik (perorangan). */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <Flex vertical gap={token.marginSM}>
+                  <Select
+                    id="legal-form"
+                    label={t("legalForm.label")}
+                    value={legalForm}
+                    onChange={(e) => {
+                      if (!isLegalForm(e.target.value)) return;
+                      const next = e.target.value;
+                      setLegalForm(next);
+                      /* Bentuk dengan model ekuitas lain → baris awal yang sesuai. */
+                      if (equityModelFor(next) !== equityModelFor(legalForm)) {
+                        setOwners(initialPartnerRows(next));
+                      }
+                      clearStepError("legal-form");
+                    }}
+                    disabled={equityLocked}
+                    error={stepErrors["legal-form"]}
+                    options={LEGAL_FORMS.map((f) => ({ value: f, label: t(LEGAL_FORM_LABEL_KEYS[f]) }))}
+                  />
+                  <Typography.Text
+                    type="secondary"
+                    style={{ display: "block", fontSize: "var(--ant-font-size-sm)" }}
+                  >
+                    {equityLocked ? t("legalForm.setupLocked") : t(EQUITY_HINT_KEYS[equityModelFor(legalForm)])}
+                  </Typography.Text>
+                  <PartnersEditor
+                    legalForm={legalForm}
+                    rows={owners}
+                    onChange={(next) => {
+                      setOwners(next);
+                      clearStepError("legal-form");
+                    }}
+                    disabled={equityLocked}
+                    idPrefix="setup-partner"
+                  />
+                </Flex>
+              </div>
               {/* PKP (issue #368) — pertanyaan yang menentukan bawaan PPN di
                   seluruh aplikasi, jadi ia diajukan sekali di sini alih-alih
                   ditebak. Jawabannya bisa diubah kapan saja di Pengaturan. */}

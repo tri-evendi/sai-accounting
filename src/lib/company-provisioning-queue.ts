@@ -34,6 +34,7 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
+import { DEFAULT_LEGAL_FORM, isLegalForm, type LegalForm } from "@sai/core/legal-form";
 import {
   jobStatus,
   publishJob,
@@ -63,6 +64,8 @@ export interface ProvisionJobPayload {
   name: string;
   /** Eksplisit (basis data dibuat administrator lebih dulu) — atau tidak ada. */
   databaseName?: string;
+  /** Bentuk usaha (24 Okt 2026). Tidak ada = `pt` (muatan dari versi lama). */
+  legalForm?: LegalForm;
   /** Pengguna pembuat; ia menjadi anggota pertama PT baru. */
   createdByUserId: number;
   /** Aktor untuk jejak audit yang ditulis PEKERJA (tidak ada permintaan HTTP di sana). */
@@ -93,10 +96,17 @@ export function parseProvisionPayload(raw: unknown): ProvisionJobPayload {
   if (p.databaseName !== undefined && typeof p.databaseName !== "string") {
     throw new Error("muatan company.provision: `databaseName` tidak sah");
   }
+  /* Nilai di luar kosakata MELEMPAR, tidak jatuh ke `pt`: muatan yang salah
+     bentuk bukan muatan versi lama. Yang tidak menyebutnya sama sekali — itu
+     muatan versi lama — menjadi PT. */
+  if (p.legalForm !== undefined && !isLegalForm(p.legalForm)) {
+    throw new Error("muatan company.provision: `legalForm` tidak sah");
+  }
   return {
     slug: str(p.slug, "slug"),
     name: str(p.name, "name"),
     databaseName: (p.databaseName as string | undefined) || undefined,
+    legalForm: (p.legalForm as LegalForm | undefined) ?? DEFAULT_LEGAL_FORM,
     createdByUserId: p.createdByUserId,
     actor: {
       userId: str(a.userId, "actor.userId"),

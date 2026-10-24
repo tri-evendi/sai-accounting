@@ -2,7 +2,12 @@
  * Buat PERUSAHAAN BARU: basis datanya, skemanya, lalu daftarkan (issue #104).
  *
  *   bunx tsx scripts/create-company.ts --slug pt-b --name "PT Bumi Baru" \
- *        [--database sai_pt_b] [--admin budi]
+ *        [--database sai_pt_b] [--admin budi] [--bentuk-usaha cv]
+ *
+ * `--bentuk-usaha` (alias `--legal-form`): pt (bawaan) · pt-perorangan · cv ·
+ * firma · perorangan (atau `ud`) · lainnya. Menentukan templat ekuitas yang
+ * disemai wisaya penyiapan; daftar sekutu CV/Firma diisi DI wisaya, bukan di
+ * sini — porsi laba adalah keputusan pemilik buku.
  *
  * Setelah ini, buka aplikasi dan jalankan WIZARD PENYIAPAN untuk perusahaan itu
  * (identitas, bagan akun, saldo awal, pemilihan modul). Wizard sengaja tidak
@@ -34,6 +39,7 @@ import { appRoleForNewBook, companyDatabaseUrl } from "@sai/db/company-url";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "@sai/core/tenant-routes";
 import { ROLES, ROLE_LABELS } from "@sai/core/constants";
+import { LEGAL_FORMS, LEGAL_FORM_PRINT_LABELS, legalFormFromCli } from "@sai/core/legal-form";
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};
@@ -65,6 +71,7 @@ function companyUrl(databaseName: string): string {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const { slug, name, database, admin, tenant } = args;
+  const legalForm = legalFormFromCli(args["bentuk-usaha"] ?? args["legal-form"]);
   const controlUrl = process.env.CONTROL_DATABASE_URL;
 
   if (!controlUrl) {
@@ -73,8 +80,14 @@ async function main() {
   }
   if (!slug || !SLUG.test(slug) || !name) {
     console.error(
-      'Usage: bunx tsx scripts/create-company.ts --slug <slug> --name "Nama PT" [--database <db>] [--admin <username>] [--tenant <slug-tenant>]\n' +
+      'Usage: bunx tsx scripts/create-company.ts --slug <slug> --name "Nama PT" [--database <db>] [--admin <username>] [--tenant <slug-tenant>] [--bentuk-usaha pt|pt-perorangan|cv|firma|perorangan|lainnya]\n' +
         "  slug: huruf kecil, angka, tanda hubung (mis. pt-b)"
+    );
+    process.exit(1);
+  }
+  if (!legalForm) {
+    console.error(
+      `ERROR: --bentuk-usaha tidak dikenal. Pilihan: ${LEGAL_FORMS.join(", ")} (atau "ud" untuk usaha perorangan).`
     );
     process.exit(1);
   }
@@ -211,9 +224,9 @@ async function main() {
 
   // ── 3. Registry (paling akhir — lihat komentar kepala berkas) ────────────
   const company = await control.company.create({
-    data: { slug, name, databaseName, tenantId },
+    data: { slug, name, databaseName, tenantId, legalForm },
   });
-  console.log(`3/3  terdaftar sebagai perusahaan #${company.id}`);
+  console.log(`3/3  terdaftar sebagai perusahaan #${company.id} — ${LEGAL_FORM_PRINT_LABELS[legalForm]}`);
 
   if (admin) {
     // Username tidak lagi unik global (#136) — dicari di tenant pemilik PT ini.

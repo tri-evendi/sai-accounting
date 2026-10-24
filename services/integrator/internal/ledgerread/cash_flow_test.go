@@ -2,6 +2,7 @@ package ledgerread
 
 import (
 	"math/big"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -87,13 +88,58 @@ func (b statementBook) equityStatement(t *testing.T, c periodCase) *EquityStatem
 	t.Helper()
 	from, to := businessDay(t, c.From, false), businessDay(t, c.To, true)
 	before := from.Add(-time.Millisecond)
+	var nonClosing []accountSums
+	partners := b.partnerRefs()
+	if len(partners) > 0 {
+		nonClosing = b.sumLines(t, netsFilter{from: &from, to: &to, excludeClosing: true})
+	}
 	es := BuildEquityStatement(
 		b.sumLines(t, netsFilter{to: &before}),
 		b.sumLines(t, netsFilter{to: &to}),
 		b.sumLines(t, netsFilter{from: &from, to: &to}),
+		nonClosing,
+		partners,
 	)
 	es.From, es.To = from.UTC(), to.UTC()
 	return es
+}
+
+// partnerRefs: padanan `partnersSQL` atas fixture — urutan `sort_order, id`
+// (id = posisi di fixture), kode akun dari id-nya.
+func (b statementBook) partnerRefs() []EquityPartnerRef {
+	codeOf := map[int]string{}
+	for _, a := range b.Accounts {
+		codeOf[a.ID] = a.Code
+	}
+	type indexed struct {
+		p fixturePartner
+		i int
+	}
+	list := make([]indexed, len(b.Partners))
+	for i, p := range b.Partners {
+		list[i] = indexed{p, i}
+	}
+	sort.SliceStable(list, func(i, j int) bool {
+		if list[i].p.SortOrder != list[j].p.SortOrder {
+			return list[i].p.SortOrder < list[j].p.SortOrder
+		}
+		return list[i].i < list[j].i
+	})
+	var out []EquityPartnerRef
+	for _, x := range list {
+		ref := EquityPartnerRef{
+			Name: x.p.Name, Role: x.p.Role, ShareBp: x.p.ShareBp, IsActive: true,
+			CapitalCode: codeOf[x.p.CapitalAccountID],
+		}
+		if x.p.IsActive != nil {
+			ref.IsActive = *x.p.IsActive
+		}
+		if x.p.DrawingAccountID != nil {
+			ref.DrawingCode = codeOf[*x.p.DrawingAccountID]
+		}
+		out = append(out, ref)
+	}
+	return out
 }
 
 func TestCashFlowAndEquityGoldens(t *testing.T) {

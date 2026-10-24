@@ -677,6 +677,17 @@ export const REPORTS: ReportDefinition[] = [
     // atau lembar sebar, jadi ia sengaja tidak lewat jalur payload cetak.
     exportOnPage: true,
   },
+  {
+    // Bentuk usaha, PR B (24 Okt 2026): alat bantu PPh Final UMKM PP 55/2022 —
+    // perkiraan, bukan posting. Tahun dipilih di halamannya (`?year=`).
+    id: "pph-final-umkm",
+    category: "pajak",
+    permission: "tax.read",
+    status: "available",
+    href: "/tax/pph-final-umkm",
+    paramKind: "none",
+    icon: "Landmark",
+  },
 ];
 
 export interface CategoryGroup {

@@ -19,6 +19,8 @@
  * MURNI: tanpa Prisma, tanpa I/O.
  */
 
+import type { LegalForm, PartnerRole } from "./legal-form";
+
 import { businessDate, businessParts } from "./business-date";
 
 export type DemoSeedRefusal =
@@ -66,6 +68,14 @@ export interface DemoCompanyProfile {
   items: { code: string; name: string; unit: string; unitCost: number; price: number; openingQty: number }[];
   customers: { name: string; address: string; phone: string; npwp: string; nitku: string }[];
   suppliers: { name: string; address: string; phone: string }[];
+  /**
+   * Bentuk usaha (24 Okt 2026). Tidak disebut = PT. Demo memuat satu CV supaya
+   * presentasi bisa menunjukkan modal & prive per sekutu dan tutup buku yang
+   * membagi laba.
+   */
+  legalForm?: LegalForm;
+  /** Sekutu CV/Firma (porsi basis poin, jumlah 10000) atau pemilik perorangan. */
+  partners?: { name: string; role?: PartnerRole | null; shareBp: number }[];
 }
 
 export const DEMO_TAG = "[DEMO]";
@@ -117,7 +127,12 @@ export const DEMO_COMPANIES: readonly DemoCompanyProfile[] = [
   },
   {
     slug: "bangun-karya",
-    name: "PT Bangun Karya Mandiri (Demo)",
+    name: "CV Bangun Karya Mandiri (Demo)",
+    legalForm: "cv",
+    partners: [
+      { name: "Hendra Wijaya", role: "aktif", shareBp: 6000 },
+      { name: "Lestari Putri", role: "komanditer", shareBp: 4000 },
+    ],
     address: "Jl. Soekarno-Hatta No. 501, Bandung",
     npwp: "0099111122225001",
     nitku: "0099111122225001000000",

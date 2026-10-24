@@ -29,10 +29,13 @@ import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@sai/core/i18n/client";
 import { formatCurrency, formatDate } from "@sai/core/utils";
-import type { YearClosePlan } from "@/lib/year-close";
+import type { PartnerAllocation, YearClosePlan } from "@/lib/year-close";
+import { StaticTable } from "@sai/ui/static-table";
 
 interface Muatan {
   year: number;
+  /** Bentuk usaha (24 Okt 2026) — CV/Firma/perorangan membagi laba ke modal. */
+  legalForm?: string;
   plan: YearClosePlan;
   closed: boolean;
   reversedAt: string | null;
@@ -165,9 +168,16 @@ export function YearClosePanel({ defaultYear }: { defaultYear: number }) {
 
           {data && !data.closed && data.plan.lines.length > 0 && (
             <>
+              {data.plan.allocations && (
+                <p style={{ margin: 0, color: token.colorTextSecondary }}>
+                  {t("legalForm.yearIntroPartners")}
+                </p>
+              )}
               <p style={{ margin: 0 }}>
                 <span style={{ fontWeight: token.fontWeightStrong }}>
-                  {t("periods.yearNetIncome")}{" "}
+                  {data.plan.allocations
+                    ? t("legalForm.yearNetIncomePartners")
+                    : t("periods.yearNetIncome")}{" "}
                 </span>
                 <span
                   style={{
@@ -183,6 +193,35 @@ export function YearClosePanel({ defaultYear }: { defaultYear: number }) {
               <p style={{ margin: 0, color: token.colorTextSecondary }}>
                 {t("periods.yearAccounts", { count: data.plan.closedAccounts })}
               </p>
+              {/* Bagian per pemilik/sekutu — porsi dan prive yang ditutup ke
+                  modal masing-masing. Angka ini yang ditanyakan sekutu. */}
+              {data.plan.allocations && data.plan.allocations.length > 0 && (
+                <StaticTable<PartnerAllocation>
+                  rows={data.plan.allocations}
+                  rowKey={(a) => a.partnerId}
+                  columns={[
+                    { key: "name", title: t("legalForm.partnerName"), render: (_v, a) => a.name },
+                    {
+                      key: "share",
+                      title: t("legalForm.partnerShare"),
+                      align: "right",
+                      render: (_v, a) => (a.shareBp / 100).toLocaleString("id-ID", { maximumFractionDigits: 2 }),
+                    },
+                    {
+                      key: "profitShare",
+                      title: t("legalForm.profitShare"),
+                      align: "right",
+                      render: (_v, a) => formatCurrency(a.profitShare, "IDR"),
+                    },
+                    {
+                      key: "drawingsClosed",
+                      title: t("legalForm.drawingsClosed"),
+                      align: "right",
+                      render: (_v, a) => formatCurrency(a.drawingsClosed, "IDR"),
+                    },
+                  ]}
+                />
+              )}
 
               {data.ended && (
               <div>

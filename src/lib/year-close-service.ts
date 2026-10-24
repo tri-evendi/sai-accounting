@@ -16,10 +16,13 @@ import {
   fiscalYearBounds,
   fiscalYearHasEnded,
   NOT_CLOSING,
+  planPartnerYearClose,
   planYearClose,
   type ClosingBalance,
+  type PartnerCloseInput,
   type YearClosePlan,
 } from "@/lib/year-close";
+import { equityModelFor, FULL_SHARE_BP, type LegalForm } from "@sai/core/legal-form";
 
 type Client = typeof prisma | Prisma.TransactionClient;
 
@@ -49,6 +52,21 @@ export class NothingToCloseError extends Error {
   constructor(readonly year: number) {
     super(`Tahun buku ${year} tidak punya saldo laba rugi untuk ditutup.`);
     this.name = "NothingToCloseError";
+  }
+}
+
+/**
+ * Buku CV/Firma/perorangan tanpa pemilik/sekutu aktif, atau yang porsinya
+ * tidak berjumlah 100% — laba tidak punya tujuan yang sah.
+ */
+export class PartnersNotReadyError extends Error {
+  constructor(readonly reason: "missing" | "shares") {
+    super(
+      reason === "missing"
+        ? "Belum ada pemilik/sekutu aktif untuk menerima laba."
+        : "Jumlah porsi laba sekutu aktif bukan 100%."
+    );
+    this.name = "PartnersNotReadyError";
   }
 }
 
@@ -114,11 +132,75 @@ async function profitAndLossBalances(
   }));
 }
 
-/** Rencana penutupan — hanya membaca. */
+/**
+ * Pemilik/sekutu AKTIF beserta saldo prive kumulatifnya pada akhir tahun buku.
+ *
+ * Saldo prive dibaca KUMULATIF sampai akhir tahun, TERMASUK jurnal penutup:
+ * penutup tahun-tahun lalu sudah menolkannya, dan penutup yang dibatalkan
+ * (jurnal lawan, juga bertipe `closing`) mengembalikannya — keduanya harus
+ * terlihat, persis seperti di Neraca.
+ */
+async function partnerCloseInputs(year: number, client: Client): Promise<PartnerCloseInput[]> {
+  const partners = await client.companyPartner.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+  });
+  if (partners.length === 0) throw new PartnersNotReadyError("missing");
+  if (partners.reduce((sum, p) => sum + p.shareBp, 0) !== FULL_SHARE_BP) {
+    throw new PartnersNotReadyError("shares");
+  }
+
+  const { end } = fiscalYearBounds(await fiscalYearStart(client), year);
+  const drawingIds = partners.flatMap((p) => (p.drawingAccountId ? [p.drawingAccountId] : []));
+  const grouped =
+    drawingIds.length === 0
+      ? []
+      : await client.journalLine.groupBy({
+          by: ["accountId"],
+          _sum: { baseDebit: true, baseCredit: true },
+          where: { accountId: { in: drawingIds }, journal: { date: { lte: end } } },
+        });
+  const netById = new Map(
+    grouped.map((g) => [
+      g.accountId,
+      Number(g._sum.baseDebit ?? 0) - Number(g._sum.baseCredit ?? 0),
+    ])
+  );
+
+  return partners.map((p) => ({
+    partnerId: p.id,
+    name: p.name,
+    shareBp: p.shareBp,
+    sortOrder: p.sortOrder,
+    capitalAccountId: p.capitalAccountId,
+    drawingAccountId: p.drawingAccountId,
+    drawingBalance: p.drawingAccountId ? (netById.get(p.drawingAccountId) ?? 0) : 0,
+  }));
+}
+
+/**
+ * Rencana penutupan — hanya membaca.
+ *
+ * `legalForm` memilih ke mana laba pergi (bentuk usaha, 24 Okt 2026):
+ *   • PT / PT Perorangan / lainnya (atau tidak disebut) — slot
+ *     `retained_earnings`, PERSIS seperti sebelumnya;
+ *   • CV / Firma / perorangan — dibagi ke modal pemilik/sekutu aktif menurut
+ *     porsinya, dan prive masing-masing ditutup ke modalnya.
+ * Bentuk usaha dibaca dari registry oleh pemanggil (route), bukan di sini:
+ * modul ini hanya menjangkau buku PT-nya.
+ */
 export async function previewYearClose(
   year: number,
-  client: Client = prisma
+  client: Client = prisma,
+  legalForm?: LegalForm
 ): Promise<YearClosePlan> {
+  if (legalForm && equityModelFor(legalForm) !== "retained_earnings") {
+    const [balances, partners] = await Promise.all([
+      profitAndLossBalances(year, client),
+      partnerCloseInputs(year, client),
+    ]);
+    return planPartnerYearClose(balances, partners);
+  }
   const [balances, retainedEarningsId] = await Promise.all([
     profitAndLossBalances(year, client),
     resolveAccountId(MAPPING_KEYS.RETAINED_EARNINGS, null, client),
@@ -149,7 +231,8 @@ export interface YearCloseResult {
 export async function closeYear(
   year: number,
   userId: number | null,
-  client: typeof prisma = prisma
+  client: typeof prisma = prisma,
+  legalForm?: LegalForm
 ): Promise<YearCloseResult> {
   return client.$transaction(async (tx) => {
     const existing = await tx.yearClose.findUnique({ where: { year } });
@@ -170,7 +253,7 @@ export async function closeYear(
       throw new FiscalYearNotEndedError(year, end);
     }
 
-    const plan = await previewYearClose(year, tx);
+    const plan = await previewYearClose(year, tx, legalForm);
 
     /*
      * Tahun tanpa saldo laba rugi DITOLAK, bukan dicatat sebagai penutupan

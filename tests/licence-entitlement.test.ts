@@ -9,11 +9,12 @@
  * lapis baru ini TIDAK mengubah perilaku pemasangan SaaS yang sudah berjalan.
  */
 import { describe, expect, it } from "vitest";
-import { generateKeyPairSync, sign as signBytes } from "node:crypto";
+import { createPublicKey, generateKeyPairSync, sign as signBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   LICENCE_PUBLIC_KEY_PEM,
+  licenceKeyInstalled,
   licencePayloadBytes,
   verifyLicence,
   type Licence,
@@ -150,9 +151,17 @@ describe("lisensi: dukungan berakhir TIDAK mematikan apa pun", () => {
 });
 
 describe("lisensi: kunci publik ditanam, gagal-tertutup sebelum ditanam", () => {
-  it("selama placeholder, TIDAK ada lisensi yang sah", () => {
-    expect(LICENCE_PUBLIC_KEY_PEM).toBe("BELUM-DISETEL");
+  it("kunci produksi DITANAM: kunci Ed25519 sah, dan lisensi bertanda kunci lain DITOLAK", () => {
+    expect(licenceKeyInstalled()).toBe(true);
+    expect(createPublicKey(LICENCE_PUBLIC_KEY_PEM).asymmetricKeyType).toBe("ed25519");
+    // `terbitkan()` menandatangani dengan kunci UJI, bukan kunci produksi.
     const v = verifyLicence(terbitkan());
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).not.toMatch(/belum ditanam/);
+  });
+
+  it("placeholder lama tetap ditolak dengan alasan yang jelas, tidak pernah diterima", () => {
+    const v = verifyLicence(terbitkan(), "BELUM-DISETEL");
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.reason).toMatch(/belum ditanam/);
   });

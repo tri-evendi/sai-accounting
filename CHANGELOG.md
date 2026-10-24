@@ -20,7 +20,21 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.23.0 — 2026-10-24 — belum digelar
+## 0.24.0 — 2026-10-24 — belum digelar
+
+Paket laporan: unduh laporan satu periode sekaligus dalam satu berkas.
+
+### Baru
+
+- Paket laporan di Pusat Laporan: pilih periode dan laporan, lalu unduh satu berkas berisi ringkasan, PDF tiap laporan, dan satu buku kerja Excel.
+
+### Berubah
+
+- Berkas ekspor bisa diunduh selama 7 hari sejak dibuat; setelah itu buat ulang dari halaman laporannya.
+
+---
+
+## 0.23.0 — 2026-10-24 (ce5038b)
 
 Uji coba kini dimulai dari demo: masa uji coba 30 hari tanpa tagihan, lalu aktivasi lewat penawaran.
 

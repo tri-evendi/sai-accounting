@@ -14,6 +14,7 @@
     "./contact-channels": "./src/contact-channels.ts",
     "./control-db": "./src/control-db.ts",
     "./coretax-xml": "./src/coretax-xml.ts",
+    "./demo-tenant": "./src/demo-tenant.ts",
     "./deploy-profile": "./src/deploy-profile.ts",
     "./efaktur": "./src/efaktur.ts",
     "./efaktur-submission": "./src/efaktur-submission.ts",

@@ -51,3 +51,47 @@ export const partnersUpdateSchema = z.object({
     .min(1)
     .max(50),
 });
+
+/**
+ * PUT /api/company-settings/business-profile — identitas legal dan sakelar
+ * PPh Final UMKM. Keduanya opsional; yang tidak disebut tidak disentuh.
+ * Teks kosong = hapus nilainya (NULL).
+ */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v === "" ? null : v))
+    .nullish();
+
+export const businessProfileSchema = z.object({
+  identity: z
+    .object({
+      nib: z
+        .string()
+        .trim()
+        .regex(/^(\d{13})?$/)
+        .transform((v) => (v === "" ? null : v))
+        .nullish(),
+      deedNumber: optionalText(100),
+      ministryDecreeNumber: optionalText(100),
+      /** `YYYY-MM-DD` atau kosong. */
+      establishedOn: z
+        .string()
+        .trim()
+        .regex(/^(\d{4}-\d{2}-\d{2})?$/)
+        .transform((v) => (v === "" ? null : v))
+        .nullish(),
+    })
+    .optional(),
+  pphFinal: z
+    .object({
+      enabled: z.boolean(),
+      startYear: z.number().int().min(2018).max(2100).nullable(),
+    })
+    .refine((v) => !v.enabled || v.startYear !== null, { path: ["startYear"] })
+    .optional(),
+});
+
+export type BusinessProfilePayload = z.infer<typeof businessProfileSchema>;

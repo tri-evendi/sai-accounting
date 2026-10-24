@@ -306,6 +306,10 @@ export type AuditAction =
   /** Pemilik/sekutu ditambah atau diubah (nama, peran, porsi, aktif). */
   | "company_partner.create"
   | "company_partner.update"
+  /** Identitas legal (NIB, akta/pernyataan pendirian, SK Kemenkumham, tanggal pendirian). */
+  | "company_setting.identity.update"
+  /** Sakelar PPh Final UMKM (PP 55/2022) + tahun mulainya — alat bantu laporan. */
+  | "company_setting.pph_final.update"
   /**
    * Paket laporan diminta (09 §5) — ditulis PENERBIT saat menerbitkan, sebab
    * pelari Go tidak menulis buku. `details`: periode, format, laporan yang

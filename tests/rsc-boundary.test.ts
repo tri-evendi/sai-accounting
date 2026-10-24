@@ -381,8 +381,11 @@ import { join } from "node:path";
  *     seperti sebelumnya (settings-client sudah client).
  *   + `components/settings/partners-editor` — isian sekutu & porsi, dipakai
  *     wisaya penyiapan DAN kartu di atas (satu isian, dua permukaan).
+ * 224 → 225 (24 Okt 2026, bentuk usaha PR B):
+ *   + `components/settings/business-profile-panel` — identitas legal & sakelar
+ *     PPh Final UMKM. Halaman perkiraan PPh Final sendiri server component.
  */
-const AMBANG_KLIEN = 224;
+const AMBANG_KLIEN = 225;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -625,6 +628,7 @@ const KLIEN_TERSAHKAN = [
   // Paket laporan (09 §5, 24 Okt 2026) — pulau formulir di header Pusat Laporan; halamannya tetap server.
   "components/reports/report-package-dialog.tsx",
   "components/settings/audit-log-panel.tsx",
+  "components/settings/business-profile-panel.tsx",
   "components/settings/company-logo-panel.tsx",
   "components/settings/legal-form-panel.tsx",
   "components/settings/module-picker.tsx",

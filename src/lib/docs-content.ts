@@ -696,6 +696,30 @@ const LAPORAN: readonly DocBlock[] = [
         "Realisasi vs Anggaran membaca angka realisasinya dari buku besar yang sama dengan Laba/Rugi — jadi kalau keduanya berbeda, yang berbeda adalah periodenya, bukan sumbernya.",
       ],
     },
+    { kind: "sub", judul: "Paket laporan: banyak laporan satu periode, satu berkas" },
+    {
+      kind: "paragraf",
+      teks:
+        "Untuk penutupan bulan, auditor, atau bank, biasanya yang diminta bukan satu laporan melainkan seperangkat. Tombol Paket laporan di Pusat Laporan membuatnya sekaligus: pilih periode (bulanan, kuartalan, tahunan, atau rentang khusus), centang laporannya, pilih formatnya, lalu unduh satu berkas ZIP berisi halaman ringkasan, satu PDF per laporan, dan satu buku kerja Excel dengan satu lembar per laporan.",
+    },
+    {
+      kind: "langkah",
+      butir: [
+        "Buka Pusat Laporan, tekan Paket laporan.",
+        "Pilih periodenya. Laporan posisi (Neraca, Neraca Saldo, Umur Piutang/Utang) diambil per tanggal akhir periode; laporan periode menjumlahkan seluruh rentangnya.",
+        "Set penutupan bulanan sudah tercentang: Neraca, Laba/Rugi, Arus Kas, Perubahan Ekuitas, Neraca Saldo, Umur Piutang, Umur Utang. Tambahkan atau kurangi sesuai kebutuhan.",
+        "Pilih PDF, Excel, atau keduanya, lalu tekan Buat paket. Kemajuannya tampil di layar, dan berkasnya terunduh begitu siap.",
+      ],
+    },
+    {
+      kind: "poin",
+      butir: [
+        "Angkanya sama persis dengan laporan yang dibuka satu per satu: paket memakai mesin laporan yang sama, bukan hitungan kedua.",
+        "Laporan yang modulnya tidak aktif untuk perusahaan ini, atau yang tidak boleh Anda buka, tidak ikut — dan halaman ringkasan menyebutnya beserta alasannya, sehingga penerima berkas tahu apa yang tidak ada di dalamnya.",
+        "Menekan tombol yang sama lagi dalam beberapa menit memakai paket yang sedang dibuat, bukan membuat salinan kedua.",
+        "Berkas paket, seperti setiap berkas ekspor, disimpan 7 hari lalu dihapus otomatis. Sesudah itu, buat ulang paketnya.",
+      ],
+    },
     {
       kind: "catatan",
       teks:

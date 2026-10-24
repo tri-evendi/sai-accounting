@@ -69,7 +69,9 @@ import type { Permission } from "@sai/core/authz";
 import { REPORT_PDF, isQueueableReportPdf } from "@/lib/report-pdf";
 import { jobForDownload } from "@sai/platform/job-queue";
 import { bolehAmbilHasil } from "@/lib/job-result-gate";
-import { resolveResultPath, resultSize } from "@sai/platform/job-result-store";
+import { isResultExpired, resolveResultPath, resultSize } from "@sai/platform/job-result-store";
+import { RESULT_RETENTION_DAYS } from "@sai/core/generated/job-numbers";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { contentTypeFor } from "@/lib/document-storage";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
 
@@ -190,6 +192,9 @@ export async function GET(
             : "Berkasnya belum siap.",
         code: "job_not_done",
         status: job.status,
+        /* Kemajuan nyata dari pelarinya — penunggu (paket laporan) menampilkan
+           persennya; kabar yang sah karena gerbang & perusahaan sudah lolos. */
+        progress: job.progress,
       },
       { status: 409 }
     );
@@ -199,9 +204,21 @@ export async function GET(
   if (absolute === null) return tidakAda();
 
   const size = await resultSize(job.resultRef);
-  /* Baris ada, berkasnya tidak — mis. basis data dipulihkan tanpa volumenya,
-     atau cakramnya dibersihkan. 404 yang jujur; barisnya tetap terbaca. */
-  if (size === null) return tidakAda();
+  /* Baris ada, berkasnya tidak. Dua sebab yang berbeda jawabannya:
+     sudah lewat masa simpan (`results.retention_days`, TATA-KELOLA §6 — pembersih
+     upkeep menghapusnya) → 410 `result_expired` supaya layar bisa berkata
+     "minta lagi", bukan "rusak"; selain itu (basis data dipulihkan tanpa
+     volumenya, cakram dibersihkan tangan) → 404 yang jujur. */
+  if (size === null) {
+    if (isResultExpired(job.finishedAt)) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json(
+        { error: t("errors.resultExpired", { days: RESULT_RETENTION_DAYS }), code: "result_expired" },
+        { status: 410 }
+      );
+    }
+    return tidakAda();
+  }
 
   const filename = resultFilename(job.resultRef);
 

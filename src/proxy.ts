@@ -108,6 +108,10 @@ function isPublicPath(pathname: string): boolean {
   // Logo produk & ikon (dinamis sejak logo bisa diunggah dari konsol). Diambil
   // peramban tanpa sesi — dari halaman masuk, pendaratan, dan layar depan.
   if (pathname === "/brand/mark" || pathname === "/favicon.ico" || pathname === "/apple-icon.png") return true;
+  // Gambar halaman depan unggahan operator (konsol `/landing/media`): id angka
+  // saja — `/brand/landing/` tanpa id, atau dengan apa pun selain angka, tetap
+  // butuh sesi.
+  if (/^\/brand\/landing\/[1-9]\d{0,9}$/.test(pathname)) return true;
   /* Bentuk ketiga, yang benar-benar dipakai sejak gambarnya tinggal di grup
      `(marketing)`: Next menambahkan sufiks grup pada NAMA segmennya
      (`/opengraph-image-pwu6ef?<hash>`). Tanpa bentuk ini setiap pratinjau

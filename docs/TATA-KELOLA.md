@@ -84,7 +84,7 @@ Sudah ada: `SECURITY.md`. Yang wajib diisi pemilik di sana:
 | Jejak audit operator | ✅ 24 Okt 2026: 5 tahun | — |
 | Cadangan harian | berlaku hari ini: **30 hari** (`BACKUP_RETENTION_DAYS`, bawaan di `tenantlane/runner.go`). 🔶 usul tambahan: 12 salinan bulanan di penyimpanan luar-server | butuh S3 dulu (P0-1) |
 | Baris antrean `jobs` selesai | 14 hari (`done_retention_days`, `contract/kinds.yaml`) | operasional |
-| Berkas ekspor (`hasil`) | ✅ 24 Okt 2026: 7 hari. ⚠ Per 24 Okt 2026 kode belum memangkas berkas `hasil` (hanya baris `jobs` setelah 14 hari) — pemangkasannya sedang dibangun | operasional |
+| Berkas ekspor (`hasil`) | ✅ 24 Okt 2026: 7 hari — **ditegakkan kode** (`results.retention_days` di `contract/kinds.yaml`): putaran upkeep pelari Node membuang setiap direktori hasil yang lebih tua (`pruneExpiredResults`) — ekspor laporan Node & Go, PDF berantre, paket laporan, ekspor data mandiri tenant; rute unduhan menjawab 410 `result_expired` sesudahnya | operasional |
 
 - 🔶 **Perjanjian pengolahan data (DPA):** templat untuk customer SaaS — SAI
   sebagai pemroses, customer sebagai pengendali; sub-pemroses yang disebut:

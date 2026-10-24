@@ -63,7 +63,9 @@ import {
   MODULE_META,
   type BusinessModule,
 } from "@/lib/business-modules";
-import { getT } from "@sai/platform/i18n/server";
+import { getLocale, getT } from "@sai/platform/i18n/server";
+import { landingMedia } from "@sai/platform/landing-settings";
+import { LandingScreenGallery } from "@/components/landing/landing-screens";
 
 /**
  * Ikon per modul — supaya sepuluh baris bisa DIPINDAI, bukan dibaca berurutan.
@@ -104,6 +106,9 @@ export const MODULE_ICON: Record<BusinessModule, typeof BookOutlined> = {
 
 export async function LandingModules() {
   const t = await getT();
+  /* Galeri tangkapan layar unggahan (konsol `/landing/media`) menggantikan
+     tiga purwarupa yang digambar kode — hanya bila ada. */
+  const [{ gallery }, locale] = await Promise.all([landingMedia(), getLocale()]);
 
   return (
     <LandingSection id="modul" tone="brand">
@@ -241,7 +246,7 @@ export async function LandingModules() {
           ada di dalam" memang paling jujur dijawab dengan layarnya. Kartunya
           `surface` bertepi di atas pita cyan — bentuk purwarupa hero di atas
           pita hero. Alasan lengkap & aturan angkanya di kepala berkasnya. */}
-      <LandingGallery />
+      {gallery.length > 0 ? <LandingScreenGallery shots={gallery} locale={locale} /> : <LandingGallery />}
     </LandingSection>
   );
 }

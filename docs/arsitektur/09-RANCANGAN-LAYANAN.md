@@ -245,8 +245,8 @@ pekerjaan borongan yang membuat heap melewatinya dibatalkan dan digagalkan
 dengan sebab yang terbaca, SEBELUM OOM-killer membunuh seluruh `svc-integrator`
 beserta dump cadangan yang sedang berjalan (risiko 2 & 4 di bawah). Tiga kind
 lamanya tetap di luar Go: `import.process` menulis buku (I-2), `mail.batch`
-menulis `invoice_sends` dan memegang SMTP tenant, `report.package` tidak pernah
-ada (§9).
+menulis `invoice_sends` dan memegang SMTP tenant. `report.package` ✅ kind
+KEDUA jalur ini sejak 24 Okt 2026 (keputusan pemilik) — §5.
 
 **`tenant.data_export`** (#142) — hanya membaca, berkasnya besar (ZIP seluruh
 buku setiap PT + dokumen), tingkat TENANT (`company_id` NULL). Tiga syarat yang
@@ -627,14 +627,36 @@ OTOMATIS DI SINI" tetap benar untuk berkas itu.
 | Laporan pendek yang sudah tampil di layar | server, sinkron | ✅ `/api/reports/pdf/<jenis>` & `/api/reports/export` |
 | Laporan stok, lembar hitung opname, laporan kas & bank | server, dari PARAMETER — muatannya dihitung dari buku PT oleh pembaca yang sama dengan halamannya (`src/lib/report-pdf-payload.ts`) | ✅ sinkron di bawah ambang penyerahan, pekerjaan `report.pdf` (jalur `interactive`) di atasnya |
 | Ekspor besar | **pekerjaan** → penyimpanan objek → pengguna mengunduh tautan | ✅ jalur `interactive`; di atas ambang penyerahan |
-| **Paket laporan** (banyak laporan satu periode jadi satu berkas) | pekerjaan `report.package` | **belum** — ia FITUR BARU, bukan pemindahan |
+| **Paket laporan** (banyak laporan satu periode jadi satu berkas) | pekerjaan `report.package` (Go, jalur `bulk`) + anak `report.package_pdf` (Node, jalur `interactive`) → satu ZIP | ✅ **24 Okt 2026** — FITUR BARU atas keputusan pemilik, bukan pemindahan; bentuknya di bawah |
 | Peramban | tidak menghasilkan — dan tidak merakit — apa pun | ✅ nol generator `src/lib/pdf/` di komponen klien (dijaga `tests/laporan-pdf-server.test.ts`); tiga laporan terakhir kini juga tidak lagi dirakit muatannya di peramban |
 
-**Yang tersisa satu, dan ia bukan "pemindahan yang belum selesai":**
+**Yang dulu tersisa satu — `report.package` — kini dibangun (24 Okt 2026),**
+dan ia dibangun sebagai KEPUTUSAN PRODUK tersendiri (pemilik), bukan sebagai
+"sisa pemindahan": catatan lama di sini memperingatkan persis penggabungan dua
+keputusan itu.
 
-| Tersisa | Kenapa ia bukan sekadar sisa |
+**Paket laporan — bentuknya.** Satu permintaan (PT aktif, periode bulanan /
+kuartalan / tahunan / rentang khusus dalam tanggal bisnis Jakarta, set laporan,
+format) → SATU berkas ZIP:
+
+```
+Paket_Laporan_<dari>_<sampai>.zip
+├── 00_Ringkasan_Paket.pdf     PT · periode · dibuat · peminta · format · laporan disertakan · yang DIKECUALIKAN + alasan
+├── PDF/01_Neraca.pdf …        satu PDF per laporan (format "pdf")
+└── Paket_Laporan_….xlsx       satu buku kerja: lembar "Ringkasan" + satu lembar per laporan (format "xlsx")
+```
+
+| Pertanyaan | Jawaban |
 |---|---|
-| `report.package` | tidak pernah ada di aplikasi ini. Membangunnya berarti **menambah fitur** di bawah nama "pindah ke server", dan itu dua keputusan yang digabung menjadi satu |
+| Kenapa ZIP, bukan satu PDF gabungan / satu buku kerja saja? | dua penghasil berkas laporan hidup di dua bahasa dan keduanya sudah dibuktikan setara dengan layar: lembar sebar laporan `engine: "go"` HANYA dari Go (register `report-engine.ts`), PDF HANYA dari jsPDF. Menggabungkan PDF menuntut pustaka baru (jsPDF tidak membaca PDF); memaksa satu format berarti menulis ulang penghasil yang lain. ZIP memakai keduanya apa adanya |
+| Siapa menghitung apa? | **tidak ada aritmetika laporan baru.** Lembar: `interactivelane.LembarLaporan` — penghasil `report.export_go` yang dipisah dari bukunya, muatan `goExportPayloadShape` yang SAMA (instan batas Jakarta dihitung penerbit). PDF: `buildReportPayload` + `generateStatementPDF` — pasangan tombol PDF Pusat Laporan |
+| Jalurnya? | induk `report.package` di **`bulk`** (Go, `internal/bulklane/package.go`): ia menghitung belasan lembar berurutan lalu MENUNGGU anaknya — menahan pelari `interactive` Go selama itu membuat setiap ekspor satu laporan ikut mengantre; di `bulk` ia di bawah pagar memori. Anak `report.package_pdf` di **`interactive`** (Node): pekerjaan yang sama bentuknya dengan `report.pdf`. Keduanya berjalan BERSAMAAN (Go menghitung lembar selagi Node menggambar PDF) |
+| Siapa menerbitkan? | penerbit TS SAJA (`src/lib/report-package-job.ts`, `POST /api/reports/package`): anak lebih dulu, lalu induk yang menyebut `pdfJobId`. Go tidak menerbitkan apa pun; ia hanya MEMBACA baris anak (`JobOutcome`, `contract/jobs.sql`) dan memeriksa jenis & PT-nya |
+| Memori? | berurutan; PDF dikompresi & dialirkan ke ZIP antara satu per satu (`src/lib/zip-stream.ts`, bukan JSZip yang menahan semua entri); Go menyalin entri ZIP anak mentah (`zip.Writer.Copy`) dan menulis ZIP akhir mengalir ke `hasil` |
+| Otorisasi? | gerbang rute `report.read` (izin Pusat Laporan); SETIAP laporan diperiksa `canEffective(izin halamannya)` di PT aktif — modul tidak aktif / peran tidak berwenang → dikecualikan dan disebut di ringkasan dengan alasannya; nol laporan tersisa → 403. Unduhan: `report.read` + gerbang kedua — hanya PEMINTANYA, dan setiap laporan masih boleh dibuka hari itu |
+| Idempotensi? | `dedupe_key` = pengguna × PT × periode × HIMPUNAN laporan × format, jendela 10 menit (jendela sebelumnya ikut diperiksa); yang masih jalan / selesai dipakai ulang, yang mati diterbitkan ulang |
+| Jejak & retensi? | `report.package` di `audit_logs` buku PT saat menerbitkan; berkasnya ikut retensi hasil 7 hari (§6 TATA-KELOLA, `results.retention_days`) |
+| Batas yang disebut | kolom pilihan & saringan pusat biaya tidak ikut (susunan bawaan katalog); Realisasi vs Anggaran memakai bulan bila periodenya tepat satu bulan, selain itu setahun penuh tahun akhir periode; Mode Akuntan tidak menyembunyikan Neraca Saldo di daftar paket (ia preferensi tampilan, bukan izin) |
 
 **Bagaimana tiga laporan terakhir pindah** (`finance-report`, `opname-sheet`,
 `stock-report` — LAPORAN, bukan dokumen satuan, jadi jalurnya
@@ -990,7 +1012,7 @@ kehabisan waktu:
 | Tertahan | Kenapa, dan pemicunya |
 |---|---|
 | **Outbox + relay** | ✅ **Dibangun 23 Okt 2026** (keputusan pemilik — pemicunya keputusan produk, persis seperti yang ditulis di sini): pengiriman faktur saat diposting, di belakang sakelar per PT yang bawaannya mati. Bentuknya §4 |
-| **`report.package`** | tidak pernah ada di aplikasi ini. Membangunnya berarti menambah FITUR di bawah nama "pindah ke server" — dua keputusan yang digabung menjadi satu |
+| **`report.package`** | ✅ **Dibangun 24 Okt 2026** sebagai keputusan produk tersendiri (pemilik) — bukan "pindah ke server". Bentuknya §5 |
 | Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. ✅ **`bulk` berjalan sejak kind pertamanya** (23 Okt 2026): `tenant.data_export`, ekspor data mandiri #142 — pelari Go + pintu hasil tingkat tenant + paritas `parity:tenant-export` (lokal: setara). ✅ Sakelar `runner:` **`go` sejak 24 Okt 2026**: paritas produksi lulus (11 tenant × 1 ekspor, 0 berselisih) — §3.2, PRODUCTION.md §Ekspor data mandiri |
 
 Tiga generator LAPORAN yang dulu tersisa (`finance-report`, `opname-sheet`,

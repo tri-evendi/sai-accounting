@@ -594,6 +594,16 @@ terpakai. Dua pagar menjaga pembersihnya: himpunan id memuat SELURUH baris
 jadi saringan itu akan menghapus hasil pekerjaan yang masih berjalan), dan
 direktori yang lebih baru dari 24 jam tidak pernah dibuang.
 
+✅ **Hasil lewat masa simpan dibuang sesudah 7 hari** (24 Okt 2026, keputusan
+pemilik di [TATA-KELOLA §6](../TATA-KELOLA.md)). Angkanya
+`results.retention_days` di `contract/kinds.yaml`; putaran pemeliharaan yang
+sama memanggil `pruneExpiredResults` LEBIH DULU — dari umur direktori saja,
+tanpa basis data, jadi basis data yang tak terjangkau tidak bisa membuatnya
+menghapus lebih banyak. Ia menyapu seluruh volume `hasil`, termasuk berkas yang
+ditulis pelari Go. Rute unduhan (per-PT dan tingkat tenant) menjawab 410
+`result_expired` untuk pekerjaan `done` yang `finished_at`-nya lewat masa simpan,
+bukan 404 — layar bisa berkata "minta lagi", bukan "rusak".
+
 #### Jalur `interactive` sisi Go (`svc-integrator`, tahap 1d)
 
 Menguras `report.export_go`: lembar sebar laporan yang register

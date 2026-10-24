@@ -38,11 +38,31 @@ import {
   type LandingSettingsRow,
   type LocalizedText,
 } from "@sai/core/landing-settings";
+import {
+  DEFAULT_LANDING_MEDIA,
+  landingMediaFromRow,
+  type LandingClientLogo,
+  type LandingImageRef,
+  type LandingMedia,
+  type LandingMediaRow,
+  type LandingPartner,
+  type LandingScreenshot,
+  type LandingTestimonial,
+} from "@sai/core/landing-media";
 
 export const LANDING_SETTINGS_TAG = "landing-settings";
 const UMUR_CACHE_DETIK = 300;
 
+/** Baris lengkap: setelan (0014) + media (0015). */
+type BarisLengkap = LandingSettingsRow & LandingMediaRow;
+
 const PILIHAN = {
+  testimonialsJson: true,
+  clientLogosJson: true,
+  partnersJson: true,
+  heroImageJson: true,
+  galleryJson: true,
+  ogImageJson: true,
   hiddenSectionsJson: true,
   demoBookingUrl: true,
   whatsappMessageJson: true,
@@ -50,9 +70,9 @@ const PILIHAN = {
   faqItemsJson: true,
   updatedBy: true,
   updatedAt: true,
-} as const satisfies Record<keyof LandingSettingsRow, true>;
+} as const satisfies Record<keyof BarisLengkap, true>;
 
-async function ambilBaris(): Promise<LandingSettingsRow | null> {
+async function ambilBaris(): Promise<BarisLengkap | null> {
   return platformDb.landingSetting.findUnique({ where: { singleton: 1 }, select: PILIHAN });
 }
 
@@ -81,13 +101,27 @@ export async function landingSettings(): Promise<LandingSettings> {
   }
 }
 
+/**
+ * Bukti sosial & gambar EFEKTIF (migration 0015) — baris ber-cache yang SAMA.
+ * Gagal-lunak: tanpa testimoni/logo/mitra, purwarupa kode, OG bawaan.
+ */
+export async function landingMedia(): Promise<LandingMedia> {
+  try {
+    const versi = (await cacheSignalVersion(platformDb, "landing-settings")) ?? -1;
+    return landingMediaFromRow(await barisTersimpan(versi));
+  } catch (error) {
+    console.error("[landing-settings] media tak terbaca — memakai tampilan bawaan:", error);
+    return DEFAULT_LANDING_MEDIA;
+  }
+}
+
 /** Untuk KONSOL — tanpa cache, dan "tak terjangkau" dibedakan dari "kosong". */
 export async function landingSettingsForOperator(): Promise<
-  { row: LandingSettingsRow | null; settings: LandingSettings } | "unreachable"
+  { row: BarisLengkap | null; settings: LandingSettings; media: LandingMedia } | "unreachable"
 > {
   try {
     const row = await ambilBaris();
-    return { row, settings: landingSettingsFromRow(row) };
+    return { row, settings: landingSettingsFromRow(row), media: landingMediaFromRow(row) };
   } catch (error) {
     console.error("[landing-settings] baris tak terbaca (konsol):", error);
     return "unreachable";
@@ -118,6 +152,13 @@ export interface LandingSettingsPatch {
   whatsappMessage?: LocalizedText | null;
   announcement?: LandingAnnouncement | null;
   faqItems?: LandingFaqItem[] | null;
+  /* Media (0015). Daftar kosong disimpan sebagai NULL. */
+  testimonials?: LandingTestimonial[];
+  clientLogos?: LandingClientLogo[];
+  partners?: LandingPartner[];
+  heroImage?: LandingScreenshot | null;
+  gallery?: LandingScreenshot[];
+  ogImage?: LandingImageRef | null;
 }
 
 const json = (v: unknown): string | null => (v === null ? null : JSON.stringify(v));
@@ -139,6 +180,13 @@ export async function saveLandingSettings(patch: LandingSettingsPatch, actor: st
   if (patch.whatsappMessage !== undefined) data.whatsappMessageJson = json(patch.whatsappMessage);
   if (patch.announcement !== undefined) data.announcementJson = json(patch.announcement);
   if (patch.faqItems !== undefined) data.faqItemsJson = json(patch.faqItems);
+  const daftar = (v: unknown[]) => (v.length > 0 ? JSON.stringify(v) : null);
+  if (patch.testimonials !== undefined) data.testimonialsJson = daftar(patch.testimonials);
+  if (patch.clientLogos !== undefined) data.clientLogosJson = daftar(patch.clientLogos);
+  if (patch.partners !== undefined) data.partnersJson = daftar(patch.partners);
+  if (patch.heroImage !== undefined) data.heroImageJson = json(patch.heroImage);
+  if (patch.gallery !== undefined) data.galleryJson = daftar(patch.gallery);
+  if (patch.ogImage !== undefined) data.ogImageJson = json(patch.ogImage);
 
   await platformDb.landingSetting.upsert({
     where: { singleton: 1 },

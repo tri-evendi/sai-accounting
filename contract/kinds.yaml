@@ -176,8 +176,37 @@ kinds:
 
   report.package:
     lane: bulk
-    max_attempts: 3
-    description: paket laporan satu periode
+    max_attempts: 2
+    description: >
+      paket laporan (09 §5, keputusan pemilik 24 Okt 2026): BANYAK laporan satu
+      periode satu PT menjadi SATU berkas ZIP — ringkasan + satu PDF per
+      laporan + satu buku kerja XLSX (satu lembar per laporan). Diterbitkan
+      `/api/reports/package` (`src/lib/report-package-job.ts`), dikerjakan
+      jalur `bulk` Go (`internal/bulklane`): lembar sebar dihitung pembaca &
+      penulis `internal/document` yang SAMA dengan `report.export_go`, PDF-nya
+      datang dari pekerjaan anak `report.package_pdf` (Node) yang diterbitkan
+      penerbit yang sama, dan pelari ini merangkai keduanya ke volume `hasil`.
+      Jalur `bulk`, bukan `interactive`: pekerjaannya MENUNGGU anaknya dan
+      menghitung belasan laporan berurutan — menahan pelari `interactive` Go
+      selama itu berarti setiap ekspor satu laporan ikut menunggu; di `bulk`
+      ia juga dijaga pagar memori per pekerjaan. `max_attempts: 2`: buku yang
+      sesaat tak terjangkau dicoba sekali lagi; anak yang mati tidak akan
+      hidup di percobaan ketiga. Idempoten di PENERBIT (`dedupe_key` per
+      pengguna × PT × periode × himpunan laporan × format, jendela 10 menit).
+
+  report.package_pdf:
+    lane: interactive
+    max_attempts: 2
+    description: >
+      bagian PDF sebuah `report.package`: halaman ringkasan + satu PDF per
+      laporan, dirakit SATU PER SATU dari pembangun muatan
+      (`buildReportPayload`) dan generator jsPDF (`generateStatementPDF`) yang
+      SAMA dengan tombol PDF di Pusat Laporan, dialirkan ke satu ZIP antara di
+      volume `hasil`. Node, bukan Go: generator PDF hanya ada di TypeScript
+      (09 §5) dan menulis ulangnya membuka jendela dua-implementasi §3.3.
+      Diterbitkan BERSAMA induknya oleh penerbit yang sama (bukan oleh Go) dan
+      tidak pernah diunduh langsung — pintunya `null` di
+      `@sai/core/job-result`; satu-satunya pembacanya pelari `report.package`.
 
   import.process:
     lane: bulk
@@ -419,6 +448,15 @@ outbox:
 results:
   owner_uid: 1000
   owner_gid: 1000
+  # Umur berkas hasil sebelum dihapus dari volume `hasil` — keputusan pemilik
+  # (docs/TATA-KELOLA.md §6: "berkas ekspor dihapus setelah 7 hari"). Berlaku
+  # untuk SETIAP hasil: ekspor laporan (Node & Go), PDF berantre, paket laporan,
+  # ekspor data mandiri tenant. Yang menghapus putaran upkeep pelari Node
+  # (`workers/runner.ts` → `pruneExpiredResults`); rute unduhan menjawab 410
+  # `result_expired` untuk pekerjaan `done` yang berkasnya sudah lewat umur.
+  # Generator menolak angka di atas `numbers.done_retention_days`: berkas yang
+  # barisnya sudah dibuang memang tidak bisa diunduh lagi.
+  retention_days: 7
 
 # ── Angka antrean ──────────────────────────────────────────────────────────
 #

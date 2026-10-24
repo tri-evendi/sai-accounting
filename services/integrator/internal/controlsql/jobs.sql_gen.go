@@ -141,6 +141,41 @@ func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (int64
 	return result.RowsAffected(), nil
 }
 
+const jobOutcome = `-- name: JobOutcome :one
+SELECT kind, company_id, status, progress, result_ref,
+       COALESCE(last_error, '')::text AS last_error
+  FROM jobs WHERE id = $1
+`
+
+type JobOutcomeRow struct {
+	Kind      contract.JobKind
+	CompanyID *int32
+	Status    contract.JobStatus
+	Progress  int
+	ResultRef *string
+	LastError string
+}
+
+// Keadaan pekerjaan LAIN — dibaca `report.package` (jalur `bulk`) yang menunggu
+// bagian PDF-nya dari `report.package_pdf` (Node). HANYA MEMBACA. `kind` dan
+// `company_id` ikut supaya pembacanya membuktikan baris itu memang anak yang
+// diharapkan untuk PT yang sama, bukan id yang kebetulan disebut muatan.
+// `last_error` lewat COALESCE: kolomnya nullable tetapi dipetakan `string` di
+// Go (`sqlc.yaml` — Go dulu hanya MENULISnya); pemindaian NULL ke `string` gagal.
+func (q *Queries) JobOutcome(ctx context.Context, id int64) (JobOutcomeRow, error) {
+	row := q.db.QueryRow(ctx, jobOutcome, id)
+	var i JobOutcomeRow
+	err := row.Scan(
+		&i.Kind,
+		&i.CompanyID,
+		&i.Status,
+		&i.Progress,
+		&i.ResultRef,
+		&i.LastError,
+	)
+	return i, err
+}
+
 const markDead = `-- name: MarkDead :exec
 UPDATE jobs SET status = 'dead', attempts = $1, last_error = $2,
                 finished_at = now(), updated_at = now()

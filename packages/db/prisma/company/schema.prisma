@@ -1684,6 +1684,36 @@ model YearClose {
   @@map("year_closes")
 }
 
+/// PEMILIK / SEKUTU dan porsi labanya (bentuk usaha, company 0007).
+///
+/// CV/Firma: satu baris per sekutu, masing-masing dengan akun Modal & Prive
+/// sendiri. Usaha perorangan: satu baris "Pemilik" (100%). PT: TIDAK ADA baris
+/// — buku tanpa baris di sini menutup laba ke Laba Ditahan seperti sebelumnya.
+///
+/// Dibaca tutup buku tahunan (`lib/year-close-service.ts`) untuk membagi laba
+/// per porsi dan menutup prive ke modal, serta Laporan Perubahan Ekuitas (TS
+/// dan Go) untuk rincian per pemilik. FK akun RESTRICT ditulis di migration
+/// (pola `fixed_asset_categories`), bukan relasi Prisma.
+model CompanyPartner {
+  id               Int     @id @default(autoincrement())
+  name             String  @db.VarChar(150)
+  /// 'aktif' | 'komanditer' (CV); NULL untuk sekutu firma dan pemilik tunggal.
+  role             String? @db.VarChar(20)
+  /// Porsi laba dalam basis poin — 10000 = 100%. Jumlah sekutu AKTIF harus
+  /// tepat 10000 (dijaga `lib/partners.ts`; CHECK tidak bisa lintas baris).
+  shareBp          Int     @map("share_bp")
+  capitalAccountId Int     @unique @map("capital_account_id")
+  drawingAccountId Int?    @unique @map("drawing_account_id")
+  sortOrder        Int     @default(0) @map("sort_order")
+  isActive         Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("company_partners")
+}
+
 /// REVALUASI POS MONETER VALAS (issue #554) — satu baris per (periode, mata uang).
 ///
 /// PSAK 10 menuntut pos moneter valas dijabarkan ulang pada kurs penutup setiap

@@ -21,6 +21,7 @@
 
 import { businessDate, businessParts } from "@sai/core/business-date";
 import { CLOSING_JOURNAL_TYPE as CONTRACT_CLOSING_JOURNAL_TYPE } from "@sai/core/generated/accounting";
+import { allocateByShare } from "@/lib/partners";
 
 /** Uang di buku ini `Decimal(15,2)`. */
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -121,6 +122,11 @@ export interface YearClosePlan {
   netIncome: number;
   /** Akun laba rugi yang benar-benar bersaldo dan karena itu ditutup. */
   closedAccounts: number;
+  /**
+   * Hanya CV/Firma/perorangan — bagian laba dan prive yang ditutup per
+   * pemilik/sekutu. Tidak ada untuk PT (laba ke Laba Ditahan).
+   */
+  allocations?: PartnerAllocation[];
 }
 
 /**
@@ -143,6 +149,34 @@ export function planYearClose(
   balances: readonly ClosingBalance[],
   retainedEarningsAccountId: number
 ): YearClosePlan {
+  const { lines, netIncome } = closeProfitAndLoss(balances);
+  const closedAccounts = lines.length;
+
+  /*
+   * Laba nol dengan akun yang bergerak adalah mungkin dan sah — pendapatan
+   * persis sebesar beban. Akun-akunnya tetap harus dinolkan; yang tidak boleh
+   * lahir hanyalah baris Laba Ditahan bernilai nol.
+   */
+  if (lines.length > 0 && netIncome !== 0) {
+    lines.push({
+      accountId: retainedEarningsAccountId,
+      debit: netIncome < 0 ? -netIncome : 0,
+      credit: netIncome > 0 ? netIncome : 0,
+    });
+  }
+
+  return { lines, netIncome, closedAccounts };
+}
+
+/**
+ * Baris penutup akun laba rugi saja, plus laba yang dipindahkannya — bagian
+ * yang SAMA untuk setiap bentuk usaha. Yang berbeda hanya ke mana laba itu
+ * pergi (Laba Ditahan, atau modal para sekutu).
+ */
+function closeProfitAndLoss(balances: readonly ClosingBalance[]): {
+  lines: ClosingLine[];
+  netIncome: number;
+} {
   const lines: ClosingLine[] = [];
   let moved = 0;
 
@@ -159,38 +193,130 @@ export function planYearClose(
     moved = round2(moved + amount);
   }
 
-  const closedAccounts = lines.length;
-
   /*
    * `moved` adalah jumlah saldo positif-debit seluruh akun laba rugi, yaitu
    * (beban − pendapatan) — kebalikan tanda dari laba. Dijumlahkan dari nilai
    * yang SUDAH dibulatkan, alasan yang sama dengan `planRevaluation`: sisi
-   * Laba Ditahan diturunkan dari angka ini, jadi tidak ada sisa pembulatan yang
+   * ekuitas diturunkan dari angka ini, jadi tidak ada sisa pembulatan yang
    * bisa lahir di antara keduanya dan jurnalnya seimbang secara konstruksi.
-   */
-  /*
+   *
    * `+ 0` menormalkan NEGATIF NOL. `-moved` menghasilkan `-0` ketika impas, dan
    * `-0` bukan keanehan akademis di sini: sebagian pemformat menampilkannya
    * sebagai "-0", `Object.is(-0, 0)` bernilai false sehingga perbandingan di
    * pemanggil bisa meleset, dan JSON.stringify menuliskannya "0" — jadi ia juga
    * berubah bentuk saat melintasi API. Impas adalah nol, bukan minus nol.
    */
-  const netIncome = round2(-moved) + 0;
+  return { lines, netIncome: round2(-moved) + 0 };
+}
 
-  /*
-   * Laba nol dengan akun yang bergerak adalah mungkin dan sah — pendapatan
-   * persis sebesar beban. Akun-akunnya tetap harus dinolkan; yang tidak boleh
-   * lahir hanyalah baris Laba Ditahan bernilai nol.
+// ─── Bentuk usaha: persekutuan & usaha perorangan (24 Okt 2026) ─────────────
+
+/** Satu pemilik/sekutu yang ikut tutup buku. */
+export interface PartnerCloseInput {
+  partnerId: number;
+  name: string;
+  /** Porsi laba, basis poin (10000 = 100%). */
+  shareBp: number;
+  sortOrder: number;
+  capitalAccountId: number;
+  drawingAccountId: number | null;
+  /**
+   * Saldo akun PRIVE pada akhir tahun buku, POSITIF-DEBIT, KUMULATIF (termasuk
+   * jurnal penutup tahun-tahun lalu, yang sudah menolkannya). Prive normalnya
+   * bersaldo debit — penarikan pemilik.
    */
+  drawingBalance: number;
+}
+
+/** Bagian satu pemilik/sekutu dalam jurnal penutup. */
+export interface PartnerAllocation {
+  partnerId: number;
+  name: string;
+  shareBp: number;
+  /** Bagian laba (positif) / rugi (negatif) yang masuk ke modalnya. */
+  profitShare: number;
+  /** Prive yang ditutup ke modalnya (positif = mengurangi modal). */
+  drawingsClosed: number;
+}
+
+/**
+ * Jurnal penutup untuk CV, Firma, dan usaha perorangan.
+ *
+ * ══ TIGA LANGKAH DALAM SATU JURNAL ═════════════════════════════════════════
+ *  1. Nolkan setiap akun laba rugi — sama persis dengan PT.
+ *  2. Bagi laba bersih ke MODAL setiap sekutu menurut porsinya
+ *     (`allocateByShare`: dihitung dalam sen bulat; sisa pembulatan ke sekutu
+ *     berporsi TERBESAR, seri → yang terdaftar paling awal). Usaha perorangan
+ *     adalah kasus satu sekutu 100%.
+ *  3. Tutup PRIVE setiap sekutu ke modalnya sendiri: D Modal, K Prive. Prive
+ *     adalah penarikan pemilik atas modalnya, bukan beban — ia tidak menyentuh
+ *     laba, dan ditutup supaya tahun berikutnya mulai dari nol.
+ *
+ * Langkah 2 dan 3 menulis BARIS TERPISAH pada akun modal yang sama — bagian
+ * laba dan penutupan prive adalah dua peristiwa yang ditanyakan berbeda
+ * ("berapa bagian laba saya", "berapa yang saya tarik"), dan satu baris bersih
+ * menghapus jawaban keduanya.
+ *
+ * Tahun TANPA laba rugi tapi dengan prive tetap menghasilkan baris (prive
+ * ditutup); tahun tanpa keduanya memulangkan `lines: []` — pemanggil menolak
+ * menutupnya, aturan yang sama dengan PT.
+ */
+export function planPartnerYearClose(
+  balances: readonly ClosingBalance[],
+  partners: readonly PartnerCloseInput[]
+): YearClosePlan {
+  if (partners.length === 0) throw new Error("planPartnerYearClose: tidak ada pemilik/sekutu.");
+  const { lines, netIncome } = closeProfitAndLoss(balances);
+  const closedAccounts = lines.length;
+
+  const shares = new Map<number, number>();
   if (lines.length > 0 && netIncome !== 0) {
-    lines.push({
-      accountId: retainedEarningsAccountId,
-      debit: netIncome < 0 ? -netIncome : 0,
-      credit: netIncome > 0 ? netIncome : 0,
+    const cents = Math.round(netIncome * 100);
+    for (const a of allocateByShare(
+      cents,
+      partners.map((p) => ({ key: p.partnerId, shareBp: p.shareBp, sortOrder: p.sortOrder }))
+    )) {
+      shares.set(a.key, a.cents / 100);
+    }
+  }
+
+  const allocations: PartnerAllocation[] = [];
+  for (const p of partners) {
+    const share = shares.get(p.partnerId) ?? 0;
+    if (share !== 0) {
+      lines.push({
+        accountId: p.capitalAccountId,
+        debit: share < 0 ? -share : 0,
+        credit: share > 0 ? share : 0,
+      });
+    }
+    const drawing = p.drawingAccountId === null ? 0 : round2(p.drawingBalance) + 0;
+    if (drawing !== 0 && p.drawingAccountId !== null) {
+      /* Prive bersaldo debit (normal) → D Modal, K Prive. Saldo kredit (jarang:
+         koreksi yang melebihi penarikan) dibalik arahnya dengan rumus yang sama. */
+      lines.push(
+        {
+          accountId: p.capitalAccountId,
+          debit: drawing > 0 ? drawing : 0,
+          credit: drawing < 0 ? -drawing : 0,
+        },
+        {
+          accountId: p.drawingAccountId,
+          debit: drawing < 0 ? -drawing : 0,
+          credit: drawing > 0 ? drawing : 0,
+        }
+      );
+    }
+    allocations.push({
+      partnerId: p.partnerId,
+      name: p.name,
+      shareBp: p.shareBp,
+      profitShare: share,
+      drawingsClosed: drawing,
     });
   }
 
-  return { lines, netIncome, closedAccounts };
+  return { lines, netIncome, closedAccounts, allocations };
 }
 
 /**

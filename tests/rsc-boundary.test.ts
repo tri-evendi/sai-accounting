@@ -375,8 +375,14 @@ import { join } from "node:path";
  *   + `components/reports/report-package-dialog` — formulir periode/laporan/format
  *     + kemajuan pekerjaan di header Pusat Laporan. Halaman `/reports` tetap
  *     server; daftar laporan & tanda izinnya dihitung di sana dan dioper.
+ * 222 → 224 (24 Okt 2026, bentuk usaha):
+ *   + `components/settings/legal-form-panel` — kartu Pengaturan → Bentuk usaha
+ *     (ganti bentuk + konfirmasi, simpan sekutu). Halaman Pengaturan tetap
+ *     seperti sebelumnya (settings-client sudah client).
+ *   + `components/settings/partners-editor` — isian sekutu & porsi, dipakai
+ *     wisaya penyiapan DAN kartu di atas (satu isian, dua permukaan).
  */
-const AMBANG_KLIEN = 222;
+const AMBANG_KLIEN = 224;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -620,11 +626,13 @@ const KLIEN_TERSAHKAN = [
   "components/reports/report-package-dialog.tsx",
   "components/settings/audit-log-panel.tsx",
   "components/settings/company-logo-panel.tsx",
+  "components/settings/legal-form-panel.tsx",
   "components/settings/module-picker.tsx",
   "components/settings/module-settings-panel.tsx",
   // Pulau client kecil: satu tombol + dialog konfirmasi + `router.refresh()`.
   // Halaman Pengaturan yang memanggilnya tetap server component; angkanya
   // dihitung di sana dan diturunkan sebagai prop.
+  "components/settings/partners-editor.tsx",
   "components/settings/reminder-settings-panel.tsx",
   "components/settings/sample-data-panel.tsx",
   "components/settings/tax-settings-panel.tsx",

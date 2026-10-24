@@ -343,6 +343,17 @@ export function equityChangesPayload(
     unclosedIncome: { opening: number; movement: number; closing: number };
     totalOpening: number;
     totalClosing: number;
+    partners?: readonly {
+      name: string;
+      role: string | null;
+      shareBp: number;
+      isActive: boolean;
+      opening: number;
+      profitShare: number;
+      contributions: number;
+      drawings: number;
+      closing: number;
+    }[];
   }
 ): Extract<StatementPayload, { kind: "equity-changes" }> {
   return {
@@ -364,6 +375,22 @@ export function equityChangesPayload(
     },
     totalOpening: statement.totalOpening,
     totalClosing: statement.totalClosing,
+    /* Hanya bila ada — muatan PT tetap persis seperti sebelum bentuk usaha. */
+    ...(statement.partners && statement.partners.length > 0
+      ? {
+          partners: statement.partners.map((p) => ({
+            name: p.name,
+            role: p.role,
+            shareBp: p.shareBp,
+            isActive: p.isActive,
+            opening: p.opening,
+            profitShare: p.profitShare,
+            contributions: p.contributions,
+            drawings: p.drawings,
+            closing: p.closing,
+          })),
+        }
+      : {}),
   };
 }
 

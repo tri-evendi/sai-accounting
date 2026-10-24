@@ -6443,5 +6443,88 @@
       "monitoring": "Perbaikan gangguan pada {component} sudah diterapkan; kami memantau hasilnya.",
       "resolved": "Gangguan pada {component} yang dimulai {from} sudah teratasi."
     }
+  },
+  "legalForm": {
+    "label": "Bentuk usaha",
+    "createHelp": "Menentukan bagan ekuitas yang disiapkan: Modal & Laba Ditahan untuk PT, modal & prive per sekutu untuk CV/Firma, modal & prive pemilik untuk usaha perorangan. Bisa diubah di wisaya penyiapan sebelum bagan akun dibuat.",
+    "options": {
+      "pt": "Perseroan Terbatas (PT)",
+      "pt_perorangan": "PT Perorangan",
+      "cv": "Persekutuan Komanditer (CV)",
+      "firma": "Firma",
+      "perorangan": "Usaha Perorangan (UD)",
+      "lainnya": "Lainnya"
+    },
+    "equityHint": {
+      "retained_earnings": "Ekuitas: Modal dan Laba Ditahan. Tutup buku tahunan memindahkan laba ke Laba Ditahan.",
+      "partners": "Ekuitas: akun Modal dan Prive untuk setiap sekutu. Tutup buku tahunan membagi laba ke modal sekutu menurut porsinya, dan menutup prive ke modal masing-masing.",
+      "sole_owner": "Ekuitas: Modal Pemilik dan Prive Pemilik. Tutup buku tahunan memindahkan laba ke Modal Pemilik dan menutup prive ke modal."
+    },
+    "setupLocked": "Bagan akun perusahaan ini sudah dibuat, jadi bentuk usaha dan sekutunya terkunci di sini. Ubah kemudian lewat Pengaturan → Bentuk usaha.",
+    "ownerName": "Nama pemilik",
+    "ownerHelp": "Dipakai sebagai nama akun Modal Pemilik dan Prive Pemilik di laporan. Boleh dikosongkan — tertulis \"Pemilik\".",
+    "partnersHelpCv": "Isi setiap sekutu, perannya, dan porsi laba sesuai akta. CV membutuhkan sedikitnya satu sekutu aktif dan satu sekutu komanditer; porsi seluruhnya harus 100%.",
+    "partnersHelpFirma": "Isi setiap sekutu dan porsi laba sesuai akta. Firma membutuhkan sedikitnya dua sekutu; porsi seluruhnya harus 100%.",
+    "partnerName": "Pemilik / sekutu",
+    "partnerNameN": "Nama sekutu {n}",
+    "partnerRole": "Peran",
+    "partnerShare": "Porsi laba (%)",
+    "roleOption": {
+      "aktif": "Sekutu aktif",
+      "komanditer": "Sekutu komanditer"
+    },
+    "roleLabel": {
+      "aktif": "sekutu aktif",
+      "komanditer": "sekutu komanditer"
+    },
+    "partnerInactive": "nonaktif",
+    "addPartner": "Tambah sekutu",
+    "removePartner": "Hapus sekutu {name}",
+    "shareTotal": "Jumlah porsi: {total}%",
+    "yearIntroPartners": "Laba dibagi ke modal setiap pemilik/sekutu menurut porsinya (dihitung per sen; sisa pembulatan ke porsi terbesar), lalu prive masing-masing ditutup ke modalnya.",
+    "yearNetIncomePartners": "Laba/rugi yang dibagi ke modal pemilik/sekutu:",
+    "profitShare": "Bagian laba/rugi",
+    "drawingsClosed": "Prive ditutup",
+    "partnerTableTitle": "Rincian Modal per Pemilik",
+    "colOpeningCapital": "Modal awal",
+    "colContributions": "Setoran",
+    "colDrawings": "Prive",
+    "colClosingCapital": "Modal akhir",
+    "panelTitle": "Bentuk usaha",
+    "panelIntro": "Bentuk usaha menentukan ke mana laba dipindahkan saat tutup buku tahunan dan bagaimana Laporan Perubahan Ekuitas dirinci.",
+    "change": "Ganti bentuk usaha",
+    "confirmTitle": "Ganti bentuk usaha?",
+    "changeWarning": "Jurnal dan bagan akun yang sudah ada TIDAK diubah. Yang berubah hanya perlakuan ke depan: tutup buku tahunan berikutnya dan rincian Laporan Perubahan Ekuitas. Untuk CV/Firma/usaha perorangan, isi pemilik/sekutu dan porsinya sesudah ini.",
+    "partnersTitle": "Sekutu dan porsi laba",
+    "ownerTitle": "Pemilik",
+    "noPartnersYet": "Belum ada pemilik/sekutu. Tutup buku tahunan tidak bisa dijalankan sampai daftar ini diisi.",
+    "accountsNote": "Akun modal / prive: {list}. Sekutu baru otomatis mendapat akun Modal dan Prive sendiri.",
+    "inactiveList": "Sekutu nonaktif (riwayatnya tetap di laporan): {list}.",
+    "sharesForwardNote": "Porsi yang diubah berlaku untuk tutup buku berikutnya; tahun yang sudah ditutup tidak berubah.",
+    "savePartners": "Simpan sekutu",
+    "saved": "Bentuk usaha diperbarui.",
+    "partnersSaved": "Daftar sekutu disimpan.",
+    "loadFailed": "Bentuk usaha gagal dimuat.",
+    "saveFailed": "Perubahan gagal disimpan.",
+    "errors": {
+      "partnersRequired": "Isi pemilik/sekutu terlebih dahulu.",
+      "partnersMinTwo": "Persekutuan membutuhkan sedikitnya dua sekutu.",
+      "soleOwnerExactlyOne": "Usaha perorangan hanya punya satu pemilik.",
+      "partnerNameRequired": "Setiap sekutu harus diberi nama.",
+      "partnerNameDuplicate": "Nama sekutu tidak boleh sama.",
+      "partnerShareInvalid": "Porsi laba harus angka antara 0 dan 100%.",
+      "partnerSharesNot100": "Jumlah porsi laba seluruh sekutu harus tepat 100%.",
+      "cvNeedsActive": "CV membutuhkan sedikitnya satu sekutu aktif.",
+      "cvNeedsLimited": "CV membutuhkan sedikitnya satu sekutu komanditer.",
+      "partnerRoleNotAllowed": "Peran aktif/komanditer hanya untuk CV.",
+      "lockedAfterSeed": "Bagan akun sudah dibuat, jadi bentuk usaha tidak bisa diganti dari wisaya. Ganti lewat Pengaturan → Bentuk usaha.",
+      "closeNoPartners": "Belum ada pemilik/sekutu aktif untuk menerima laba. Isi di Pengaturan → Bentuk usaha sebelum menutup tahun buku.",
+      "closeSharesNot100": "Jumlah porsi laba sekutu aktif bukan 100%. Perbaiki di Pengaturan → Bentuk usaha sebelum menutup tahun buku.",
+      "ackRequired": "Baca dan setujui peringatannya sebelum mengganti bentuk usaha.",
+      "partnersNotForThisForm": "Bentuk usaha ini tidak memakai daftar sekutu.",
+      "partnerUnknown": "Sekutu yang diubah tidak ditemukan. Muat ulang halaman.",
+      "partnersIncomplete": "Daftar sekutu tidak lengkap. Muat ulang halaman lalu simpan lagi.",
+      "parentCodeTaken": "Kode akun 3110/3120 sudah dipakai akun yang bukan ekuitas. Atur akun modal sekutu lewat Bagan Akun."
+    }
   }
 }

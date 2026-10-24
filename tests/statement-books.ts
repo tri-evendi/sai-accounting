@@ -34,6 +34,16 @@ export interface Book {
   fiscalYearStart: string | null;
   costCenters: { id: number; code: string; name: string; isActive?: boolean }[];
   accounts: { id: number; code: string; name: string; type: string }[];
+  /** Pemilik/sekutu (bentuk usaha, 24 Okt 2026) — hanya buku CV/Firma/perorangan. */
+  partners?: {
+    name: string;
+    role?: string | null;
+    shareBp: number;
+    isActive?: boolean;
+    capitalAccountId: number;
+    drawingAccountId?: number | null;
+    sortOrder?: number;
+  }[];
   journals: { date: string; type?: string; lines: Line[] }[];
   incomeStatements: { case: string; from: string; to: string; costCenter?: string }[];
   balanceSheets: { case: string; asOf: string }[];
@@ -59,6 +69,7 @@ export function client(book: Book) {
     accounts: book.accounts,
     fiscalYearStart: book.fiscalYearStart ? new Date(book.fiscalYearStart) : undefined,
     costCenters: book.costCenters,
+    partners: book.partners,
     journals: book.journals.map((j) => ({
       date: new Date(j.date),
       type: j.type,

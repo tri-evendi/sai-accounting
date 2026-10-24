@@ -35,7 +35,7 @@ import { getCompanyIdentity } from "../src/lib/company-identity";
 import { isExportable, reportById } from "../src/lib/report-catalog";
 import { reportEngine } from "../src/lib/report-engine";
 import { buildReportPayload } from "../src/lib/report-payload";
-import { buildReportSheet } from "../src/lib/report-export";
+import { buildReportSheets } from "../src/lib/report-export";
 import { buildWorkbookBuffer } from "../src/lib/xlsx";
 import { goExportPayloadShape } from "../src/lib/report-export-go";
 import { compareWorkbookContent } from "../src/lib/xlsx-content-parity";
@@ -78,7 +78,7 @@ async function main() {
           const ts = await runWithCompany(context, () =>
             readOnlyBook(async (tx) => {
               const payload = await buildReportPayload(def, params, tx as never);
-              const buf = await buildWorkbookBuffer([buildReportSheet(payload)], await getCompanyIdentity(tx));
+              const buf = await buildWorkbookBuffer(buildReportSheets(payload), await getCompanyIdentity(tx));
               return new Uint8Array(buf);
             })
           );

@@ -134,7 +134,7 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
   it("rute ekspor membaca register SEBELUM merakit lembar TS", () => {
     const route = baca("src", "app", "api", "reports", "export", "route.ts");
     const tanya = route.indexOf("reportEngine(");
-    const rakit = route.indexOf("buildReportSheet(payload)");
+    const rakit = route.indexOf("buildReportSheets(payload)");
     expect(tanya, "rute ekspor tidak membaca register").toBeGreaterThan(-1);
     expect(rakit).toBeGreaterThan(-1);
     expect(tanya, "register dibaca SESUDAH lembar TS dirakit").toBeLessThan(rakit);

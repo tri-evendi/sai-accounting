@@ -7,6 +7,7 @@ import {
   closeYear,
   FiscalYearNotEndedError,
   NothingToCloseError,
+  PartnersNotReadyError,
   previewYearClose,
   reverseYearClose,
 } from "@/lib/year-close-service";
@@ -18,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { yearCloseSchema } from "@/lib/validations/period";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
+import { getCompanyLegalForm } from "@/lib/legal-form-server";
 
 /**
  * TUTUP BUKU TAHUNAN (issue #555) — pintunya.
@@ -50,8 +52,11 @@ export async function GET(request: Request) {
 
   const { year } = parsed.data;
   try {
+    /* Bentuk usaha memilih ke mana laba pergi (Laba Ditahan, atau modal para
+       sekutu/pemilik) — dibaca dari registry pada SETIAP permintaan. */
+    const legalForm = await getCompanyLegalForm();
     const [plan, existing, setting] = await Promise.all([
-      previewYearClose(year),
+      previewYearClose(year, undefined, legalForm),
       prisma.yearClose.findUnique({ where: { year } }),
       prisma.companySetting.findFirst({ select: { fiscalYearStart: true } }),
     ]);
@@ -67,6 +72,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       year,
+      legalForm,
       plan,
       ended,
       endsAt,
@@ -91,7 +97,8 @@ export async function POST(request: Request) {
 
   const { year } = parsed.data;
   try {
-    const run = await closeYear(year, Number(result.session.user.id));
+    const legalForm = await getCompanyLegalForm();
+    const run = await closeYear(year, Number(result.session.user.id), undefined, legalForm);
 
     /* Jejaknya menyebut LABA yang dipindahkan dan jurnalnya, bukan sekadar
        "tahun ditutup". Angka itu yang ditanyakan orang setahun kemudian. */
@@ -106,6 +113,10 @@ export async function POST(request: Request) {
         netIncome: run.plan.netIncome,
         closedAccounts: run.plan.closedAccounts,
         journalId: run.journalId,
+        legalForm,
+        /* CV/Firma/perorangan: bagian laba & prive per pemilik — porsi yang
+           DIPAKAI saat itu, sebab porsi di Pengaturan bisa berubah kemudian. */
+        ...(run.plan.allocations ? { allocations: run.plan.allocations } : {}),
       },
     });
 
@@ -184,6 +195,16 @@ async function knownError(e: unknown) {
              dan `businessISODate` memberi hari berikutnya di host berzona UTC. */
           date: toISODate(e.endsAt),
         }),
+      },
+      { status: 409 }
+    );
+  }
+  /* CV/Firma/perorangan tanpa pemilik/sekutu aktif, atau porsinya bukan 100%:
+     laba tidak punya tujuan yang sah. Kalimatnya menunjuk Pengaturan. */
+  if (e instanceof PartnersNotReadyError) {
+    return NextResponse.json(
+      {
+        error: t(e.reason === "missing" ? "legalForm.errors.closeNoPartners" : "legalForm.errors.closeSharesNot100"),
       },
       { status: 409 }
     );

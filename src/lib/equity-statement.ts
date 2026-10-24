@@ -51,7 +51,53 @@ export interface EquityComponentRow {
   closing: number;
 }
 
+/**
+ * Satu pemilik/sekutu (bentuk usaha, 24 Okt 2026) — angka GABUNGAN akun Modal
+ * dan Prive miliknya, semua POSITIF-DEBIT kecuali `opening`.
+ *
+ * Gabungan, bukan per akun: tutup buku memindahkan prive ke modal (D Modal,
+ * K Prive), dan dua baris itu saling meniadakan pada gabungannya — sehingga
+ * mutasi JURNAL PENUTUP atas gabungan Modal+Prive adalah TEPAT bagian laba
+ * sekutu itu, tanpa perlu membedakan baris laba dari baris prive.
+ */
+export interface EquityPartnerInput {
+  name: string;
+  role: string | null;
+  shareBp: number;
+  isActive: boolean;
+  /** Saldo awal Modal + Prive, TANDA AKUNTANSI (kredit positif). */
+  opening: number;
+  /** Mutasi selama periode dari jurnal BUKAN penutup. */
+  periodDebit: number;
+  periodCredit: number;
+  /** Mutasi selama periode dari jurnal PENUTUP (bagian laba ± prive yang ditutup). */
+  closingDebit: number;
+  closingCredit: number;
+}
+
+/** Satu baris rincian per pemilik/sekutu. Tanda akuntansi. */
+export interface EquityPartnerRow {
+  name: string;
+  role: string | null;
+  shareBp: number;
+  isActive: boolean;
+  /** Modal awal (Modal + Prive pada awal periode). */
+  opening: number;
+  /** Bagian laba (positif) / rugi (negatif) yang ditutup ke modalnya. */
+  profitShare: number;
+  /** Setoran modal selama periode. Selalu ≥ 0. */
+  contributions: number;
+  /** Prive / penarikan selama periode. Selalu ≥ 0. */
+  drawings: number;
+  closing: number;
+}
+
 export interface EquityStatementInput {
+  /**
+   * Pemilik/sekutu (CV, Firma, usaha perorangan). Kosong/tidak disebut untuk
+   * PT — keluaran PT tidak berubah sedikit pun (paritas Go dijaga).
+   */
+  partners?: readonly EquityPartnerInput[];
   components: readonly EquityComponentInput[];
   /** Laba BELUM DITUTUP pada awal periode (tanda akuntansi: laba positif). */
   openingUnclosedIncome: number;
@@ -72,6 +118,45 @@ export interface EquityStatement {
   unclosedIncome: { opening: number; movement: number; closing: number };
   totalOpening: number;
   totalClosing: number;
+  /**
+   * Rincian per pemilik/sekutu — RINGKASAN tambahan atas akun Modal & Prive
+   * yang sudah ada di `components`, bukan komponen baru: tidak ikut total.
+   * Kosong untuk PT.
+   */
+  partners: EquityPartnerRow[];
+}
+
+/**
+ * Rincian per pemilik/sekutu.
+ *
+ *   modal akhir = modal awal + bagian laba + setoran − prive
+ *
+ * `bagian laba` = mutasi bersih jurnal PENUTUP atas Modal+Prive (lihat
+ * `EquityPartnerInput`); `setoran`/`prive` = kredit/debit jurnal lainnya.
+ * Sekutu tanpa saldo dan tanpa gerak dilewati — aturan yang sama dengan
+ * komponen.
+ */
+export function buildEquityPartners(partners: readonly EquityPartnerInput[]): EquityPartnerRow[] {
+  const rows: EquityPartnerRow[] = [];
+  for (const p of partners) {
+    const opening = round2(p.opening);
+    const profitShare = round2(p.closingCredit - p.closingDebit) + 0;
+    const contributions = round2(p.periodCredit);
+    const drawings = round2(p.periodDebit);
+    if (opening === 0 && profitShare === 0 && contributions === 0 && drawings === 0) continue;
+    rows.push({
+      name: p.name,
+      role: p.role,
+      shareBp: p.shareBp,
+      isActive: p.isActive,
+      opening,
+      profitShare,
+      contributions,
+      drawings,
+      closing: round2(opening + profitShare + contributions - drawings),
+    });
+  }
+  return rows;
 }
 
 /**
@@ -123,6 +208,7 @@ export function buildEquityStatement(input: EquityStatementInput): EquityStateme
     unclosedIncome,
     totalOpening: round2(totalOpening + opening),
     totalClosing: round2(totalClosing + closing),
+    partners: buildEquityPartners(input.partners ?? []),
   };
 }
 

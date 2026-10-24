@@ -43,7 +43,7 @@ import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { reportById, resolvePeriod } from "@/lib/report-catalog";
 import { equityChangesPayload } from "@/lib/report-payload";
-import { equityStatementLayout } from "@/lib/statement-layout";
+import { equityPartnerLayout, equityStatementLayout } from "@/lib/statement-layout";
 import { formatDate } from "@sai/core/utils";
 import { getT } from "@sai/platform/i18n/server";
 
@@ -60,6 +60,17 @@ interface EquityRow {
   opening: number;
   additions: number;
   reductions: number;
+  closing: number;
+}
+
+/** Satu baris rincian modal per pemilik/sekutu (bentuk usaha, 24 Okt 2026). */
+interface PartnerRow {
+  key: string;
+  label: string;
+  opening: number;
+  profitShare: number;
+  contributions: number;
+  drawings: number;
   closing: number;
 }
 
@@ -143,6 +154,62 @@ export default async function EquityChangesReportPage({
     money("closing", t("reports.colClosing")),
   ];
 
+  /*
+   * Rincian modal per pemilik/sekutu — CV, Firma, usaha perorangan. Bentuknya
+   * milik `equityPartnerLayout()` (label kamus untuk peran); PT tidak punya
+   * baris sehingga tabel kedua ini tidak dirender sama sekali.
+   */
+  const partnerLayout = equityPartnerLayout(payload.partners, {
+    title: t("legalForm.partnerTableTitle"),
+    sheetName: t("legalForm.partnerTableTitle"),
+    total: t("common.total"),
+    roleAktif: t("legalForm.roleLabel.aktif"),
+    roleKomanditer: t("legalForm.roleLabel.komanditer"),
+    inactive: t("legalForm.partnerInactive"),
+  });
+  const partnerTotal = partnerLayout.at(-1);
+  const partnerRows: PartnerRow[] = partnerLayout.slice(0, -1).map((r, i) => ({
+    key: String(i),
+    label: r.label,
+    opening: r.opening,
+    profitShare: r.profitShare,
+    contributions: r.contributions,
+    drawings: r.drawings,
+    closing: r.closing,
+  }));
+  const partnerMoney = (
+    id: "opening" | "profitShare" | "contributions" | "drawings" | "closing",
+    title: string
+  ) => moneyColumn<PartnerRow>({ dataIndex: id, title, currency: () => "IDR" });
+  const partnerColumns: SaiColumns<PartnerRow> = [
+    {
+      key: "partner",
+      title: t("legalForm.partnerName"),
+      align: "left",
+      card: "title",
+      render: (_v, r) => r.label,
+    },
+    partnerMoney("opening", t("legalForm.colOpeningCapital")),
+    partnerMoney("profitShare", t("legalForm.profitShare")),
+    partnerMoney("contributions", t("legalForm.colContributions")),
+    partnerMoney("drawings", t("legalForm.colDrawings")),
+    partnerMoney("closing", t("legalForm.colClosingCapital")),
+  ];
+  const partnerSummary: SummaryRow[] = partnerTotal
+    ? [
+        {
+          cells: {
+            partner: { content: partnerTotal.label, scope: "row" },
+            opening: <Money value={partnerTotal.opening} currency="IDR" />,
+            profitShare: <Money value={partnerTotal.profitShare} currency="IDR" />,
+            contributions: <Money value={partnerTotal.contributions} currency="IDR" />,
+            drawings: <Money value={partnerTotal.drawings} currency="IDR" />,
+            closing: <Money value={partnerTotal.closing} currency="IDR" />,
+          },
+        },
+      ]
+    : [];
+
   /* Baris total ADA, dan itu inti halaman ini: `totalClosing` yang bisa
      dibandingkan mata dengan Total Ekuitas di Neraca pada tanggal yang sama. */
   const summary: SummaryRow[] = [
@@ -202,6 +269,21 @@ export default async function EquityChangesReportPage({
           }
         />
       </Card>
+
+      {partnerRows.length > 0 && (
+        <Card style={{ marginTop: "var(--ant-margin-lg)" }}>
+          <h2 style={{ fontSize: "var(--ant-font-size-lg)", margin: "0 0 var(--ant-margin-sm)" }}>
+            {t("legalForm.partnerTableTitle")}
+          </h2>
+          <StaticTable<PartnerRow>
+            cards
+            columns={partnerColumns}
+            rows={partnerRows}
+            rowKey={(r) => r.key}
+            summary={partnerSummary}
+          />
+        </Card>
+      )}
 
       {/* Kalimat rekonsiliasi tetap tampil DI BAWAH tabel, bukan hanya pada
           keadaan kosong: ia janji laporan ini kepada pembacanya, dan justru

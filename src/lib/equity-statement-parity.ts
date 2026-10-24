@@ -30,6 +30,18 @@ export interface GoEquityStatement {
   totalOpening: Money;
   totalClosing: Money;
   unknownTypes: string[];
+  /** Bentuk usaha (24 Okt 2026). `omitempty` di Go: TIDAK ADA untuk buku PT. */
+  partners?: {
+    name: string;
+    role: string | null;
+    shareBp: number;
+    isActive: boolean;
+    opening: Money;
+    profitShare: Money;
+    contributions: Money;
+    drawings: Money;
+    closing: Money;
+  }[];
 }
 
 /** Daftar selisih Laporan Perubahan Ekuitas; kosong = setara. */
@@ -46,6 +58,24 @@ export function compareEquityStatement(ts: EquityStatement, go: GoEquityStatemen
   compareAmount(diffs, "laba belum ditutup akhir", ts.unclosedIncome.closing, go.unclosedIncome.closing);
   compareAmount(diffs, "total awal", ts.totalOpening, go.totalOpening);
   compareAmount(diffs, "total akhir", ts.totalClosing, go.totalClosing);
+
+  /* Rincian per pemilik/sekutu — URUTAN, identitas, dan kelima besaran. Buku PT:
+     kosong di TS, tidak ada di Go (`omitempty`), keduanya setara. */
+  const goPartners = go.partners ?? [];
+  if (ts.partners.length !== goPartners.length) {
+    diffs.push(`pemilik/sekutu: TS ${ts.partners.length} baris ⇄ Go ${goPartners.length} baris`);
+  } else {
+    ts.partners.forEach((t, i) => {
+      const g = goPartners[i]!;
+      const label = `pemilik #${i + 1} ${t.name}`;
+      for (const f of ["name", "role", "shareBp", "isActive"] as const) {
+        if (t[f] !== g[f]) diffs.push(`${label}: ${f} TS ${JSON.stringify(t[f])} ⇄ Go ${JSON.stringify(g[f])}`);
+      }
+      for (const f of ["opening", "profitShare", "contributions", "drawings", "closing"] as const) {
+        compareAmount(diffs, `${label} ${f}`, t[f], g[f]);
+      }
+    });
+  }
   /* Arah gerak laba belum ditutup memutuskan KOLOM yang memikulnya di layar
      (tambah bila > 0, kurang bila < 0). Float TS yang impas bisa jatuh ke
      ±0,0000001 — itu temuan tentang sisi TS, dan ia terlihat di sini. */

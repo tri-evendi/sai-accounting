@@ -29,6 +29,10 @@ import {
   cashFlowPrintAmount,
   cashFlowReconciliationNote,
   equityStatementLayout,
+  equityPartnerLayout,
+  EQUITY_PARTNER_COLUMNS,
+  EQUITY_PARTNER_HEADERS,
+  EQUITY_PARTNER_PRINT_LABELS,
   partyRecapColumns,
   splitBalanceSheetRows,
   splitIncomeStatementRows,
@@ -394,6 +398,21 @@ export type StatementPayload =
       unclosedIncome: { opening: number; movement: number; closing: number };
       totalOpening: number;
       totalClosing: number;
+      /**
+       * Rincian per pemilik/sekutu (bentuk usaha, 24 Okt 2026) — HANYA ada bila
+       * tidak kosong, jadi muatan PT tidak berubah satu kunci pun.
+       */
+      partners?: {
+        name: string;
+        role: string | null;
+        shareBp: number;
+        isActive: boolean;
+        opening: number;
+        profitShare: number;
+        contributions: number;
+        drawings: number;
+        closing: number;
+      }[];
     };
 
 /*
@@ -520,6 +539,25 @@ export function equityStatementPrintRows(
     r.reductions === null ? "" : rp(r.reductions),
     rp(r.closing),
   ]);
+  return { body: rows.slice(0, -1), foot: rows[rows.length - 1] };
+}
+
+/**
+ * Tabel rincian modal per pemilik/sekutu sebagai teks, atau `null` bila
+ * muatannya tidak membawa pemilik (PT). Bentuknya milik `equityPartnerLayout()`.
+ */
+export function equityPartnerPrintRows(
+  payload: Extract<StatementPayload, { kind: "equity-changes" }>
+): { body: string[][]; foot: string[] } | null {
+  const rows = equityPartnerLayout(payload.partners).map((r) => [
+    r.label,
+    rp(r.opening),
+    rp(r.profitShare),
+    rp(r.contributions),
+    rp(r.drawings),
+    rp(r.closing),
+  ]);
+  if (rows.length === 0) return null;
   return { body: rows.slice(0, -1), foot: rows[rows.length - 1] };
 }
 
@@ -1139,6 +1177,32 @@ export function generateStatementPDF(payload: StatementPayload, company: PdfComp
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.text(EQUITY_STATEMENT_PRINT_LABELS.note, 14, afterTable(doc) + 6);
+
+    /* Bentuk usaha (24 Okt 2026): rincian modal per pemilik/sekutu — tabel
+       kedua, hanya bila ada. PT tidak punya baris, jadi PDF-nya tidak berubah. */
+    const partner = equityPartnerPrintRows(payload);
+    if (partner) {
+      const top = afterTable(doc) + 14;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(EQUITY_PARTNER_PRINT_LABELS.title, 14, top);
+      autoTable(doc, {
+        startY: top + 3,
+        head: [EQUITY_PARTNER_COLUMNS.map((c) => EQUITY_PARTNER_HEADERS[c])],
+        body: partner.body,
+        foot: [partner.foot],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: BRAND },
+        footStyles: { fillColor: [241, 245, 249], textColor: 20, fontStyle: "bold" },
+        columnStyles: {
+          1: { halign: "right" },
+          2: { halign: "right" },
+          3: { halign: "right" },
+          4: { halign: "right" },
+          5: { halign: "right" },
+        },
+      });
+    }
   }
 
   if (payload.kind === "cash-flow") {

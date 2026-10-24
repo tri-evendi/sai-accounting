@@ -408,5 +408,80 @@
     ],
     "incomeStatements": [],
     "balanceSheets": []
+  },
+  {
+    "name": "buku-cv",
+    "companyName": "CV Tiga \"Sekutu\" & Rekan",
+    "printedAt": "2026-04-01T02:03:04Z",
+    "fiscalYearStart": "2024-12-31T17:00:00.000Z",
+    "costCenters": [],
+    "accounts": [
+      { "id": 1, "code": "1101", "name": "Kas", "type": "cash_bank" },
+      { "id": 2, "code": "3101", "name": "Modal Belum Dibagi", "type": "equity" },
+      { "id": 3, "code": "3110", "name": "Modal Sekutu", "type": "equity" },
+      { "id": 4, "code": "311001", "name": "Modal Andi", "type": "equity" },
+      { "id": 5, "code": "311002", "name": "Modal Budi", "type": "equity" },
+      { "id": 6, "code": "311003", "name": "Modal Citra", "type": "equity" },
+      { "id": 7, "code": "311004", "name": "Modal Dedi", "type": "equity" },
+      { "id": 8, "code": "3120", "name": "Prive Sekutu", "type": "equity" },
+      { "id": 9, "code": "312001", "name": "Prive Andi", "type": "equity" },
+      { "id": 10, "code": "312002", "name": "Prive Budi", "type": "equity" },
+      { "id": 11, "code": "312003", "name": "Prive Citra", "type": "equity" },
+      { "id": 12, "code": "312004", "name": "Prive Dedi", "type": "equity" },
+      { "id": 13, "code": "4101", "name": "Penjualan", "type": "revenue" },
+      { "id": 14, "code": "6101", "name": "Beban Operasional", "type": "expense" }
+    ],
+    "partners": [
+      { "name": "Citra", "role": "komanditer", "shareBp": 1667, "capitalAccountId": 6, "drawingAccountId": 11, "sortOrder": 2 },
+      { "name": "Andi", "role": "aktif", "shareBp": 5000, "capitalAccountId": 4, "drawingAccountId": 9, "sortOrder": 0 },
+      { "name": "Budi", "role": "komanditer", "shareBp": 3333, "capitalAccountId": 5, "drawingAccountId": 10, "sortOrder": 1 },
+      { "name": "Dedi", "role": "komanditer", "shareBp": 0, "isActive": false, "capitalAccountId": 7, "drawingAccountId": 12, "sortOrder": 3 }
+    ],
+    "journals": [
+      { "date": "2025-01-02T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "100000000" },
+        { "accountId": 4, "credit": "50000000" },
+        { "accountId": 5, "credit": "30000000" },
+        { "accountId": 6, "credit": "20000000" } ] },
+      { "date": "2025-03-15T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "10000000.01" },
+        { "accountId": 13, "credit": "10000000.01" } ] },
+      { "date": "2025-06-30T03:00:00.000Z", "lines": [
+        { "accountId": 14, "debit": "2500000" },
+        { "accountId": 1, "credit": "2500000" } ] },
+      { "date": "2025-08-01T03:00:00.000Z", "lines": [
+        { "accountId": 9, "debit": "1000000" },
+        { "accountId": 10, "debit": "500000" },
+        { "accountId": 1, "credit": "1500000" } ] },
+      { "date": "2025-12-31T16:59:59.999Z", "type": "closing", "lines": [
+        { "accountId": 13, "debit": "10000000.01" },
+        { "accountId": 14, "credit": "2500000" },
+        { "accountId": 4, "credit": "3750000.01" },
+        { "accountId": 5, "credit": "2499750" },
+        { "accountId": 6, "credit": "1250250" },
+        { "accountId": 4, "debit": "1000000" },
+        { "accountId": 9, "credit": "1000000" },
+        { "accountId": 5, "debit": "500000" },
+        { "accountId": 10, "credit": "500000" } ] },
+      { "date": "2026-02-01T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "5000000" },
+        { "accountId": 6, "credit": "5000000" } ] },
+      { "date": "2026-02-10T03:00:00.000Z", "lines": [
+        { "accountId": 9, "debit": "200000" },
+        { "accountId": 1, "credit": "200000" } ] },
+      { "date": "2026-03-01T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "1000000" },
+        { "accountId": 13, "credit": "1000000" } ] }
+    ],
+    "cashFlows": [
+      { "case": "arus-kas-cv-2025", "from": "2025-01-01", "to": "2025-12-31" }
+    ],
+    "equityStatements": [
+      { "case": "ekuitas-cv-2025", "from": "2025-01-01", "to": "2025-12-31" },
+      { "case": "ekuitas-cv-q1-2026", "from": "2026-01-01", "to": "2026-03-31" },
+      { "case": "ekuitas-cv-lintas-tutup", "from": "2025-07-01", "to": "2026-03-31" }
+    ],
+    "incomeStatements": [],
+    "balanceSheets": []
   }
 ]

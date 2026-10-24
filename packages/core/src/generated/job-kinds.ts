@@ -102,12 +102,28 @@ export interface JobLaneAlarm {
   samples: number;
 }
 
+/**
+ * SLO durasi satu jalur (09 §11, TATA-KELOLA §2) — SASARAN yang disahkan,
+ * bukan ambang turunan data: tidak menuntut sampel untuk ADA, tetapi vonisnya
+ * menuntut sampel (`sloVerdict` di `@sai/core/queue-health`).
+ */
+export interface JobLaneSlo {
+  /** p95 `started_at → finished_at` wajib di bawah angka ini. */
+  durationP95Ms: number;
+  /** Jendela sasaran yang disahkan (hari bergulir). */
+  windowDays: number;
+  /** Tanggal pengesahan, YYYY-MM-DD. */
+  decided: string;
+}
+
 export interface JobLaneSpec {
   /** Lebih dari satu proses jalur ini adalah kesalahan konfigurasi. */
   singleInstance: boolean;
   /** Pagar memori per pekerjaan, MiB heap; 0 = tanpa pagar. */
   memoryFenceMiB: number;
   alarm: JobLaneAlarm;
+  /** SLO durasi yang disahkan pemilik (TATA-KELOLA §2); `null` = jalur tanpa janji. */
+  slo: JobLaneSlo | null;
 }
 
 export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
@@ -115,36 +131,43 @@ export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
     singleInstance: false,
     memoryFenceMiB: 512,
     alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+    slo: null,
   },
   integration: {
     singleInstance: false,
     memoryFenceMiB: 0,
     alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+    slo: null,
   },
   interactive: {
     singleInstance: false,
     memoryFenceMiB: 0,
     alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+    slo: { durationP95Ms: 10000, windowDays: 30, decided: "2026-10-24" },
   },
   ledger: {
     singleInstance: true,
     memoryFenceMiB: 0,
     alarm: { queueAgeWarnSeconds: 120, queueAgeLateSeconds: 300, durationP95WarnMs: 10000, measured: true, samples: 992 },
+    slo: null,
   },
   schedule: {
     singleInstance: true,
     memoryFenceMiB: 0,
     alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+    slo: null,
   },
   schema: {
     singleInstance: true,
     memoryFenceMiB: 0,
     alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+    slo: null,
   },
   tenant: {
     singleInstance: true,
     memoryFenceMiB: 0,
     alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+    slo: null,
   },
 };
 

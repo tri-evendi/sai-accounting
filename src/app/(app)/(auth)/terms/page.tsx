@@ -126,7 +126,7 @@ export default function TermsPage() {
         <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <h2 style={H2}>1. Layanan</h2>
           <p style={P}>
-            {APP_NAME} adalah layanan pembukuan berlangganan. Setiap perusahaan (PT) yang Anda
+            {APP_NAME} adalah layanan pembukuan berlangganan. Setiap perusahaan yang Anda
             buat mendapat buku yang terpisah penuh dari perusahaan lain.
           </p>
 

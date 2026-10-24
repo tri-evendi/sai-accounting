@@ -175,7 +175,7 @@ func Write(ctx context.Context, w io.Writer, t Tenant, companies []registry.Comp
 			lapor(5 + 90*(i*jumlah+selesai)/(len(companies)*jumlah))
 		}
 		if err := writeCompany(ctx, zw, c, opts, &sum, perTabel); err != nil {
-			return sum, fmt.Errorf("PT %s (%s): %w", c.Slug, c.DatabaseName, err)
+			return sum, fmt.Errorf("perusahaan %s (%s): %w", c.Slug, c.DatabaseName, err)
 		}
 	}
 

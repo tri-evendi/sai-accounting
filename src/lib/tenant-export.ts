@@ -297,7 +297,7 @@ export async function buildTenantExport(
       `Tenant   : ${tenant.name} (${tenant.slug})\r\n` +
       `Dibuat   : ${generatedAt.toISOString()}\r\n` +
       `Perusahaan: ${companies.map((c) => c.slug).join(", ") || "(belum ada)"}\r\n\r\n` +
-      "Setiap folder adalah satu perusahaan (PT); setiap berkas .csv adalah satu\r\n" +
+      "Setiap folder adalah satu perusahaan; setiap berkas .csv adalah satu\r\n" +
       "tabel pembukuannya, apa adanya — dibuka dengan Excel, LibreOffice, atau\r\n" +
       "editor teks; encoding UTF-8 (ber-BOM), pemisah koma, tanggal ISO-8601.\r\n" +
       "Nilai uang tercantum sebagai teks desimal, tidak pernah dibulatkan.\r\n\r\n" +

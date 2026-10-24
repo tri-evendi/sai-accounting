@@ -726,6 +726,12 @@ model SiteSetting {
   /// `TRIAL_RETENTION_DAYS`, lalu 90. Batas 30–3650 ditegakkan kode.
   trialRetentionDays Int? @map("trial_retention_days")
 
+  /// Harga dipajang di situs publik? (migration platform 0013, alur
+  /// demo-first). `null` = TAMPIL — bawaan sebelum kolom ini ada; tanpa env.
+  /// `false` menyembunyikan seksi harga di `/`, tautan "Harga", `/pricing`
+  /// (dialihkan ke halaman kontak), peta situs, dan penawaran JSON-LD.
+  publicPricingVisible Boolean? @map("public_pricing_visible")
+
   /// Nama akun operator yang terakhir menyimpan.
   updatedBy String @map("updated_by") @db.VarChar(100)
 

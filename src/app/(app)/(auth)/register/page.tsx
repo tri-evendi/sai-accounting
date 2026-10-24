@@ -57,6 +57,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@sai/ui/button";
 import { resolveContactChannels, resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
 import { getT } from "@sai/platform/i18n/server";
+import { QUOTE_PARAM } from "@/lib/landing-ask";
 
 import { RegisterForm } from "./register-form";
 
@@ -69,8 +70,17 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default async function RegisterPage() {
-  if (await resolveSelfServeSignupOpen()) return <RegisterForm />;
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  /* `?quote=1` = pengunjung MEMINTA PENAWARAN (harga publik disembunyikan,
+     `quoteContactHref`): layar penawaran dirender walau pendaftaran terbuka.
+     Tanpa parameter perilakunya tidak berubah. */
+  const mintaPenawaran = (await searchParams)[QUOTE_PARAM] !== undefined;
+  const terbuka = await resolveSelfServeSignupOpen();
+  if (terbuka && !mintaPenawaran) return <RegisterForm />;
 
   const t = await getT();
   const kanal = await resolveContactChannels();
@@ -79,7 +89,9 @@ export default async function RegisterPage() {
     <AuthShell
       icon={<UserAddOutlined aria-hidden="true" style={{ fontSize: 24 }} />}
       heading={t("auth.register.closedTitle")}
-      description={t("auth.register.closedBody")}
+      /* Saat terbuka, kalimat "bukan lewat pendaftaran mandiri" tidak benar —
+         kalimat penawarannya sendiri yang dipakai. */
+      description={t(terbuka ? "auth.register.quoteBody" : "auth.register.closedBody")}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin)" }}>
         {/* TIGA LANGKAH — bernomor, sebab yang ditanya orang di titik ini

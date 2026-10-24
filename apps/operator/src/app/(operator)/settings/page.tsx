@@ -40,6 +40,7 @@ import { operatorCan } from "@op/lib/operator/roles";
 import {
   effectiveSetting,
   ppnEnabledFrom,
+  publicPricingVisibleFrom,
   signupOpenFrom,
   siteSettingsForOperator,
   trialAutoDeletionFrom,
@@ -101,6 +102,9 @@ export default async function OperatorSettingsPage() {
        telepon akan ikut menuliskan keputusan gerbang yang tak pernah diambil. */
     selfServeSignup: gateValue(row?.selfServeSignupOpen),
     ppn: gateValue(row?.ppnEnabled),
+    /* Dua keadaan (tanpa env): `null` = tampil, fungsi yang SAMA dengan
+       pembaca halaman publik. */
+    publicPricing: publicPricingVisibleFrom(row) ? ("on" as const) : ("off" as const),
   };
 
   /* Yang BERLAKU bila pilihannya "ikut pengaturan server" — dihitung di sini

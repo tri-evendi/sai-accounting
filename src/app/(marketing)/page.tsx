@@ -67,6 +67,7 @@ import { auth } from "@/lib/auth";
 import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { publicAppUrl } from "@/lib/public-url";
+import { resolvePublicPricingVisible } from "@sai/platform/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Home() {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
+  /* Harga bisa disembunyikan dari konsol (alur demo-first, migration platform
+     0013). Dibaca lewat cache bersinyal yang sama dengan gerbang pendaftaran,
+     dan halaman ini `force-dynamic` — tidak ada ISR yang menahan keadaan lama. */
+  const hargaTampil = await resolvePublicPricingVisible();
 
   return (
     <LandingShell>
@@ -149,7 +154,9 @@ export default async function Home() {
           memakainya, bukan saat ia melihat angkanya. Menjawabnya sesudah harga
           berarti menjawabnya kepada orang yang sudah pergi. */}
       <LandingTrust />
-      <LandingPricing />
+      {/* Tidak dirender sama sekali saat disembunyikan — termasuk penawaran
+          JSON-LD-nya, yang diterbitkan dari dalam komponen ini. */}
+      {hargaTampil && <LandingPricing />}
       {/* FAQ tepat SESUDAH harga: di situlah keberatan muncul — orang sudah
           melihat angkanya dan sedang mencari alasan untuk tidak melanjutkan.
           Menaruhnya sebelum harga berarti menjawab pertanyaan yang belum

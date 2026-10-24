@@ -38,6 +38,11 @@ import { auth } from "@/lib/auth";
 import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { publicAppUrl } from "@/lib/public-url";
+import { quoteContactHref } from "@/lib/landing-ask";
+import {
+  resolvePublicPricingVisible,
+  resolveSelfServeSignupOpen,
+} from "@sai/platform/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +82,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PricingPage() {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
+  /* ══ HARGA DISEMBUNYIKAN (migration platform 0013) ══════════════════════
+     Alamat yang sudah dibagikan tidak boleh menjadi 404 atau kartu kosong:
+     ia dialihkan SEMENTARA (307, `redirect`) ke halaman kontak yang sama
+     dengan tautan "Minta penawaran". Bukan `permanentRedirect` — sakelarnya
+     bisa dinyalakan lagi kapan saja, dan 308 akan diingat peramban. */
+  if (!(await resolvePublicPricingVisible())) {
+    redirect(quoteContactHref(await resolveSelfServeSignupOpen()));
+  }
 
   return (
     <LandingShell>

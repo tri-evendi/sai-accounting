@@ -350,8 +350,12 @@ import { join } from "node:path";
  *   + `components/operator/trial-retention-form` — sakelar hapus otomatis (bawaan
  *     MATI) + masa retensi, konfirmasi ketik-HAPUS. Halaman `/settings` tetap
  *     server; daftar kandidatnya dirender di sana.
+ * 212 → 213 (24 Okt 2026, visibilitas harga publik):
+ *   + `components/operator/plan-visibility-toggle` — sakelar tampil/tersembunyi
+ *     per paket dengan alasan wajib + konfirmasi akibat. Halaman `/plans` tetap
+ *     server; katalognya dibaca di sana dan dioper per baris.
  */
-const AMBANG_KLIEN = 212;
+const AMBANG_KLIEN = 213;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -544,6 +548,8 @@ const KLIEN_TERSAHKAN = [
      dan formulir keluarnya DIOPER dari layout server; berkas itu tidak
      mengimpor satu pun modul autentikasi. */
   "apps/operator/src/components/operator/operator-shell.tsx",
+  /* Sakelar tampil/tersembunyi paket — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/plan-visibility-toggle.tsx",
   /* Pengaturan situs (migration 0016): formulir tiga medan — client karena ia
      memang formulir (RHF + zod, hasil simpan tanpa muat ulang, dialog
      konfirmasi untuk "kembalikan ke pengaturan server"). Halamannya TETAP

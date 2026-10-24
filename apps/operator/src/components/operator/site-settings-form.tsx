@@ -28,6 +28,11 @@
  * NOMINAL yang benar-benar ditagih — termasuk oleh penjadwal di luar Next.
  * Konfirmasinya muncul HANYA bila salah satu gerbang berubah; menyunting nomor
  * WhatsApp tidak perlu melewati dialog tentang pajak.
+ *
+ * Gerbang KETIGA, harga di situs publik (migration platform 0013), justru DUA
+ * keadaan: ia tidak punya env untuk diikuti, dan `null` di kolom sudah berarti
+ * tampil — jadi tidak ada keputusan `.env` yang bisa dirampas. Konfirmasinya
+ * ikut pola yang sama: hanya bila berubah, dan menyebut akibatnya.
  */
 
 import { useState } from "react";
@@ -117,6 +122,15 @@ export function SiteSettingsForm({
       out.push(t("operator.settings.signupConfirm"));
     }
     if (values.ppn !== initial.ppn) out.push(t("operator.settings.ppnConfirm"));
+    if (values.publicPricing !== initial.publicPricing) {
+      out.push(
+        t(
+          values.publicPricing === "on"
+            ? "operator.settings.pricingShowConfirm"
+            : "operator.settings.pricingHideConfirm"
+        )
+      );
+    }
     return out;
   };
 
@@ -255,6 +269,29 @@ export function SiteSettingsForm({
                   <SelectField {...field} options={gateOptions(envGates.ppnEnabled)} />
                 </FormControl>
                 <FormDescription>{t("operator.settings.ppnHint")}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Harga publik (migration platform 0013) — dua keadaan, tanpa env:
+              tidak ada "ikut pengaturan server" untuk ditawarkan. */}
+          <FormField
+            control={form.control}
+            name="publicPricing"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.settings.pricingLabel")}</FormLabel>
+                <FormControl>
+                  <SelectField
+                    {...field}
+                    options={[
+                      { value: "on", label: t("operator.settings.pricingShow") },
+                      { value: "off", label: t("operator.settings.pricingHide") },
+                    ]}
+                  />
+                </FormControl>
+                <FormDescription>{t("operator.settings.pricingHint")}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

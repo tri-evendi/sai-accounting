@@ -39,6 +39,11 @@ import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { APP_NAME } from "@sai/core/constants";
 import { getLocale, getT } from "@sai/platform/i18n/server";
+import { quoteContactHref } from "@/lib/landing-ask";
+import {
+  resolvePublicPricingVisible,
+  resolveSelfServeSignupOpen,
+} from "@sai/platform/site-settings";
 
 /** Tautan kaki: warna sekunder, penuh + bergaris saat hover. */
 const FOOTER_LINK: React.CSSProperties = {
@@ -74,6 +79,10 @@ export async function LandingFooter() {
      memasang `LocaleProvider`, dan dua daun client di bilah bawah ini
      (`LocaleToggle`, `ThemeToggle`) memang tidak boleh menariknya. */
   const locale = await getLocale();
+  /* Harga disembunyikan (migration platform 0013) → tautan kaki menjadi
+     "Minta penawaran", sama persis dengan bilah atas (`landing-nav.tsx`). */
+  const hargaTampil = await resolvePublicPricingVisible();
+  const kontakPenawaran = hargaTampil ? null : quoteContactHref(await resolveSelfServeSignupOpen());
   const year = new Date().getFullYear();
 
   return (
@@ -122,9 +131,15 @@ export async function LandingFooter() {
             <Link href="/#modul" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navModules")}
             </Link>
-            <Link href="/pricing" data-landing-link="" style={FOOTER_LINK}>
-              {t("landing.navPricing")}
-            </Link>
+            {kontakPenawaran === null ? (
+              <Link href="/pricing" data-landing-link="" style={FOOTER_LINK}>
+                {t("landing.navPricing")}
+              </Link>
+            ) : (
+              <Link href={kontakPenawaran} data-landing-link="" style={FOOTER_LINK}>
+                {t("landing.quoteCta")}
+              </Link>
+            )}
             <Link href="/#tanya" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navFaq")}
             </Link>

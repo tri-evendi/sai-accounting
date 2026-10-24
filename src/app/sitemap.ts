@@ -26,17 +26,30 @@ import type { MetadataRoute } from "next";
 
 import { DOC_INDEX, docsPath } from "@/lib/docs";
 import { publicAppUrl } from "@/lib/public-url";
+import { resolvePublicPricingVisible } from "@sai/platform/site-settings";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+/**
+ * Dinamis sejak harga publik bisa disembunyikan (migration platform 0013):
+ * `sitemap.ts` di-cache saat build secara bawaan, dan peta yang dibekukan saat
+ * build akan terus menyebut `/pricing` sesudah operator menyembunyikannya —
+ * menunjuk perayap ke alamat yang hanya mengalihkan.
+ */
+export const dynamic = "force-dynamic";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const asal = publicAppUrl();
   const url = (jalur: string) => new URL(jalur, asal).toString();
+  const hargaTampil = await resolvePublicPricingVisible();
 
   return [
     { url: url("/"), changeFrequency: "monthly", priority: 1 },
     /* `/pricing` (#399) — halaman harga berdiri sendiri; isinya katalog paket
        yang sama dengan seksi harga di `/`, tetapi dengan alamatnya sendiri
-       supaya bisa ditemukan & dibagikan. */
-    { url: url("/pricing"), changeFrequency: "monthly", priority: 0.8 },
+       supaya bisa ditemukan & dibagikan. Tidak disebut saat harga
+       disembunyikan: alamatnya kini hanya mengalihkan ke halaman kontak. */
+    ...(hargaTampil
+      ? [{ url: url("/pricing"), changeFrequency: "monthly" as const, priority: 0.8 }]
+      : []),
     /* `/status` (#374) — alamat yang dicari orang justru ketika aplikasinya
        tidak bisa dibuka, jadi ia harus bisa ditemukan tanpa akun. Halamannya
        sendiri `robots: { index: false }`: yang berguna adalah ALAMATNYA, bukan

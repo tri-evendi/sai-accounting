@@ -73,8 +73,28 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.23.0",
+    tanggal: "2026-10-24",
+    ringkas: "Uji coba kini dimulai dari demo: masa uji coba 30 hari tanpa tagihan, lalu aktivasi lewat penawaran.",
+    butir: [
+      {
+        jenis: "baru",
+        teks: "Masa uji coba 30 hari tanpa tagihan. Saat berakhir, data tetap aman dan bisa dibaca serta diekspor sampai langganan diaktifkan.",
+      },
+      {
+        jenis: "baru",
+        teks: "Tombol \"Minta aktivasi\" menggantikan tombol bayar: tim SAI menghubungi Anda lewat WhatsApp atau email untuk penawaran.",
+      },
+      {
+        jenis: "ubah",
+        teks: "Halaman depan kini mengajak menjadwalkan demo dan meminta penawaran.",
+      },
+    ],
+  },
+  {
     versi: "0.22.2",
     tanggal: "2026-10-24",
+    sha: "996c46e",
     ringkas: "Pembaruan keamanan pada layanan latar; tidak ada perubahan pada tampilan.",
     butir: [
       {

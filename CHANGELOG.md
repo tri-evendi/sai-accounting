@@ -20,7 +20,22 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.22.2 — 2026-10-24 — belum digelar
+## 0.23.0 — 2026-10-24 — belum digelar
+
+Uji coba kini dimulai dari demo: masa uji coba 30 hari tanpa tagihan, lalu aktivasi lewat penawaran.
+
+### Baru
+
+- Masa uji coba 30 hari tanpa tagihan. Saat berakhir, data tetap aman dan bisa dibaca serta diekspor sampai langganan diaktifkan.
+- Tombol "Minta aktivasi" menggantikan tombol bayar: tim SAI menghubungi Anda lewat WhatsApp atau email untuk penawaran.
+
+### Berubah
+
+- Halaman depan kini mengajak menjadwalkan demo dan meminta penawaran.
+
+---
+
+## 0.22.2 — 2026-10-24 (996c46e)
 
 Pembaruan keamanan pada layanan latar; tidak ada perubahan pada tampilan.
 

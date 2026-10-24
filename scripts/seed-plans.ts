@@ -9,12 +9,17 @@
  * yang BELUM ada yang dibuat.
  *
  * ══ SATU PENGECUALIAN: BENDERA KATALOG ═════════════════════════════════════
- * `is_public` / `contact_only` / `is_recommended` (migration platform 0008)
- * dan `trial_days` JUSTRU diselaraskan pada paket yang sudah ada. Keempatnya
- * bukan angka penagihan melainkan keputusan "apa yang dijual dan bagaimana
- * ditampilkan", dan bawaan bendera (`is_public = true`) berarti setiap paket
- * lama — termasuk `internal` milik penyedia — tampil di halaman harga publik
- * sampai ada yang mematikannya. Harga dan kuota tetap tidak pernah disentuh.
+ * `contact_only` / `is_recommended` (migration platform 0008) dan
+ * `trial_days` JUSTRU diselaraskan pada paket yang sudah ada — keputusan
+ * "bagaimana ditampilkan", bukan angka penagihan. Harga dan kuota tetap tidak
+ * pernah disentuh.
+ *
+ * `is_public` DULU ikut diselaraskan; sejak paket bisa disembunyikan/
+ * ditampilkan dari konsol `/plans`, ia hanya dipasang saat paket DIBUAT —
+ * kalau tidak, setiap rilis membatalkan keputusan operator
+ * (`seed-plans-flags.ts`). Pensiun `RETIRED_KEYS` di bawah tetap memaksa
+ * `is_public = false`: itu keputusan produk untuk kunci yang tidak lagi ada di
+ * katalog seed, bukan sinkronisasi.
  *
  * `trial_days` ikut karena lama uji coba hidup di DUA tempat: kolom ini (dibaca
  * `subscription-lifecycle` & `operator/writes`) dan konstanta `TRIAL_DAYS`
@@ -62,6 +67,7 @@ import {
   SIGNUP_MAX_USERS,
   SIGNUP_PLAN_KEY,
 } from "@sai/core/registration";
+import { catalogFlagSync } from "./seed-plans-flags";
 
 const DEFAULT_PLANS = [
   {
@@ -227,28 +233,18 @@ async function main() {
     const existing = await platform.plan.findUnique({ where: { key: plan.key } });
     if (existing) {
       /* HANYA bendera katalog — harga & kuota milik pemasangan, bukan milik
-       * skrip ini (lihat komentar kepala berkas). */
-      const flags = {
-        isPublic: plan.isPublic,
-        contactOnly: "contactOnly" in plan ? plan.contactOnly : false,
-        isRecommended: "isRecommended" in plan ? plan.isRecommended : false,
-        trialDays: plan.trialDays,
-      };
-      const drifted =
-        existing.isPublic !== flags.isPublic ||
-        existing.contactOnly !== flags.contactOnly ||
-        existing.isRecommended !== flags.isRecommended ||
-        existing.trialDays !== flags.trialDays;
-
-      if (!drifted) {
+       * skrip ini; `is_public` milik konsol `/plans` sejak paketnya dibuat
+       * (lihat `seed-plans-flags.ts`). */
+      const flags = catalogFlagSync(existing, plan);
+      if (!flags) {
         console.log(`= paket "${plan.key}" sudah ada — tidak disentuh`);
         continue;
       }
       await platform.plan.update({ where: { key: plan.key }, data: flags });
       console.log(
         `~ paket "${plan.key}" — katalog diselaraskan ` +
-          `(publik=${flags.isPublic}, rundingan=${flags.contactOnly}, disorot=${flags.isRecommended}, ` +
-          `uji coba=${flags.trialDays} hari); harga & kuota tidak disentuh`
+          `(rundingan=${flags.contactOnly}, disorot=${flags.isRecommended}, ` +
+          `uji coba=${flags.trialDays} hari); harga, kuota & tampil/tersembunyi tidak disentuh`
       );
       continue;
     }

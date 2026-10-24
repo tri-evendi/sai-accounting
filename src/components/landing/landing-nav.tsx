@@ -61,8 +61,11 @@ import { ButtonLink } from "@sai/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { APP_NAME } from "@sai/core/constants";
 import { getLocale, getT } from "@sai/platform/i18n/server";
-import { landingAsk } from "@/lib/landing-ask";
-import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
+import { landingAsk, quoteContactHref } from "@/lib/landing-ask";
+import {
+  resolvePublicPricingVisible,
+  resolveSelfServeSignupOpen,
+} from "@sai/platform/site-settings";
 
 /**
  * Tautan seksi: warna sekunder, penuh + bergaris saat hover (aturan hover ada
@@ -145,10 +148,20 @@ export async function LandingNav() {
      `/pricing` ada justru supaya kueri harga punya alamat tujuan;
      tautan navigasi utamanya menuju alamat itu, bukan ke jangkar yang hanya
      ada di `/`. Rute internal ⇒ `<Link>` (navigasi sisi-klien; kedua halaman
-     berbagi root layout pemasaran, jadi ini bukan pemuatan penuh). */
+     berbagi root layout pemasaran, jadi ini bukan pemuatan penuh).
+
+     ══ HARGA DISEMBUNYIKAN (migration platform 0013) ═══════════════════════
+     Operator bisa menyembunyikan harga publik (alur demo-first). Saat itu
+     "Harga" menjadi "Minta penawaran" menuju halaman kontak
+     (`quoteContactHref`) — bukan dihapus: slotnya tetap jalan ke langkah
+     berikutnya, dan `/pricing` sendiri ikut dialihkan ke tujuan yang sama. */
+  const signupOpen = await resolveSelfServeSignupOpen();
+  const hargaTampil = await resolvePublicPricingVisible();
   const links: NavLinkItem[] = [
     { href: "/#modul", label: t("landing.navModules") },
-    { href: "/pricing", label: t("landing.navPricing"), internal: true },
+    hargaTampil
+      ? { href: "/pricing", label: t("landing.navPricing"), internal: true }
+      : { href: quoteContactHref(signupOpen), label: t("landing.quoteCta"), internal: true },
     { href: "/#tanya", label: t("landing.navFaq") },
     { href: "/docs", label: t("landing.navDocs"), internal: true },
   ];

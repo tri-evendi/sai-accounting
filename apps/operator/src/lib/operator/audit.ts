@@ -75,6 +75,13 @@ export type OperatorAuditAction =
    */
   | "operator.settings.trial_retention"
   /**
+   * PAKET TAMPIL/TERSEMBUNYI di katalog publik (`plans.is_public`, halaman
+   * `/plans`). `details` memuat kunci paket, nilai LAMA dan BARU, serta
+   * alasannya — menyembunyikan paket juga menutup jalan swalayan tenant untuk
+   * pindah ke paket itu (`plan-change` menuntut `is_public`).
+   */
+  | "operator.plans.visibility"
+  /**
    * AKUN OPERATOR (migration kendali 0004). `details` memuat nama akun
    * sasaran, peran sebelum/sesudah, dan aktif sebelum/sesudah — TIDAK PERNAH
    * kata sandi atau rahasia TOTP yang diterbitkan (keduanya hanya tampil

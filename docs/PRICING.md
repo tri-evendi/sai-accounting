@@ -47,6 +47,13 @@ datanya hanya punya `max_companies` & `max_users`
 ditambahkan: ia butuh kolom baru, guard baru di ±35 resource izin, dan
 mengingkari kalimat yang sudah dipajang.
 
+**Harga publik bisa disembunyikan** dari konsol `/settings` (alur demo-first,
+migration platform `0013_public_pricing_visible`; bawaan tampil). Kolom
+"Katalog" di tabel atas adalah keadaan SEED: sejak operator bisa
+menampilkan/menyembunyikan paket dari konsol `/plans`, `bun run db:seed:plans`
+hanya memasang `is_public` saat paket DIBUAT dan tidak lagi menimpanya pada
+paket yang sudah ada (`scripts/seed-plans-flags.ts`).
+
 **Alamat halaman harga publik: `/pricing`** (kanonik + sitemap). Alamat lama
 `/harga` (sejak #399, dan tujuan alias `/pricing` sejak #413) kini di-redirect
 permanen (308) ke `/pricing`. Halaman itu memajang harga bulanan dan tahunan

@@ -226,8 +226,27 @@ export const siteSettingsSchema = z.object({
    */
   selfServeSignup: z.enum(["env", "on", "off"]),
   ppn: z.enum(["env", "on", "off"]),
+  /**
+   * Harga di situs publik (migration platform 0013) — DUA keadaan, bukan
+   * tiga: tidak ada env untuk diikuti, dan `null` di kolom sudah berarti
+   * tampil. Menyimpan `on` atas baris `null` karena itu tidak merampas
+   * keputusan siapa pun.
+   */
+  publicPricing: z.enum(["on", "off"]),
 });
 export type SiteSettingsFormInput = z.infer<typeof siteSettingsSchema>;
+
+/**
+ * PAKET TAMPIL / TERSEMBUNYI (`plans.is_public`, halaman `/plans`). Alasan
+ * DIMINTA — berbeda dari pengaturan situs: `is_public` juga membuka/menutup
+ * jalan swalayan tenant pindah paket, jadi ia menyentuh penagihan pelanggan.
+ */
+export const planVisibilitySchema = z.object({
+  planId: z.number().int().positive(),
+  isPublic: z.boolean(),
+  reason: operatorReasonField,
+});
+export type PlanVisibilityFormInput = z.infer<typeof planVisibilitySchema>;
 
 /**
  * RETENSI UJI COBA BEKU (migration platform 0012, alur demo-first).

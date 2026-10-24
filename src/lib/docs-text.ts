@@ -61,6 +61,16 @@ function teksBlok(blok: DocBlock): string {
      */
     case "diagram":
       return blok.keterangan;
+    /*
+     * Tangkapan layar menyumbang teks alternatif DAN keterangannya — dua-duanya
+     * prosa yang ditulis di berkas isi. Piksel di dalam gambarnya tidak: label
+     * tombol yang terekam di sana bukan kalimat yang bisa dicari penyuntingnya.
+     */
+    case "gambar":
+      return [blok.alt, blok.keterangan ?? ""].join(" ").trim();
+    /* Rujukan silang hanya daftar slug; judulnya milik halaman tujuannya. */
+    case "lihat-juga":
+      return "";
     /* Definisi istilah dibaca dari kamus saat render; lihat kepala berkas. */
     case "istilah":
     case "matriks-izin":

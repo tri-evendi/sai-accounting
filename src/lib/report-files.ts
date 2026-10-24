@@ -225,7 +225,7 @@ export async function fetchDocumentPdfBlob(jenis: string, id: number): Promise<B
   const lingkup = parseTenantPath(window.location.pathname);
   if (!lingkup) {
     throw new Error(
-      "alamat ini bukan jalur bertenant — dokumen selalu milik satu PT, dan " +
+      "alamat ini bukan jalur bertenant — dokumen selalu milik satu perusahaan, dan " +
         "alamat cetaknya menuntut sepasang slug (#489)"
     );
   }
@@ -295,7 +295,7 @@ async function tungguHasil(
   const lingkup = parseTenantPath(window.location.pathname);
   if (!lingkup) {
     throw new Error(
-      "alamat ini bukan jalur bertenant — hasil pekerjaan selalu milik satu PT, " +
+      "alamat ini bukan jalur bertenant — hasil pekerjaan selalu milik satu perusahaan, " +
         "dan alamat unduhannya menuntut sepasang slug (#489)"
     );
   }

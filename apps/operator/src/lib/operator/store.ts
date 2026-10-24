@@ -40,6 +40,7 @@ import { runReconciliation, type ReconciliationReport } from "@sai/platform/plat
 import { queueSnapshot } from "@sai/platform/job-queue";
 import { readOutboxRelay, type OutboxRelaySnapshot } from "@sai/platform/outbox-relay-store";
 import { jobMetrics, type LaneMetrics } from "@sai/platform/job-metrics";
+import { jobDurations, type JobDurations } from "@sai/platform/job-durations";
 import { runtimeSummary, type RuntimeSummary } from "@sai/platform/runtime-samples";
 import type { LaneQueueHealth } from "@sai/core/queue-health";
 import {
@@ -773,6 +774,22 @@ export async function jobMetricsForOperator(
     return await deps.metrics();
   } catch (error) {
     console.error("[operator-store] metrik antrean tak terbaca:", error);
+    return null;
+  }
+}
+
+/**
+ * Sebaran durasi jendela harian per jalur & `kind` (09 §11, SLO TATA-KELOLA
+ * §2) — `null` bila tak terbaca, pola yang sama: tabel yang belum dimigrasikan
+ * bukan "tidak ada pekerjaan yang lambat".
+ */
+export async function jobDurationsForOperator(
+  deps: { durations: () => Promise<JobDurations> } = { durations: jobDurations }
+): Promise<JobDurations | null> {
+  try {
+    return await deps.durations();
+  } catch (error) {
+    console.error("[operator-store] sebaran durasi tak terbaca:", error);
     return null;
   }
 }

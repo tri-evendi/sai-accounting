@@ -60,6 +60,7 @@ import {
 import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@op/lib/operator/guard";
 import {
+  jobDurationsForOperator,
   jobMetricsForOperator,
   outboxRelayForOperator,
   queueSnapshotForOperator,
@@ -67,11 +68,17 @@ import {
   schedulerRunsForOperator,
 } from "@op/lib/operator/store";
 import { METRICS_WINDOW_MINUTES, drainMinutes, type LaneMetrics } from "@sai/platform/job-metrics";
+import type { DurationStats } from "@sai/platform/job-durations";
 import {
   QUEUE_AGE_LATE_SECONDS,
   QUEUE_AGE_WARN_SECONDS,
+  SLO_MIN_SAMPLES,
   laneAlarm,
   laneDurationVerdict,
+  laneSlo,
+  sloVerdict,
+  sloWindowDays,
+  type SloVerdict,
   type LaneQueueHealth,
   type QueueHealthStatus,
 } from "@sai/core/queue-health";
@@ -227,6 +234,21 @@ const TRIGGER_KEY: Record<TriggerStatus, string> = {
   insufficient: "operator.scheduler.runtimeVerdictInsufficient",
 };
 
+/* Vonis SLO durasi (TATA-KELOLA §2) — teks ikut lencana, warna bukan sinyal
+   tunggal (MASTER.md). `insufficient` abu-abu, BUKAN hijau: "data belum
+   cukup" bukan "menepati janji". */
+const SLO_KEY: Record<SloVerdict, string> = {
+  within: "operator.scheduler.durationsSloWithin",
+  exceeding: "operator.scheduler.durationsSloExceeding",
+  insufficient: "operator.scheduler.durationsSloInsufficient",
+  unset: "operator.scheduler.durationsSloUnset",
+};
+const SLO_BADGE: Record<SloVerdict, BadgeVariant> = {
+  within: "success",
+  exceeding: "danger",
+  insufficient: "outline",
+  unset: "outline",
+};
 const TRIGGER_BADGE: Record<TriggerStatus, BadgeVariant> = {
   triggered: "warning",
   not_triggered: "success",
@@ -272,13 +294,14 @@ export default async function OperatorSchedulerPage({
   const t = await getT();
   const tab: Tab = resolveConsoleTab((await searchParams).tab, TABS, "summary");
 
-  const [runs, queue, metrics, runtime, builds, outbox] = await Promise.all([
+  const [runs, queue, metrics, runtime, builds, outbox, durations] = await Promise.all([
     tab === "summary" ? schedulerRunsForOperator(10) : null,
     tab === "queue" ? queueSnapshotForOperator() : null,
     tab === "metrics" ? jobMetricsForOperator() : null,
     tab === "versions" ? runtimeSummaryForOperator() : null,
     tab === "versions" ? serviceBuildsForOperator() : null,
     tab === "outbox" ? outboxRelayForOperator() : null,
+    tab === "metrics" ? jobDurationsForOperator() : null,
   ]);
 
   const versionBadge = (verdict: BuildVerdict) => (
@@ -501,6 +524,70 @@ export default async function OperatorSchedulerPage({
       render: (_v, m) => <span style={TABULAR}>{m.samples}</span>,
     },
   ];
+
+  /*
+   * Sebaran durasi jendela harian (09 §11) — SETIAP jalur, Node dan Go, satu
+   * baris gabungan per jalur lalu satu per `kind`. Vonis SLO hanya pada baris
+   * GABUNGAN: SLO-nya pernyataan tentang himpunan pekerjaan jalur ("5% boleh
+   * melampaui"), dan baris `kind` cukup memperlihatkan siapa penyumbangnya.
+   * Ambangnya dibaca dari kontrak (`laneSlo`), tidak diketik di sini.
+   */
+  const durationColumns: SaiColumns<DurationStats> = [
+    {
+      key: "lane",
+      title: t("operator.scheduler.queueColLane"),
+      align: "left",
+      render: (_v, d) =>
+        d.kind === null ? (
+          <strong>{d.lane}</strong>
+        ) : (
+          <span style={{ ...MUTED, paddingLeft: SPACE_XS }}>{d.kind}</span>
+        ),
+    },
+    {
+      key: "samples",
+      title: t("operator.scheduler.metricsColSamples"),
+      align: "right",
+      render: (_v, d) => <span style={TABULAR}>{d.samples}</span>,
+    },
+    { key: "p50", title: t("operator.scheduler.durationsColP50"), align: "right", render: (_v, d) => angkaAtauStrip(d.p50Ms) },
+    { key: "p95", title: t("operator.scheduler.metricsColP95"), align: "right", render: (_v, d) => angkaAtauStrip(d.p95Ms) },
+    { key: "p99", title: t("operator.scheduler.metricsColP99"), align: "right", render: (_v, d) => angkaAtauStrip(d.p99Ms) },
+    { key: "max", title: t("operator.scheduler.durationsColMax"), align: "right", render: (_v, d) => angkaAtauStrip(d.maxMs) },
+    {
+      key: "slo",
+      title: t("operator.scheduler.durationsColSlo"),
+      align: "right",
+      render: (_v, d) => angkaAtauStrip(laneSlo(d.lane)?.durationP95Ms ?? null),
+    },
+    {
+      key: "over",
+      /* Porsi *error budget* yang terpakai: pekerjaan di atas sasaran ÷ sampel. */
+      title: t("operator.scheduler.durationsColOver"),
+      align: "right",
+      render: (_v, d) =>
+        d.overSlo === null || d.samples === 0 ? (
+          angkaAtauStrip(null)
+        ) : (
+          <span style={TABULAR}>
+            {d.overSlo} ({Math.round((d.overSlo / d.samples) * 1000) / 10}%)
+          </span>
+        ),
+    },
+    {
+      key: "verdict",
+      title: t("operator.scheduler.durationsColVerdict"),
+      align: "left",
+      render: (_v, d) => {
+        if (d.kind !== null) return <span style={MUTED}>—</span>;
+        const v = sloVerdict(d.lane, d.p95Ms, d.samples);
+        return (
+          <Badge variant={SLO_BADGE[v]}>{t(SLO_KEY[v] as Parameters<typeof t>[0])}</Badge>
+        );
+      },
+    },
+  ];
+  const sloInteractive = laneSlo("interactive");
 
   /*
    * Panel pemicu 1d (09 §3.3, §9). Jumlah sampel dicetak BERSAMA minimumnya
@@ -838,6 +925,33 @@ export default async function OperatorSchedulerPage({
             <StaticTable columns={metricsColumns} rows={metrics} rowKey={(m) => m.lane} />
             <p style={{ ...MUTED, margin: 0 }}>
               {t("operator.scheduler.metricsNote", { window: METRICS_WINDOW_MINUTES })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
+      <ConsolePanel title={t("operator.scheduler.durationsHeading")}>
+        {durations === null ? (
+          <ConsoleNotice>{t("operator.scheduler.metricsUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <StaticTable
+              columns={durationColumns}
+              rows={durations.rows}
+              rowKey={(d) => `${d.lane}:${d.kind ?? "*"}`}
+            />
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.durationsNote", {
+                window: durations.windowDays,
+                min: SLO_MIN_SAMPLES,
+              })}
+              {sloInteractive !== null &&
+                " " +
+                  t("operator.scheduler.durationsSloNote", {
+                    ms: sloInteractive.durationP95Ms,
+                    target: sloInteractive.windowDays,
+                    window: sloWindowDays(sloInteractive),
+                    decided: sloInteractive.decided,
+                  })}
             </p>
           </div>
         )}

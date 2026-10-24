@@ -32,7 +32,7 @@
  */
 
 import * as kontrak from "./generated/job-numbers";
-import { JOB_LANES, type JobLane, type JobLaneAlarm } from "./generated/job-kinds";
+import { JOB_LANES, type JobLane, type JobLaneAlarm, type JobLaneSlo } from "./generated/job-kinds";
 
 /**
  * Ambang BAWAAN: peringatan pada tujuh menit, bunyi pada sepuluh.
@@ -71,7 +71,7 @@ export function laneAlarm(lane: string): JobLaneAlarm {
   return (JOB_LANES as Record<string, { alarm: JobLaneAlarm } | undefined>)[lane]?.alarm ?? BAWAAN;
 }
 
-export type { JobLane, JobLaneAlarm };
+export type { JobLane, JobLaneAlarm, JobLaneSlo };
 
 export type QueueHealthStatus =
   /** Tidak ada pekerjaan menunggu. Ambang TIDAK berlaku — lihat catatan di atas. */
@@ -178,4 +178,66 @@ export function laneDurationVerdict(lane: string, p95Ms: number | null, samples:
   if (batas === null) return "unset";
   if (p95Ms === null || samples < DURATION_MIN_WINDOW_SAMPLES) return "insufficient";
   return p95Ms > batas ? "slow" : "ok";
+}
+
+/* ═══ SLO DURASI (TATA-KELOLA §2, 09 §11) ═══════════════════════════════════
+ *
+ * BEDANYA DENGAN `laneDurationVerdict` DI ATAS, dan kenapa dua-duanya ada:
+ *
+ *  - `alarm.duration_p95_warn_ms` adalah ambang TURUNAN DATA (10 × p95 teramati,
+ *    ≥ 200 sampel) yang dinilai atas jendela 15 menit — detektor "jalur ini
+ *    sedang melambat SEKARANG". Jalur bervolume kecil (semua jalur Go: belasan
+ *    pekerjaan sehari) tidak pernah punya 10 sampel dalam 15 menit, jadi
+ *    vonisnya selamanya `insufficient`/`unset`.
+ *  - `slo` adalah JANJI yang disahkan pemilik, dinilai atas jendela PANJANG
+ *    (`sloWindowDays`) — pertanyaan "apakah kita menepati janji", yang memang
+ *    harus dijawab dari minggu-minggu terakhir, bukan dari 15 menit.
+ *
+ * Menyatukannya berarti salah satunya dinilai di jendela yang salah.
+ */
+
+/**
+ * Sampel minimum di jendela SLO sebelum vonis "dalam/melampaui" boleh
+ * dijatuhkan. Dua puluh, karena *error budget* SLO-nya 5% pekerjaan: di bawah
+ * 20 sampel, SATU ekspor lambat sudah lebih dari 5% — p95 kemudian adalah
+ * pekerjaan terlambat itu sendiri, bukan sebaran, dan vonisnya berkedip antara
+ * hijau dan merah oleh satu baris. Di bawahnya vonisnya `insufficient`, BUKAN
+ * hijau.
+ */
+export const SLO_MIN_SAMPLES = 20;
+
+/** SLO durasi satu jalur dari kontrak, `null` bila jalur itu tidak punya janji. */
+export function laneSlo(lane: string): JobLaneSlo | null {
+  return (JOB_LANES as Record<string, { slo: JobLaneSlo | null } | undefined>)[lane]?.slo ?? null;
+}
+
+/**
+ * Jendela (hari) yang SUNGGUH bisa dinilai: sasaran yang disahkan, dipotong
+ * retensi baris `done` (`numbers.done_retention_days`). Baris yang sudah
+ * diarsipkan membawa durasinya ikut pergi — melaporkan "30 hari" atas tabel
+ * yang hanya menyimpan 14 adalah klaim yang tidak didukung datanya.
+ */
+export function sloWindowDays(slo: JobLaneSlo): number {
+  return Math.min(slo.windowDays, kontrak.DONE_RETENTION_DAYS);
+}
+
+/**
+ * Vonis SLO satu jalur (atau satu `kind` yang dinilai terhadap SLO jalurnya):
+ *
+ *  - `unset`        — jalur ini tidak punya SLO;
+ *  - `insufficient` — SLO ada, sampel jendela < `SLO_MIN_SAMPLES` ("data belum cukup");
+ *  - `exceeding`    — p95 MELAMPAUI sasaran;
+ *  - `within`       — p95 di bawah atau sama dengan sasaran.
+ *
+ * `p95Ms` WAJIB p95 GABUNGAN atas semua pekerjaan yang dinilai — bukan nilai
+ * tertinggi antar `kind`: SLO-nya "5% pekerjaan boleh melampaui", dan itu
+ * pernyataan tentang himpunan pekerjaannya.
+ */
+export type SloVerdict = "unset" | "insufficient" | "within" | "exceeding";
+
+export function sloVerdict(lane: string, p95Ms: number | null, samples: number): SloVerdict {
+  const slo = laneSlo(lane);
+  if (slo === null) return "unset";
+  if (p95Ms === null || samples < SLO_MIN_SAMPLES) return "insufficient";
+  return p95Ms > slo.durationP95Ms ? "exceeding" : "within";
 }

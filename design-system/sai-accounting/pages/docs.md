@@ -143,7 +143,16 @@ klien mana pun di `src/` yang mengimpor isi dokumentasi).
 - **Blok bangkitan tidak ikut terindeks** pencarian: isinya baru ada saat render,
   dan meratakannya ke indeks berarti menyalin daftar yang justru dibangkitkan
   supaya tidak pernah disalin. Halaman API tetap ditemukan lewat prosanya.
-- **Gambar hanya untuk mekanisme.** "Tanpa tangkapan layar" (keputusan 5 #300)
-  tetap berlaku penuh: aturan itu menyasar gambar tombol, yang berpindah tiap
-  rilis sehingga dokumennya keliru tanpa satu baris pun disunting. Gambar
-  mesin tidak berubah karena tata letak halaman berubah.
+- **Tangkapan layar hanya yang DIBANGKITKAN (direvisi Okt 2026).** Keputusan 5
+  #300 menolak tangkapan layar karena gambar tombol yang dibuat tangan menua
+  diam-diam. Panduan bergambar menerimanya dengan pagar mesin, bukan disiplin:
+  setiap gambar di `public/docs/screenshots/` lahir dari resep di
+  `scripts/docs-screenshots.ts` (`bun run docs:screenshots`, data demo fiktif,
+  1440×900, tema terang, bahasa `id`), dan `tests/docs-screenshots.test.ts`
+  menjaga tiga arah — rujukan ↔ berkas ↔ resep. Blok `gambar` WAJIB ber-`alt`
+  yang berdiri sendiri sebagai kalimat, dimuat malas, lebarnya mengikuti kolom
+  baca, dan bertepi token supaya gambar terang tidak melayang di mode gelap.
+  Gambar MEKANISME (blok `diagram`) tetap dipakai untuk menjelaskan mesinnya;
+  tangkapan layar menyertai langkah-langkahnya, tidak menggantikan alasannya.
+  Skrip penangkap butuh aplikasi yang berjalan dan karena itu bukan bagian
+  `verify`/CI — jalankan ulang setiap kali layar yang tergambar berubah.

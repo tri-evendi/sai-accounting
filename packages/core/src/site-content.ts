@@ -457,6 +457,16 @@ export interface ContentCell {
   draft: string | null | undefined;
 }
 
+/**
+ * Bahasa yang DISUNTING di alur biasa konsol `/content`. Bahasa lain tetap
+ * tersimpan, berdraf, dan terbit per bahasa seperti sebelumnya — layar hanya
+ * melipatnya di balik "Bahasa lain (opsional)" (pemilik tidak mengelola
+ * terjemahan di sana). Di inti, bukan di editor: editornya modul client, dan
+ * konstanta yang diimpor server component dari modul client menjadi rujukan
+ * klien, bukan nilai.
+ */
+export const SITE_CONTENT_PRIMARY_LOCALE: Locale = "id";
+
 export type ContentCellState = "default" | "overridden" | "draft";
 
 export function contentCellState(cell: ContentCell): ContentCellState {

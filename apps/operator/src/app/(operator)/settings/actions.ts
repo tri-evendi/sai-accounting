@@ -34,10 +34,11 @@ import { clientIpFrom } from "@sai/core/operator-plane";
 import {
   saveSiteSettings,
   saveTrialRetention,
+  type SaveSiteSettingsInput,
   siteSettingsForOperator,
   resetSiteSettings,
 } from "@sai/platform/site-settings";
-import { siteSettingsSchema, trialRetentionSchema } from "@op/lib/validations/operator";
+import { siteSettingsSectionSchema, trialRetentionSchema } from "@op/lib/validations/operator";
 
 export interface OperatorSettingsResult {
   ok: boolean;
@@ -69,7 +70,10 @@ export async function operatorSaveSiteSettings(
     return { ok: false, message: t("operator.actions.denied") };
   }
 
-  const parsed = siteSettingsSchema.safeParse(input);
+  /* Satu tab = satu bagian (`siteSettingsSectionSchema`): medan bagian lain
+     yang ikut terkirim dibuang skemanya, jadi tab ini tidak bisa menulis
+     setelan tab lain. */
+  const parsed = siteSettingsSectionSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: t("validation.invalidInput") };
   const data = parsed.data;
 
@@ -86,18 +90,54 @@ export async function operatorSaveSiteSettings(
   const triState = (v: "env" | "on" | "off"): boolean | null =>
     v === "env" ? null : v === "on";
 
-  try {
-    await saveSiteSettings({
+  /* Yang DITULIS dan yang DICATAT per bagian — hanya medan bagian itu; nilai
+     lama DAN baru, sebab gerbang mengubah hal yang dilihat/dibayar orang luar. */
+  let tulis: Omit<SaveSiteSettingsInput, "actor">;
+  let jejak: Record<string, unknown>;
+  switch (data.section) {
+    case "signup":
+      tulis = { selfServeSignupOpen: triState(data.selfServeSignup) };
+      jejak = { signupFrom: lama?.selfServeSignupOpen ?? null, signupTo: tulis.selfServeSignupOpen };
+      break;
+    case "billing":
+      tulis = {
+        ppnEnabled: triState(data.ppn),
+        manualPaymentInstructions: data.manualPaymentInstructions,
+      };
+      jejak = {
+        ppnFrom: lama?.ppnEnabled ?? null,
+        ppnTo: tulis.ppnEnabled,
+        /* Instruksi transfer bisa panjang; yang dicatat PANJANGNYA + apakah ia
+           kini terisi. Isinya sendiri ada di barisnya dan dipajang ke
+           pelanggan, jadi jejak tidak perlu menyalinnya. */
+        paymentInstructionsLength: data.manualPaymentInstructions.length,
+        paymentInstructionsSet: data.manualPaymentInstructions.length > 0,
+      };
+      break;
+    case "pricing":
+      tulis = { publicPricingVisible: data.publicPricing === "on" };
+      /* `null` lama = tampil; dicatat apa adanya supaya "belum pernah
+         disetel" tetap terbaca di jejak. */
+      jejak = {
+        publicPricingFrom: lama?.publicPricingVisible ?? null,
+        publicPricingTo: tulis.publicPricingVisible,
+      };
+      break;
+    case "contact":
       /* Kosong = CABUT kanalnya, bukan "pakai environment" — kedua maksud itu
          punya jalannya masing-masing; lihat kepala `siteSettingsSchema`. */
-      contactWhatsapp: data.contactWhatsapp,
-      contactEmail: data.contactEmail,
-      manualPaymentInstructions: data.manualPaymentInstructions,
-      selfServeSignupOpen: triState(data.selfServeSignup),
-      ppnEnabled: triState(data.ppn),
-      publicPricingVisible: data.publicPricing === "on",
-      actor: session.operator.name,
-    });
+      tulis = { contactWhatsapp: data.contactWhatsapp, contactEmail: data.contactEmail };
+      jejak = {
+        whatsappFrom: lama?.contactWhatsapp ?? null,
+        whatsappTo: data.contactWhatsapp,
+        emailFrom: lama?.contactEmail ?? null,
+        emailTo: data.contactEmail,
+      };
+      break;
+  }
+
+  try {
+    await saveSiteSettings({ ...tulis, actor: session.operator.name });
   } catch (error) {
     /* Platform mati: setelan tidak tersimpan, TETAPI halaman publik tetap
        memakai nilai environment — itu yang dikatakan kalimatnya, bukan "500". */
@@ -109,29 +149,7 @@ export async function operatorSaveSiteSettings(
     operator: session.operator.name,
     action: "operator.settings.update",
     ipAddress: clientIpFrom(await headers()),
-    details: {
-      whatsappFrom: lama?.contactWhatsapp ?? null,
-      whatsappTo: data.contactWhatsapp,
-      emailFrom: lama?.contactEmail ?? null,
-      emailTo: data.contactEmail,
-      /* Instruksi transfer bisa panjang; yang dicatat PANJANGNYA + apakah ia
-         kini terisi. Isinya sendiri ada di barisnya dan dipajang ke pelanggan,
-         jadi jejak tidak perlu menyalinnya. */
-      paymentInstructionsLength: data.manualPaymentInstructions.length,
-      paymentInstructionsSet: data.manualPaymentInstructions.length > 0,
-      previousRowExisted: lama !== null,
-      /* DUA GERBANG — nilai lama DAN baru, sebab keduanya mengubah hal yang
-         dilihat/dibayar orang luar: yang pertama membuka corong komersial,
-         yang kedua mengubah NOMINAL yang ditagih. */
-      signupFrom: lama?.selfServeSignupOpen ?? null,
-      signupTo: triState(data.selfServeSignup),
-      ppnFrom: lama?.ppnEnabled ?? null,
-      ppnTo: triState(data.ppn),
-      /* Harga publik (migration platform 0013): `null` lama = tampil. Dicatat
-         apa adanya supaya "belum pernah disetel" tetap terbaca di jejak. */
-      publicPricingFrom: lama?.publicPricingVisible ?? null,
-      publicPricingTo: data.publicPricing === "on",
-    },
+    details: { section: data.section, previousRowExisted: lama !== null, ...jejak },
   });
 
   segarkanPermukaan();

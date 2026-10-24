@@ -88,6 +88,20 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
 - **Saringan & pilihan lewat form GET,** tidak lewat state client: hasilnya URL
   yang bisa disalin ke tiket dukungan, tanpa JS tambahan. Berlaku untuk
   daftar tenant dan pemilih bahasa/bagian di konsol `/content`.
+- **Halaman panjang dibagi TAB di URL** — satu komponen, `ConsoleTabs`
+  (`components/operator/console-tabs.tsx`, server component; aturan alamat di
+  `lib/operator/console-tabs.ts`). Tab aktif = `?tab=<id>` (tab bawaan tanpa
+  parameter; nilai tak dikenal → bawaan), jadi tautan, tombol Kembali, muat
+  ulang, dan baris "perlu perhatian" menunjuk tab yang tepat. Tautan biasa
+  dengan `aria-current="page"`, bukan `Tabs` AntD: server HANYA membaca data
+  tab aktif, bukan merender semua panel lalu menyembunyikannya. Lencana angka
+  per tab dari data yang sudah ada (mis. permintaan aktivasi terbuka). Di layar
+  sempit barisnya bergulir mendatar. Dipakai: `/tenants` (tab status di atas
+  `?status=` yang sudah ada; `status=activation` = Minta aktivasi),
+  `/tenants/[id]` (Ringkasan · Langganan & tagihan · Perusahaan & pengguna ·
+  Jejak audit), `/settings` (Pendaftaran & uji coba · Tagihan & PPN · Harga
+  publik · Kontak · Retensi — tiap tab menyimpan medannya sendiri),
+  `/scheduler` (Ringkasan · Antrean · Outbox · Metrik · Versi & runtime).
 
 ### konsol `/content` — isi halaman depan
 

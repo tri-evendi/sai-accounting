@@ -59,14 +59,8 @@ vi.mock("@sai/platform/platform-db", () => ({
 const { operatorSaveSiteSettings } = await import("@op/app/(operator)/settings/actions");
 const { operatorSetPlanPublic } = await import("@op/app/(operator)/plans/actions");
 
-const FORM = {
-  contactWhatsapp: "628123456789",
-  contactEmail: "sales@contoh.id",
-  manualPaymentInstructions: "",
-  selfServeSignup: "env" as const,
-  ppn: "env" as const,
-  publicPricing: "on" as const,
-};
+/* `/settings` per tab: kiriman membawa `section` dan medan bagian itu saja. */
+const FORM = { section: "pricing" as const, publicPricing: "on" as const };
 
 beforeEach(() => {
   audit.mockReset();
@@ -138,6 +132,46 @@ describe("operatorSaveSiteSettings — harga publik tersimpan & tercatat", () =>
     expect(res.ok).toBe(false);
     expect(saveSiteSettings).not.toHaveBeenCalled();
     expect(audit).not.toHaveBeenCalled();
+  });
+});
+
+describe("operatorSaveSiteSettings — satu tab hanya menulis medannya sendiri", () => {
+  it("tab Kontak: hanya kanal kontak yang ditulis — gerbang & harga tidak disentuh", async () => {
+    const res = await operatorSaveSiteSettings({
+      section: "contact",
+      contactWhatsapp: "628123456789",
+      contactEmail: "sales@contoh.id",
+      /* Medan bagian lain yang ikut terkirim DIBUANG skemanya. */
+      ppn: "off",
+      publicPricing: "off",
+      selfServeSignup: "on",
+    });
+    expect(res.ok).toBe(true);
+    const input = saveSiteSettings.mock.calls[0][0] as Record<string, unknown>;
+    expect(Object.keys(input).sort()).toEqual(["actor", "contactEmail", "contactWhatsapp"]);
+    const entry = audit.mock.calls[0][0] as { details: Record<string, unknown> };
+    expect(entry.details.section).toBe("contact");
+    expect(entry.details).not.toHaveProperty("ppnTo");
+    expect(entry.details).not.toHaveProperty("publicPricingTo");
+  });
+
+  it("tab Tagihan & PPN: PPN + instruksi transfer, nilai lama & baru tercatat", async () => {
+    state.row = { ppnEnabled: true };
+    await operatorSaveSiteSettings({ section: "billing", ppn: "off", manualPaymentInstructions: "BCA 123" });
+    const input = saveSiteSettings.mock.calls[0][0] as Record<string, unknown>;
+    expect(input).toEqual({ ppnEnabled: false, manualPaymentInstructions: "BCA 123", actor: "vyn" });
+    const entry = audit.mock.calls[0][0] as { details: Record<string, unknown> };
+    expect(entry.details).toMatchObject({ section: "billing", ppnFrom: true, ppnTo: false, paymentInstructionsSet: true });
+  });
+
+  it("tab Pendaftaran: hanya gerbang pendaftaran", async () => {
+    await operatorSaveSiteSettings({ section: "signup", selfServeSignup: "env" });
+    expect(saveSiteSettings.mock.calls[0][0]).toEqual({ selfServeSignupOpen: null, actor: "vyn" });
+  });
+
+  it("bagian tak dikenal ditolak", async () => {
+    expect((await operatorSaveSiteSettings({ section: "semua", ppn: "off" })).ok).toBe(false);
+    expect(saveSiteSettings).not.toHaveBeenCalled();
   });
 });
 

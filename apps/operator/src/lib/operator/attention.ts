@@ -152,7 +152,7 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
      calon pendapatan yang paling dekat, dan yang paling cepat dingin. */
   const minta = platform?.openActivationRequests ?? 0;
   if (minta > 0) {
-    out.push({ key: "activationRequests", count: minta, tone: "warning", href: "/tenants" });
+    out.push({ key: "activationRequests", count: minta, tone: "warning", href: "/tenants?status=activation" });
   }
 
   /* ── 3. Tagihan lewat jatuh tempo ──────────────────────────────────────── */

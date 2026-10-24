@@ -79,7 +79,7 @@ export function ActivationRequests({ rows, canAct, showTenant, markHandled }: Ac
             align: "left",
             render: (_v, r) => (
               <div style={{ display: "flex", flexDirection: "column" }}>
-                <Link href={`/tenants/${r.tenantId}`} style={{ color: "var(--ant-color-link)", fontWeight: 500 }}>
+                <Link href={`/tenants/${r.tenantId}?tab=billing`} style={{ color: "var(--ant-color-link)", fontWeight: 500 }}>
                   {r.tenantName ?? `#${r.tenantId}`}
                 </Link>
                 {r.referredByPartner && (

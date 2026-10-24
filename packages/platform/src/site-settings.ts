@@ -139,19 +139,25 @@ export async function resolveManualPaymentInstructions(): Promise<string | null>
 
 export interface SaveSiteSettingsInput {
   /** `null` = kembalikan ke environment; `""` = cabut kanalnya. */
-  contactWhatsapp: string | null;
-  contactEmail: string | null;
-  manualPaymentInstructions: string | null;
+  contactWhatsapp?: string | null;
+  contactEmail?: string | null;
+  manualPaymentInstructions?: string | null;
   /** `null` = pakai environment; `true`/`false` = keputusan dari konsol. */
-  selfServeSignupOpen: boolean | null;
-  ppnEnabled: boolean | null;
+  selfServeSignupOpen?: boolean | null;
+  ppnEnabled?: boolean | null;
   /** Harga di situs publik — `true`/`false` dari konsol; tidak ada env. */
-  publicPricingVisible: boolean;
+  publicPricingVisible?: boolean;
   actor: string;
 }
 
 /**
  * Simpan pengaturan. Satu baris, `upsert` atas `singleton = 1`.
+ *
+ * SEBAGIAN: medan yang tidak disebut (`undefined`) TIDAK ditulis — Prisma
+ * melewati `undefined`. Sejak `/settings` dibagi per tab, tiap tab menyimpan
+ * medannya sendiri; menyimpan nomor WhatsApp tidak boleh ikut menulis ulang
+ * gerbang PPN yang tidak sedang dilihat siapa pun. Baris yang belum ada dibuat
+ * dengan medan lain `null` (= ikut environment / bawaan), bukan nilai karangan.
  *
  * Sesudahnya sinyal `site-settings` dinaikkan, bukan tag Next: penulisnya
  * `app-operator`, pembacanya `app-customer`, dan invalidasi tag hanya membuang

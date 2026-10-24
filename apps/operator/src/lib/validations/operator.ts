@@ -237,6 +237,35 @@ export const siteSettingsSchema = z.object({
 export type SiteSettingsFormInput = z.infer<typeof siteSettingsSchema>;
 
 /**
+ * `/settings` DIBAGI PER TAB — tiap tab menyimpan medannya SENDIRI, jadi
+ * kirimannya membawa `section` dan hanya medan bagian itu. Medannya tetap
+ * definisi di `siteSettingsSchema` di atas (satu aturan per medan, bukan dua).
+ * Medan bagian lain yang ikut terkirim DIBUANG (`z.object` membuang kunci
+ * asing) — tab Kontak tidak bisa menulis gerbang PPN walau kirimannya
+ * memuatnya.
+ */
+export const SITE_SETTINGS_SECTIONS = ["signup", "billing", "pricing", "contact"] as const;
+export type SiteSettingsSection = (typeof SITE_SETTINGS_SECTIONS)[number];
+const f = siteSettingsSchema.shape;
+export const siteSettingsSectionSchema = z.discriminatedUnion("section", [
+  z.object({ section: z.literal("signup"), selfServeSignup: f.selfServeSignup }),
+  z.object({
+    section: z.literal("billing"),
+    ppn: f.ppn,
+    manualPaymentInstructions: f.manualPaymentInstructions,
+  }),
+  z.object({ section: z.literal("pricing"), publicPricing: f.publicPricing }),
+  z.object({
+    section: z.literal("contact"),
+    contactWhatsapp: f.contactWhatsapp,
+    contactEmail: f.contactEmail,
+  }),
+]);
+export type SiteSettingsSectionInput = z.infer<typeof siteSettingsSectionSchema>;
+/** Bentuk FORMULIR (rata, semua medan opsional) — RHF butuh satu tipe objek. */
+export type SiteSettingsSectionFormInput = { section: SiteSettingsSection } & Partial<SiteSettingsFormInput>;
+
+/**
  * PAKET TAMPIL / TERSEMBUNYI (`plans.is_public`, halaman `/plans`). Alasan
  * DIMINTA — berbeda dari pengaturan situs: `is_public` juga membuka/menutup
  * jalan swalayan tenant pindah paket, jadi ia menyentuh penagihan pelanggan.

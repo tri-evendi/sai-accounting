@@ -17,6 +17,17 @@
  * Pencarian & saringan status lewat form GET biasa: hasilnya URL yang bisa
  * disalin ke tiket dukungan, tanpa satu pun byte JS tambahan.
  *
+ * ══ TAB STATUS DI ATAS `?status=` ═════════════════════════════════════════
+ * Semua · Uji coba · Minta aktivasi · Beku · Aktif · Menunggak, masing-masing
+ * dengan jumlahnya (`tenantStatusCountsForOperator`, satu `groupBy`). Tabnya
+ * MEMAKAI parameter `?status=` yang sudah ada, jadi tautan lama (baris
+ * "perlu perhatian", ubin ringkasan: `/tenants?status=past_due`) tetap
+ * membuka tab yang benar. "Minta aktivasi" bukan status tenant: nilainya
+ * `status=activation`, dan isinya tenant yang punya permintaan TERBUKA —
+ * panel permintaannya pindah ke tab ini. Status lain (ditangguhkan, batal,
+ * pindah on-premise, menunggu verifikasi) tetap terjangkau lewat pilihan
+ * status di formulir saringan.
+ *
  * ── Perender tabel & warna setelah AntD (issue #200) ──────────────────────
  * `StaticTable`, bukan `DataTable`, dan alasannya aturan #189: daftar ini sudah
  * disaring & dicari DI SERVER lewat form GET di atasnya, jadi rc-table hanya
@@ -40,6 +51,7 @@ import { Button, ButtonLink } from "@sai/ui/button";
 import { EmptyState } from "@sai/ui/empty-state";
 import { Input } from "@sai/ui/input";
 import {
+  ConsoleNotice,
   ConsolePanel,
   CONSOLE_PAGE,
 } from "@op/components/operator/console-ui";
@@ -52,8 +64,10 @@ import { operatorCan } from "@op/lib/operator/roles";
 import {
   activationRequestsForOperator,
   listTenantsForOperator,
+  tenantStatusCountsForOperator,
   tenantStatusVariant,
 } from "@op/lib/operator/store";
+import { ConsoleTabs } from "@op/components/operator/console-tabs";
 import { ActivationRequests } from "@op/components/operator/activation-requests";
 import { operatorMarkActivationHandled } from "./actions";
 import { TENANT_STATUSES } from "@sai/core/constants";
@@ -73,6 +87,18 @@ const MUTED_TABULAR: React.CSSProperties = {
 
 type TenantRow = Awaited<ReturnType<typeof listTenantsForOperator>>[number];
 
+/** Tab status — `activation` bukan status tenant (lihat kepala berkas). */
+const STATUS_TABS = ["all", "trialing", "activation", "trial_ended", "active", "past_due"] as const;
+type StatusTab = (typeof STATUS_TABS)[number];
+const STATUS_TAB_LABEL = {
+  all: "operator.tenants.tabAll",
+  trialing: "operator.tenants.tabTrialing",
+  activation: "operator.tenants.tabActivation",
+  trial_ended: "operator.tenants.tabTrialEnded",
+  active: "operator.tenants.tabActive",
+  past_due: "operator.tenants.tabPastDue",
+} as const satisfies Record<StatusTab, DictionaryKey>;
+
 export default async function OperatorTenantsPage({
   searchParams,
 }: {
@@ -83,17 +109,36 @@ export default async function OperatorTenantsPage({
   const params = await searchParams;
 
   const q = params.q?.trim() ?? "";
+  const mintaAktivasi = params.status === "activation";
   const status = (TENANT_STATUSES as readonly string[]).includes(params.status ?? "")
-    ? params.status
+    ? (params.status as string)
     : "";
+  /* Tab yang menyala: status yang punya tab, "Minta aktivasi", atau "Semua"
+     bila tak ada saringan. Status lain yang dipilih lewat formulir → tidak ada
+     tab yang menyala (daftarnya tetap tersaring). */
+  const activeTab: string = mintaAktivasi
+    ? "activation"
+    : status === ""
+      ? "all"
+      : (STATUS_TABS as readonly string[]).includes(status)
+        ? status
+        : "";
 
-  const [tenants, activation] = await Promise.all([
-    listTenantsForOperator({ q, status }),
+  const [counts, activation] = await Promise.all([
+    tenantStatusCountsForOperator({ q }),
     /* Daftar kerja alur demo-first: permintaan aktivasi yang masih TERBUKA.
-       `null` = platform tak terjangkau — daftar tenant di bawahnya tetap tampil. */
+       `null` = platform tak terjangkau — daftar tenant di bawahnya tetap tampil.
+       Selalu dibaca: jumlahnya lencana tab, dan penanda di setiap baris. */
     activationRequestsForOperator({ status: "open" }),
   ]);
   const openRequestTenants = new Set((activation ?? []).map((r) => r.tenantId));
+  /* Hanya baris tab AKTIF yang dibaca. */
+  const tenants = await listTenantsForOperator(
+    mintaAktivasi ? { q, ids: [...openRequestTenants] } : { q, status }
+  );
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const tabCount = (id: StatusTab): number =>
+    id === "all" ? total : id === "activation" ? openRequestTenants.size : (counts[id] ?? 0);
   const canBill = operatorCan(operator.role, "tenant.billing");
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
 
@@ -195,7 +240,24 @@ export default async function OperatorTenantsPage({
       />
 
       <div style={CONSOLE_PAGE}>
-      {activation !== null && activation.length > 0 && (
+      <ConsoleTabs
+        label={t("operator.tenants.tabsAria")}
+        basePath="/tenants"
+        param="status"
+        active={activeTab}
+        defaultId="all"
+        keep={{ q }}
+        tabs={STATUS_TABS.map((id) => ({
+          id,
+          label: t(STATUS_TAB_LABEL[id]),
+          count: tabCount(id),
+          attention: id === "activation" || id === "past_due",
+        }))}
+      />
+      {mintaAktivasi && activation === null && (
+        <ConsoleNotice>{t("operator.tenant.billingUnavailable")}</ConsoleNotice>
+      )}
+      {mintaAktivasi && activation !== null && activation.length > 0 && (
         <ConsolePanel
           title={`${t("operator.activation.heading")} (${activation.length})`}
           description={t("operator.activation.description")}
@@ -250,9 +312,10 @@ export default async function OperatorTenantsPage({
           <Select
             name="status"
             label={t("operator.tenants.statusLabel")}
-            defaultValue={status}
+            defaultValue={mintaAktivasi ? "activation" : status}
             options={[
               { value: "", label: t("operator.tenants.statusAll") },
+              { value: "activation", label: t("operator.tenants.tabActivation") },
               ...TENANT_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
             ]}
           />

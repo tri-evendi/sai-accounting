@@ -204,7 +204,10 @@ kinds:
     # jalan mundur) DIGAGALKAN dengan pesan yang terbaca, tidak dikerjakan.
     # Syarat `go`: `bun run parity:tenant-export` lulus atas buku PRODUKSI
     # (PRODUCTION.md §Ekspor data mandiri).
-    runner: node
+    # ✅ Lulus 24 Okt 2026 (0.21.0, hanya baca): 11 tenant × 1 ekspor — 11
+    # setara · 0 berselisih · 0 gagal; 1.111 berkas identik per byte (terbesar
+    # pt-sai: 194 berkas, 27.832 baris).
+    runner: go
 
   tenant.backup:
     lane: tenant

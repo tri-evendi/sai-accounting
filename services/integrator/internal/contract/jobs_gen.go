@@ -192,7 +192,7 @@ const (
 // persis yang sakelar ini cegah. Padanan TS `KIND_RUNNERS`.
 var KindRunners = map[JobKind]KindRunner{
 	KindTenantConformance: RunnerGo,
-	KindTenantDataExport:  RunnerNode,
+	KindTenantDataExport:  RunnerGo,
 }
 
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.

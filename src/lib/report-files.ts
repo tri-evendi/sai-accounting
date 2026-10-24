@@ -78,15 +78,13 @@ export async function fetchReportPayload(
  * kebenaran tentang PT mana ini.
  */
 export async function downloadStatementPdf(payload: StatementPayload): Promise<void> {
-  const res = await apiFetch("/api/reports/pdf", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`PDF gagal dibuat: ${res.status}`);
+  // Lewat `/api/reports/pdf/statement` seperti setiap laporan lain. Sampai
+  // 24 Okt 2026 fungsi ini masih POST ke `/api/reports/pdf` — rute yang sudah
+  // tidak ada sejak rute PDF berpindah ke `[jenis]` (d5324281) — sehingga PDF
+  // laporan keuangan dari dialog laporan dijawab 404.
   await simpanBlob(
-    await res.blob(),
-    res.headers.get("Content-Disposition"),
+    await fetchStatementPdfBlob(payload),
+    null,
     `${slug(STATEMENT_TITLES[payload.kind])}_${stamp()}.pdf`
   );
 }

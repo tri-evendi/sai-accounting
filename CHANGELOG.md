@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.21.0 — 2026-10-24 — belum digelar
+## 0.21.1 — 2026-10-24 — belum digelar
+
+Unduhan data perusahaan kini disiapkan di latar, jadi data besar tidak lagi membuat halaman menunggu.
+
+### Berubah
+
+- Unduhan data perusahaan di halaman Privasi disiapkan di latar: tombolnya menampilkan kemajuan, lalu tautan unduh saat berkasnya siap.
+
+---
+
+## 0.21.0 — 2026-10-24 (2608ec9)
 
 Faktur yang baru diposting bisa dikirim otomatis ke surel pelanggan, dan unduhan data perusahaan diperbaiki.
 

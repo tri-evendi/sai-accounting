@@ -56,6 +56,30 @@ func ListAll(ctx context.Context, pool *pgxpool.Pool) ([]Company, error) {
 	return hasil, nil
 }
 
+// ListByTenant membaca SELURUH perusahaan satu tenant — termasuk yang
+// nonaktif — urut `slug`. Padanan `controlDb.company.findMany({ where:
+// { tenantId }, orderBy: { slug: "asc" } })` di `src/lib/tenant-export.ts`:
+// penonaktifan menyembunyikan PT dari pemilih, bukan dari kewajiban simpannya.
+func ListByTenant(ctx context.Context, pool *pgxpool.Pool, tenantID int32) ([]Company, error) {
+	rows, err := pool.Query(ctx, pilihCompany+` WHERE c.tenant_id = $1 ORDER BY c.slug ASC`, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("baca perusahaan tenant #%d: %w", tenantID, err)
+	}
+	defer rows.Close()
+	var hasil []Company
+	for rows.Next() {
+		c, err := scanCompany(rows)
+		if err != nil {
+			return nil, err
+		}
+		hasil = append(hasil, *c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("baca perusahaan tenant #%d: %w", tenantID, err)
+	}
+	return hasil, nil
+}
+
 // ErrNoCompany: pekerjaan tanpa konteks perusahaan yang sah.
 var ErrNoCompany = errors.New(
 	"pekerjaan tanpa `company_id` yang sah — ia tidak bisa tahu buku mana. " +

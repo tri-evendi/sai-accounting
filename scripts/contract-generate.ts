@@ -299,6 +299,14 @@ interface Numbers {
 interface Results {
   owner_uid: number;
   owner_gid: number;
+  /**
+   * Umur berkas hasil (hari) sebelum dihapus dari volume `hasil` — TATA-KELOLA
+   * §6 ("berkas ekspor dihapus setelah 7 hari"). Dibaca Node SAJA: pembersihnya
+   * putaran upkeep pelari Node (`workers/runner.ts`), satu-satunya pemasang
+   * volume itu yang menyapu cakramnya. Tidak dibangkitkan ke Go — konstanta di
+   * bahasa yang tidak memakainya adalah kode mati yang terlihat hidup.
+   */
+  retention_days: number;
 }
 /**
  * Kosakata e-Faktur yang dibaca DUA bahasa (docs/EFAKTUR.md): Node menulis
@@ -513,6 +521,21 @@ function baca(): Kontrak {
     const v = k.results?.[kunci];
     if (!Number.isInteger(v) || v < 1) {
       salah.push(`results.${kunci} harus bilangan bulat ≥ 1 (kini: ${String(v)})`);
+    }
+  }
+  /* Retensi berkas hasil: bilangan bulat ≥ 1, dan TIDAK lebih lama daripada
+     retensi baris `done` — berkas yang hidup lebih lama daripada barisnya adalah
+     berkas yatim yang tak bisa diunduh siapa pun lagi (pembersih yatim sudah
+     menyapunya), jadi angka yang lebih besar adalah janji yang tidak ditepati. */
+  {
+    const r = k.results?.retention_days;
+    if (!Number.isInteger(r) || r < 1) {
+      salah.push(`results.retention_days harus bilangan bulat ≥ 1 (kini: ${String(r)})`);
+    } else if (k.numbers && Number.isInteger(k.numbers.done_retention_days) && r > k.numbers.done_retention_days) {
+      salah.push(
+        `results.retention_days (${r}) melewati numbers.done_retention_days (${k.numbers.done_retention_days}) — ` +
+          "berkas tanpa baris tidak bisa diunduh, jadi retensi yang lebih panjang tidak berarti apa-apa"
+      );
     }
   }
 
@@ -833,6 +856,13 @@ export const LANE_LOCK_IDLE_SESSION_MS = ${n.lane_lock_idle_session_ms};
  */
 export const RESULT_OWNER_UID = ${k.results.owner_uid};
 export const RESULT_OWNER_GID = ${k.results.owner_gid};
+
+/**
+ * Umur berkas hasil (hari) sebelum pembersih upkeep menghapusnya dari volume
+ * \`hasil\` (TATA-KELOLA §6). Rute unduhan menjawab 410 \`result_expired\` untuk
+ * pekerjaan \`done\` yang berkasnya sudah lewat umur ini.
+ */
+export const RESULT_RETENTION_DAYS = ${k.results.retention_days};
 
 // ── e-Faktur (docs/EFAKTUR.md) ─────────────────────────────────────────────
 

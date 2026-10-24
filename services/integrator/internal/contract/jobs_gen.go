@@ -50,6 +50,7 @@ const (
 	KindReportExport             JobKind = "report.export"
 	KindReportExportGo           JobKind = "report.export_go"
 	KindReportPackage            JobKind = "report.package"
+	KindReportPackagePdf         JobKind = "report.package_pdf"
 	KindReportPdf                JobKind = "report.pdf"
 	KindScheduleTick             JobKind = "schedule.tick"
 	KindSchemaMigrate            JobKind = "schema.migrate"
@@ -97,7 +98,8 @@ var JobKinds = map[JobKind]KindSpec{
 	KindMailBatch:                {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
 	KindReportExport:             {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindReportExportGo:           {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
-	KindReportPackage:            {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
+	KindReportPackage:            {Lane: LaneBulk, MaxAttempts: 2, WritesLedger: false},
+	KindReportPackagePdf:         {Lane: LaneInteractive, MaxAttempts: 2, WritesLedger: false},
 	KindReportPdf:                {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindScheduleTick:             {Lane: LaneSchedule, MaxAttempts: 1, WritesLedger: false},
 	KindSchemaMigrate:            {Lane: LaneSchema, MaxAttempts: 1, WritesLedger: false},
@@ -141,7 +143,7 @@ var JobLanes = map[JobLane]LaneSpec{
 var KindsByLane = map[JobLane][]JobKind{
 	LaneBulk:        {KindImportProcess, KindMailBatch, KindReportPackage, KindTenantDataExport},
 	LaneIntegration: {KindIntegrationBankFeed, KindIntegrationEfakturCancel, KindIntegrationEfakturPoll, KindIntegrationEfakturSubmit},
-	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindDocumentInvoiceSend, KindEfakturRecord, KindReportExport, KindReportExportGo, KindReportPdf},
+	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindDocumentInvoiceSend, KindEfakturRecord, KindReportExport, KindReportExportGo, KindReportPackagePdf, KindReportPdf},
 	LaneLedger:      {KindLedgerDunning, KindLedgerRecurring},
 	LaneSchedule:    {KindScheduleTick},
 	LaneSchema:      {KindSchemaMigrate},

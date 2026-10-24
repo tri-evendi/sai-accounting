@@ -371,8 +371,12 @@ import { join } from "node:path";
  *   + `components/operator/landing-screens-form` — hero, galeri, gambar OG.
  *     Halaman `/landing/media` tetap server; seksi bukti sosial di pendaratan
  *     tetap server component tanpa satu pun pulau client baru.
+ * 221 → 222 (24 Okt 2026, paket laporan — 09 §5):
+ *   + `components/reports/report-package-dialog` — formulir periode/laporan/format
+ *     + kemajuan pekerjaan di header Pusat Laporan. Halaman `/reports` tetap
+ *     server; daftar laporan & tanda izinnya dihitung di sana dan dioper.
  */
-const AMBANG_KLIEN = 221;
+const AMBANG_KLIEN = 222;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -612,6 +616,8 @@ const KLIEN_TERSAHKAN = [
   "components/layout/status-banner.tsx",
   "components/layout/user-menu.tsx",
   "components/reports/report-launch-dialog.tsx",
+  // Paket laporan (09 §5, 24 Okt 2026) — pulau formulir di header Pusat Laporan; halamannya tetap server.
+  "components/reports/report-package-dialog.tsx",
   "components/settings/audit-log-panel.tsx",
   "components/settings/company-logo-panel.tsx",
   "components/settings/module-picker.tsx",

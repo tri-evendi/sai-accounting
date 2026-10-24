@@ -110,3 +110,29 @@ func WriteResultStream(root string, kind contract.JobKind, jobID int64, filename
 	}
 	return ref, nil
 }
+
+// ResultPath: jalur absolut sebuah `result_ref` di bawah root — padanan
+// `resolveResultPath` TS. Ref di luar bentuk `<putaran>/<berkas>` (dua segmen
+// dari kosakata sempit yang sama dengan penulisnya) DITOLAK: nilainya dibaca
+// dari baris `jobs`, dan nilai yang menyusun jalur berkas diperiksa apa pun
+// asalnya.
+func ResultPath(root, ref string) (string, error) {
+	if len(ref) == 0 || len(ref) > 320 {
+		return "", fmt.Errorf("result_ref tidak sah: %q", ref)
+	}
+	bagian := strings.Split(ref, "/")
+	if len(bagian) != 2 {
+		return "", fmt.Errorf("result_ref tidak sah: %q", ref)
+	}
+	for _, seg := range bagian {
+		if seg == "." || seg == ".." || !resultSegment.MatchString(seg) {
+			return "", fmt.Errorf("result_ref tidak sah: %q", ref)
+		}
+	}
+	return filepath.Join(root, bagian[0], bagian[1]), nil
+}
+
+// ValidResultFilename: apakah nama ini sah sebagai `<berkas>` sebuah hasil.
+func ValidResultFilename(name string) bool {
+	return name != "." && name != ".." && resultSegment.MatchString(name)
+}

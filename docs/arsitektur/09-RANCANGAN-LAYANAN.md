@@ -900,11 +900,12 @@ bertag versi (masuk), berkas lisensi (masuk), bundel diagnostik (keluar).
 | Register lisensi (sisi SAI) | konsol operator `/licences` (migration platform 0006, izin `licence.register`): menyusun perintah `licence:issue`, mengarsipkan berkas `.sai` yang ditandatangani luring — **arsip, bukan kewenangan** ([06 §3.7](./06-KEAMANAN.md)) |
 | Pindah dari SaaS | runbook [`docs/ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md): `tenant:export-onprem` (bekukan + bundel bersandi) → `tenant:import-onprem` (pemasangan kosong) → `tenant:mark-migrated-out`; jalan balik `tenant:unfreeze`; bukti `tenant:prove-onprem`. Migration kendali 0010 (`frozen_at`, `migrated_out_at`, status `migrated_out`) |
 
-⚠ **Satu langkah tersisa, dan sengaja bukan kode:** kunci publik produksi.
-`LICENCE_PUBLIC_KEY_PEM` masih `"BELUM-DISETEL"` sampai pemilik membuat pasangan
-kunci di mesin luring dan menempel kunci publiknya ([serah terima
-§0](../ONPREM-SERAH-TERIMA.md)). Kunci privat tidak pernah dibuat oleh agen,
-CI, atau di repo.
+✅ **Kunci publik produksi DITANAM 24 Okt 2026** (keputusan pemilik, jalur
+luring): `LICENCE_PUBLIC_KEY_PEM` kini kunci Ed25519 sungguhan; kunci privatnya
+dibuat di laptop pemilik dan hanya ada di sana — tidak di repo, CI, maupun
+server ([serah terima §0](../ONPREM-SERAH-TERIMA.md)). Jalur konsol ("Buat
+kunci penanda") karenanya menolak; lisensi ditandatangani luring dengan
+`bun run licence:issue`.
 
 ### DC/DRC customer menggantikan HA SAI — bukan cadangannya
 

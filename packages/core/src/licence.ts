@@ -49,15 +49,20 @@ import { createPublicKey, verify as verifySignature } from "node:crypto";
 /**
  * Kunci publik penanda lisensi SAI (Ed25519, SPKI/PEM).
  *
- * ⚠ PLACEHOLDER sampai pasangan kunci produksi dibuat — di konsol operator
- * (`/licences` → "Buat kunci penanda") atau di mesin luring
- * (`scripts/licence-keygen.ts`) — dan kunci publiknya ditempel di sini. Konsol
- * hanya menandatangani bila sidik kuncinya SAMA dengan konstanta ini; jangan
- * pernah menggantinya dengan pembacaan env atau basis data. Selama
- * nilainya masih placeholder, `verifyLicence` MENOLAK setiap berkas dengan
- * alasan yang jelas; ia tidak pernah menerima apa pun "sementara".
+ * ✅ DITANAM 24 Okt 2026 (keputusan pemilik) — jalur LURING: pasangan Ed25519
+ * dibuat di laptop pemilik dengan `generateKeyPairSync("ed25519")` yang sama
+ * dengan `scripts/licence-keygen.ts`; kunci privatnya hanya di laptop itu
+ * (tidak di repo, CI, maupun server). Karena itu jalur KONSOL ("Buat kunci
+ * penanda") kini menolak — satu jalur saja (06 §3.7). Konsol hanya
+ * menandatangani bila sidik kuncinya SAMA dengan konstanta ini; jangan pernah
+ * menggantinya dengan pembacaan env atau basis data. Placeholder lamanya
+ * (`"BELUM-DISETEL"`) tetap dikenali `verifyLicence` dan ditolak dengan alasan
+ * yang jelas — ia tidak pernah menerima apa pun "sementara".
  */
-export const LICENCE_PUBLIC_KEY_PEM = "BELUM-DISETEL";
+export const LICENCE_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAPxm5LUAk6Cx6jhEVRkZxdDzUsWQBWJU1F6MceJlpsZA=
+-----END PUBLIC KEY-----
+`;
 
 /** Modul yang diizinkan: `"all"` atau daftar kunci modul usaha. */
 export type LicenceModules = "all" | readonly string[];

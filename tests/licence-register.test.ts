@@ -120,7 +120,7 @@ describe("jahitan ujung-ke-ujung: perintah konsol → skrip luring → pemeriksa
 describe("pemeriksa unggahan", () => {
   it("kunci publik belum ditanam → ditolak dengan alasan, tidak melempar", async () => {
     const { db } = fakeDb({ id: 1, status: "draft", customerId: 1, terms: TERMS });
-    expect(await attachIssuedLicence(db, { entryId: 1, fileText: "x.y", actor: "a" })).toEqual({
+    expect(await attachIssuedLicence(db, { entryId: 1, fileText: "x.y", actor: "a" }, "BELUM-DISETEL")).toEqual({
       outcome: "key_not_set",
     });
   });

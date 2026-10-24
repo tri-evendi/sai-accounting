@@ -179,11 +179,12 @@
     "mockDashboardTitle": "Dashboard",
     "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank",
     "quoteCta": "Request a quote",
-    "quoteNote": "Accounts are opened through a quote: company quota, data migration, and payment terms are agreed first. The prices above are the starting point.",
-    "faqTrialAQuote": "Self-serve trials are closed for now. Access is granted through a quote — we agree on the number of companies, the data migration, and payment terms first, including a trial period where one is needed.",
+    "quoteNote": "Start with a demo, then a quote: company quota, data migration, and payment terms are agreed first, and a trial account is set up for your group. The prices above are the starting point.",
+    "faqTrialAQuote": "Yes — but not through self-serve sign-up. After the demo we set up a trial account for your group with the right number of companies. When the trial ends there is no automatic invoice: the account becomes read-only until you decide.",
     "compareHeading": "Upgrading costs less than stacking smaller plans",
     "compareRow": "{count} × {small} {stacked} → {large} {upgrade},",
-    "compareSaving": "saves {amount}/month"
+    "compareSaving": "saves {amount}/month",
+    "demoCta": "Book a demo"
   },
   "common": {
     "skipToContent": "Skip to content",
@@ -553,11 +554,11 @@
       "termsLinkLabel": "terms & conditions",
       "termsAnd": "and the",
       "privacyLinkLabel": "privacy policy",
-      "closedTitle": "Request a quote",
-      "closedBody": "Accounts are opened through a quote rather than self-serve sign-up, so that company quota, data migration, and payment terms are agreed first. Three steps, and the first one is a single message.",
-      "quoteStep1": "You send one message: how many companies, how many users, and which system the data comes from.",
-      "quoteStep2": "We reply with a quote: quota, price, contract term, and payment terms — in writing.",
-      "quoteStep3": "Once approved, we set the account up along with the data migration. You sign in to books that are already filled.",
+      "closedTitle": "Book a demo or request a quote",
+      "closedBody": "Accounts are opened after a short demo rather than through self-serve sign-up, so that company count, data migration, and payment terms are agreed first. The first step is a single message.",
+      "quoteStep1": "You send one message: how many companies, how many users, and which system the data comes from. We schedule a demo.",
+      "quoteStep2": "After the demo we set up a trial account for your group — no card, and no automatic invoice when the trial ends.",
+      "quoteStep3": "Ready to continue? We send a written quote (quota, price, contract term, payment terms), and the account is activated once it is approved.",
       "closedWhatsapp": "Contact us on WhatsApp",
       "closedEmail": "Email us at {email}",
       "closedSignIn": "Already have an account? Sign in"
@@ -4398,7 +4399,10 @@
     "licencePassphraseTooLong": "The passphrase is too long (at most 1024 characters).",
     "licencePassphraseMismatch": "The two passphrases do not match.",
     "nikInvalid": "NIK must be 16 digits",
-    "nitkuInvalid": "NITKU must be 22 digits"
+    "nitkuInvalid": "NITKU must be 22 digits",
+    "transferProofRequired": "Transfer proof reference is required (at least 3 characters).",
+    "retentionDaysRange": "Retention is 30–3650 days, or 0 to follow the server setting.",
+    "retentionConfirmRequired": "Type HAPUS to turn on automatic deletion."
   },
   "taxSettings": {
     "sectionTitle": "PPN (VAT)",
@@ -4624,8 +4628,6 @@
     "statusLabel": "Status",
     "trialDaysLeft": "Your trial ends in {days} days.",
     "trialOver": "The trial period has ended.",
-    "trialFirstInvoice": "After that the first invoice of {amount} is issued (VAT included).",
-    "trialUnpaidNote": "If it goes unpaid the account falls past due and is then suspended — read-only. Your books are not deleted and stay downloadable.",
     "trialEndsAt": "Trial ends",
     "usageHeading": "Usage",
     "quotaFull": "Quota full — upgrade to add more.",
@@ -4665,7 +4667,8 @@
       "past_due": "Past Due",
       "suspended": "Suspended (read-only)",
       "cancelled": "Cancelled",
-      "migrated_out": "Moved on-premise"
+      "migrated_out": "Moved on-premise",
+      "trial_ended": "Trial ended (read-only)"
     },
     "invoiceStatus": {
       "draft": "Draft",
@@ -4699,7 +4702,10 @@
     "deletionCancelled": "The deletion request was cancelled. Nothing has changed.",
     "deletionFailed": "The request could not be processed. Please try again.",
     "deletionAlreadyPending": "A deletion request is already pending.",
-    "deletionNonePending": "There is no pending deletion request."
+    "deletionNonePending": "There is no pending deletion request.",
+    "trialFreezeNote": "When the trial ends, the books become read-only (data can still be exported) — there is NO automatic invoice. To continue, request activation.",
+    "trialActivationPrice": "This plan's price once activated: {amount} per month (VAT included).",
+    "trialEndedNote": "The trial has ended: the ledger is READ-ONLY. Reading and exporting still work, and no invoice has been issued. Request activation to continue — your data is not deleted."
   },
   "billing": {
     "payColumn": "Pay",
@@ -4720,7 +4726,36 @@
     "saveProfile": "Save Profile",
     "savingProfile": "Saving...",
     "profileSaved": "Tax profile saved",
-    "errProfile": "Failed to save the tax profile"
+    "errProfile": "Failed to save the tax profile",
+    "trialNotice": {
+      "subjectEnding": "Your trial ends {when} ({date}) — SAI Accounting",
+      "subjectLate": "Your trial has ended ({date}) — request activation — SAI Accounting",
+      "langLabel": "English",
+      "greeting": "Hello,",
+      "bodyEnding": "The trial of your SAI Accounting account ends on {date}.",
+      "bodyLate": "The trial of your SAI Accounting account ended on {date}. The account will be frozen no earlier than {freezeDate}.",
+      "readOnly": "After that the ledger becomes READ-ONLY: you can still read and export your data, and NO invoice is issued automatically. Your data is not deleted.",
+      "activate": "Want to continue? Press \"Request activation\" in the app's Subscription menu, or contact us — we will help you choose a plan and activate your account.",
+      "contact": "Contact us: {channels}",
+      "contactNone": "Reply to this email or reach your SAI contact."
+    },
+    "activation": {
+      "button": "Request activation",
+      "done": "Activation request recorded. Our team will contact you.",
+      "whatsapp": "Contact via WhatsApp",
+      "email": "Send email",
+      "noChannel": "No contact channel is configured; our team will reach your account email.",
+      "errSave": "The activation request could not be recorded. Please try again shortly.",
+      "waText": "Hello, I would like to activate my SAI Accounting account ({account}).",
+      "mailSubject": "Activation request for account {account}"
+    },
+    "retentionNotice": {
+      "subject": "Your trial account will be deleted on {date} — download your data — SAI Accounting",
+      "body": "The trial of your SAI Accounting account has ended and its books are frozen read-only. Under our retention policy this account will be DELETED on {date} ({days} days from now): users are anonymised and all companies are deactivated. Deletion cannot be undone.",
+      "export": "Download a complete copy of your data (CSV of every table + documents) before that date: {url}",
+      "exportNoLink": "Download a complete copy of your data before that date via the Privacy & data menu in the app.",
+      "keep": "Want to keep this account? Request activation via the Subscription menu or contact us before the deletion date."
+    }
   },
   "operator": {
     "consoleTitle": "Operator console",
@@ -4758,7 +4793,7 @@
       "schedulerFailing": "Last scheduler run failed ({count} errors)",
       "schedulerFailingWhy": "Check this first. Piled-up expired trials and missing invoices usually start here.",
       "trialsExpired": "{count} trials have ended but their status has not changed",
-      "trialsExpiredWhy": "These tenants still use their books on trial status.",
+      "trialsExpiredWhy": "The scheduler has sent or will send the freeze notice; the books become read-only 7 days later — with no invoice.",
       "invoicesOverdue": "{count} invoices are past due",
       "invoicesOverdueWhy": "Issued and unpaid. If nobody acts, dunning takes over.",
       "tenantsPastDue": "{count} tenants past due",
@@ -4766,7 +4801,9 @@
       "tenantsSuspended": "{count} tenants suspended or cancelled",
       "tenantsSuspendedWhy": "The tenant can only read its books. Open the tenant to restore it.",
       "trialsEndingSoon": "{count} trials end within 7 days",
-      "trialsEndingSoonWhy": "Contact them before the trial ends."
+      "trialsEndingSoonWhy": "Contact them before the trial ends.",
+      "activationRequests": "{count} customers requested activation",
+      "activationRequestsWhy": "They pressed \"Request activation\" and are waiting to be contacted via WhatsApp or email."
     },
     "overview": {
       "heading": "Platform overview",
@@ -5675,15 +5712,17 @@
     },
     "quote": {
       "title": "Activate from quote",
-      "description": "For an accepted and paid quote: set the plan, period, and manual billing mode in one step.",
+      "description": "For an approved and paid quote: set the plan, period and manual billing mode at once — also for a frozen trial.",
       "open": "Activate from quote",
-      "explain": "Runs three steps in order: change plan (if different), extend the period, then set manual billing. Stops at the first step that fails. The extension issues a Rp 0 invoice; the real invoice is made in the provider's books.",
+      "explain": "Runs three steps in order: change plan (if different), extend the period, then set manual billing mode. Stops at the first failing step. Does NOT issue a Rp 0 invoice: it records the quote number + transfer proof, because the invoice is made in the provider's own books.",
       "refLabel": "Quote / contract number",
       "submit": "Activate entitlement",
-      "confirmBody": "Activate {tenant} from quote {quote}: plan {plan}, {periods} periods, manual billing mode?",
+      "confirmBody": "Activate {tenant} from quote {quote}: plan {plan}, {periods} periods, manual billing? Transfer proof: {proof}.",
       "done": "Entitlement active from quote {quote}.",
       "partial": "Not finished: {steps}. Complete the remaining steps with their own buttons.",
-      "errInput": "Incomplete: quote number, plan, period 1–24, and reason are required."
+      "errInput": "Incomplete: quote number, plan, period 1–24, and reason are required.",
+      "proofLabel": "Transfer proof reference",
+      "proofHint": "Bank statement reference/number, or a link to the proof document."
     },
     "licences": {
       "heading": "On-premise licences",
@@ -5846,6 +5885,102 @@
         "too_small": "The image is too small: the shortest side must be at least {min} px.",
         "too_big_dimensions": "The image is too large: the longest side may be at most 4096 px."
       }
+    },
+    "trial": {
+      "open": "Create trial",
+      "title": "Create a trial tenant",
+      "description": "For a prospect after the demo: you choose the plan, quota and trial length. An ended trial freezes read-only — no automatic invoice.",
+      "explain": "The account owner receives an email with a link to set their own password — you never hold it. When the trial ends, the owner has been notified at least 7 days earlier; the books then become read-only (export still works) until you activate them from a quote.",
+      "tenantName": "Account name (prospect's group / company)",
+      "ownerName": "Account owner's name",
+      "ownerEmail": "Account owner's email",
+      "ownerEmailHint": "The set-password link is sent to this address. An address that already has an account is rejected.",
+      "trialDays": "Trial length (days)",
+      "trialDaysHint": "Default 30 days — one month-end close cycle. At most {max} days.",
+      "billingModeHint": "Trials are never billed automatically. \"No billing\" for a regular prospect; \"Manual\" when billing has been agreed outside the system.",
+      "maxCompanies": "Company quota (0 = follow plan)",
+      "maxUsers": "User quota (0 = follow plan)",
+      "quotaHint": "Plan default: {value}.",
+      "isDemo": "DEMO tenant (for presentations, may be refilled with sample data)",
+      "isDemoHint": "A demo tenant starts active with no end date and is never subject to deletion retention. Fill its sample data with bun run demo:seed.",
+      "submit": "Create trial",
+      "confirmBody": "Create account {tenant} on plan {plan} for {days} days? A set-password link is sent to {email}. No automatic invoice at the end of the trial.",
+      "confirmDemo": "Create DEMO tenant {tenant} on plan {plan}? A set-password link is sent to {email}.",
+      "created": "Account {slug} created; a set-password link was sent to {email}.",
+      "errEmailTaken": "That email address already has an account.",
+      "warnNoOrigin": "The set-password link was NOT sent: AUTH_URL is not set. Send it from the tenant detail once fixed.",
+      "warnMail": "The account was created, but the welcome email failed. Resend it via \"Send reset link\" on the tenant detail.",
+      "warnSubscription": "The platform subscription was not written yet; the next scheduler run will create it.",
+      "demoBadge": "Demo account",
+      "endedNote": "Trial ended: books are read-only, export stays open, no invoice. Activate from a quote or extend the trial below.",
+      "extendOpen": "Extend trial",
+      "extendTitle": "Extend trial",
+      "extendDescription": "The new end date counts from today. A frozen trial is unfrozen.",
+      "extendExplain": "No invoice and no paid period — only the trial end date moves. The owner will be notified again before the new date.",
+      "extendSubmit": "Extend",
+      "extendConfirm": "Extend {tenant}'s trial by {days} days from today?",
+      "extendDone": "Trial extended until {date}.",
+      "extendNotApplicable": "There is no trial to extend (status: {status}).",
+      "extendOnlyTrial": "Only for tenants on a trial or whose trial has frozen."
+    },
+    "partner": {
+      "label": "Referring partner (optional)",
+      "hint": "Name of the partner who brought this prospect — the basis for manually computed commission.",
+      "hintEdit": "Leave empty to remove the attribution.",
+      "column": "Partner",
+      "short": "Partner: {partner}",
+      "title": "Partner attribution",
+      "description": "The partner who brought this tenant, for computing commission manually.",
+      "current": "Partner: {partner}",
+      "none": "No partner recorded yet.",
+      "edit": "Change partner",
+      "save": "Save partner",
+      "saved": "Partner recorded: {partner}.",
+      "cleared": "Partner attribution removed.",
+      "unchanged": "Partner unchanged."
+    },
+    "activation": {
+      "heading": "Activation requests",
+      "description": "Customers who pressed \"Request activation\" and are waiting to be contacted. Activate from the tenant detail, then mark as handled.",
+      "badge": "Activation requested",
+      "colRequestedBy": "Requested by",
+      "colNote": "Message",
+      "markHandled": "Mark handled",
+      "open": "Open",
+      "handledAt": "Handled {date}",
+      "confirm": "Mark {tenant}'s activation request as handled?",
+      "reasonPlaceholder": "e.g. called, quote sent",
+      "empty": "No activation requests.",
+      "handledDone": "Activation request marked as handled.",
+      "errAlreadyHandled": "That request was already handled.",
+      "errNotFound": "Activation request not found."
+    },
+    "retention": {
+      "heading": "Frozen trial retention",
+      "descriptionOff": "Automatic deletion is OFF. The scheduler only reports trial tenants frozen for more than {days} days — no emails and no deletion.",
+      "descriptionOn": "Automatic deletion is ON. Trial tenants frozen for more than {days} days receive 14-day and 3-day notices with an export link, then are deleted (anonymised + companies deactivated; ledgers kept per tax law). Irreversible.",
+      "switchLabel": "Automatically delete frozen trial tenants",
+      "optionEnv": "Follow server setting (currently: {state})",
+      "optionOn": "On — delete after notices",
+      "optionOff": "Off — report only",
+      "stateOn": "on",
+      "stateOff": "off",
+      "switchHint": "Default is OFF (env TRIAL_AUTO_DELETION only turns it on when set to exactly on). Demo tenants and tenants with their own deletion request are never included.",
+      "daysLabel": "Retention after freezing (days, 0 = follow server)",
+      "daysHint": "Current server setting: {days} days. Range 30–3650.",
+      "confirmLabel": "Type HAPUS to turn on",
+      "save": "Save retention",
+      "saved": "Trial retention settings saved.",
+      "confirmTitle": "Turn on automatic deletion?",
+      "confirmBody": "From now on the scheduler DELETES trial tenants frozen for more than {days} days (after 14-day and 3-day notices): users are anonymised and companies deactivated. Deletion cannot be undone.",
+      "confirmSubmit": "Yes, turn on",
+      "candidatesHeading": "Trial deletion candidates",
+      "candidatesNote": "Computed with the same rule as the scheduler. The deletion date applies once the 14-day notice is sent; while the switch is off nothing is sent or deleted.",
+      "candidatesEmpty": "No frozen trial tenants.",
+      "colEnded": "Frozen since",
+      "colDelete": "Deleted on",
+      "colNotices": "Notices",
+      "notNotified": "not notified yet (earliest {date})"
     }
   },
   "docs": {

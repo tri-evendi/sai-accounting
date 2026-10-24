@@ -83,11 +83,63 @@ export const quoteActivationSchema = z.object({
   /* Batas yang SAMA dengan perpanjangan kompensasi (1–24) — langkah keduanya
      memang `extendSubscription`. */
   periods: z.coerce.number().int().min(1).max(24),
-  /** Nomor penawaran/kontrak di buku PT penyedia — masuk alasan setiap jejak. */
+  /** Nomor penawaran/kontrak di buku PT penyedia — masuk alasan setiap jejak,
+   *  dan sejak alur demo-first menjadi KUNCI IDEMPOTENSI aktivasi
+   *  (`quote_activations.quote_ref` UNIQUE, migration platform 0011). */
   quoteRef: z.string().trim().min(3).max(60),
+  /** Referensi bukti transfer — berita/nomor referensi rekening koran atau URL
+   *  dokumen bukti. Teks, bukan unggahan berkas. */
+  transferProof: z.string().trim().min(3, vmsg("validation.transferProofRequired")).max(500),
   reason: operatorReasonField,
 });
 export type QuoteActivationFormInput = z.infer<typeof quoteActivationSchema>;
+
+/* ── 3d. Tenant UJI COBA buatan operator (alur demo-first, 24 Okt 2026) ──── */
+
+/**
+ * Batas lama uji coba: 1–90 hari. Bawaan formulirnya `TRIAL_DAYS` (30, K-3).
+ * Batas atas bukan kesopanan: uji coba setahun karena salah ketik adalah hak
+ * pakai gratis setahun yang baru ketahuan saat seseorang membaca daftar.
+ */
+export const TRIAL_DAYS_MAX = 90;
+
+export const createTrialSchema = z.object({
+  tenantName: z.string().trim().min(2, vmsg("validation.nameRequired")).max(150),
+  ownerName: z.string().trim().min(2, vmsg("validation.nameRequired")).max(100),
+  ownerEmail: z.string().trim().toLowerCase().email(vmsg("validation.emailInvalid")).max(255),
+  planKey: z.string().trim().min(1, vmsg("validation.planRequired")).max(30),
+  trialDays: z.coerce.number().int().min(1).max(TRIAL_DAYS_MAX),
+  /** 0 / kosong = salin kuota dari paket. */
+  maxCompanies: z.coerce.number().int().min(0).max(1000),
+  maxUsers: z.coerce.number().int().min(0).max(10000),
+  /** Uji coba tidak pernah ditagih otomatis — `auto` sengaja TIDAK ditawarkan. */
+  billingMode: z.enum(["none", "manual"]),
+  referredByPartner: z.string().trim().max(100),
+  isDemo: z.boolean(),
+  reason: operatorReasonField,
+});
+export type CreateTrialFormInput = z.infer<typeof createTrialSchema>;
+
+export const extendTrialSchema = z.object({
+  tenantId: tenantIdField,
+  days: z.coerce.number().int().min(1).max(TRIAL_DAYS_MAX),
+  reason: operatorReasonField,
+});
+export type ExtendTrialFormInput = z.infer<typeof extendTrialSchema>;
+
+export const partnerSchema = z.object({
+  tenantId: tenantIdField,
+  /** Kosong = hapus atribusi. */
+  partner: z.string().trim().max(100),
+  reason: operatorReasonField,
+});
+export type PartnerFormInput = z.infer<typeof partnerSchema>;
+
+export const activationHandledSchema = z.object({
+  requestId: z.number().int().positive(),
+  reason: operatorReasonField,
+});
+export type ActivationHandledFormInput = z.infer<typeof activationHandledSchema>;
 
 /* ── 3b. Perpanjangan kompensasi ───────────────────────────────────────────── */
 
@@ -176,6 +228,30 @@ export const siteSettingsSchema = z.object({
   ppn: z.enum(["env", "on", "off"]),
 });
 export type SiteSettingsFormInput = z.infer<typeof siteSettingsSchema>;
+
+/**
+ * RETENSI UJI COBA BEKU (migration platform 0012, alur demo-first).
+ *
+ * `autoDeletion` tiga keadaan seperti gerbang lain — `env` = ikut
+ * `TRIAL_AUTO_DELETION` (bawaan MATI). `retentionDays` 0 = ikut env / 90; di
+ * luar itu 30–3650 (batas yang sama dengan `trialRetentionDaysFrom`). Ketik
+ * ulang kata `HAPUS` dituntut HANYA saat menyalakan — lihat formulirnya.
+ */
+export const trialRetentionSchema = z
+  .object({
+    autoDeletion: z.enum(["env", "on", "off"]),
+    retentionDays: z.coerce.number().int().min(0).max(3650),
+    confirm: z.string().trim().max(10),
+  })
+  .refine((v) => v.retentionDays === 0 || v.retentionDays >= 30, {
+    path: ["retentionDays"],
+    message: vmsg("validation.retentionDaysRange"),
+  })
+  .refine((v) => v.autoDeletion !== "on" || v.confirm.toUpperCase() === "HAPUS", {
+    path: ["confirm"],
+    message: vmsg("validation.retentionConfirmRequired"),
+  });
+export type TrialRetentionFormInput = z.infer<typeof trialRetentionSchema>;
 
 /* ── 4. Eksekusi penghapusan ───────────────────────────────────────────────── */
 

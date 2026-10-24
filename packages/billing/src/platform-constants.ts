@@ -23,9 +23,22 @@ import type { DictionaryKey } from "@sai/core/i18n/dictionary";
  *       └──(trial habis)─────┘                          └─(tenggang habis)─> suspended
  *   suspended ──(bayar)──> active
  *   suspended ──(berhenti)──> cancelled   [buku besar TIDAK PERNAH dihapus otomatis]
+ *   trialing ──(uji coba habis)──> trial_ended ──(aktivasi manual)──> active
  *
  * `suspended` berarti HANYA-BACA, bukan terkunci — pelanggan yang menunggak
  * tetap wajib (secara hukum) bisa membaca & mengekspor pembukuannya.
+ *
+ * `trial_ended` (keputusan pemilik 24 Okt 2026, alur *demo-first*,
+ * `docs/KOMERSIALISASI.md` §1.2 + K-3): uji coba yang habis BEKU, tidak
+ * ditagih. Hanya-baca persis seperti `suspended`, tetapi BUKAN tunggakan — tidak
+ * ada tagihan, tidak ada dunning, tidak ada masa tenggang. Keluar dari sini
+ * hanya lewat tindakan manusia: aktivasi dari penawaran, perpanjangan uji coba
+ * oleh operator, atau pembatalan.
+ *
+ * ⚠ Namanya SENGAJA bukan `frozen`: `tenants.frozen_at` (migration kendali
+ * 0010) sudah berarti PEMBEKUAN serah-terima ke on-premise — keadaan lain
+ * dengan penjaga lain. Dua "beku" dengan arti berbeda di satu repo adalah
+ * kesalahan baca yang menunggu waktu.
  */
 export const SUBSCRIPTION_STATUSES = [
   "trialing",
@@ -33,6 +46,7 @@ export const SUBSCRIPTION_STATUSES = [
   "past_due",
   "suspended",
   "cancelled",
+  "trial_ended",
 ] as const;
 export const subscriptionStatusSchema = z.enum(SUBSCRIPTION_STATUSES);
 export type SubscriptionStatus = z.infer<typeof subscriptionStatusSchema>;

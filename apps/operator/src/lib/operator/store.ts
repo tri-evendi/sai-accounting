@@ -52,6 +52,7 @@ import {
 import { resolveMailConfig, type MailConfigSource } from "@sai/platform/mailer-core";
 import { encryptionKeyAvailable } from "@sai/core/settings-crypto";
 import { summarizeRevenue, type RevenueSummary } from "@sai/billing/platform-revenue";
+import { RETENTION_NOTICE_KIND, planTrialRetention } from "@sai/billing/trial-retention";
 
 export type { ReconciliationReport };
 export type { MailSettingsView };
@@ -70,6 +71,10 @@ export interface OperatorTenantRow {
   createdAt: Date;
   maxCompanies: number;
   maxUsers: number;
+  /** Mitra yang membawa tenant ini (migration kendali 0013) — komisi manual. */
+  referredByPartner: string | null;
+  /** Tenant demo (migration kendali 0013). */
+  isDemo: boolean;
   usage: { companies: number; users: number };
 }
 
@@ -88,7 +93,17 @@ export async function listTenantsForOperator(
   const tenants = await deps.control.tenant.findMany({
     where: {
       ...(status ? { status } : {}),
-      ...(q ? { OR: [{ name: { contains: q } }, { slug: { contains: q } }] } : {}),
+      /* Pencarian juga menyapu nama MITRA: "tenant mana saja yang dibawa mitra
+         X?" adalah pertanyaan komisi, dan jawabannya harus satu saringan. */
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q } },
+              { slug: { contains: q } },
+              { referredByPartner: { contains: q } },
+            ],
+          }
+        : {}),
     },
     orderBy: { createdAt: "desc" },
     select: {
@@ -100,6 +115,8 @@ export async function listTenantsForOperator(
       createdAt: true,
       maxCompanies: true,
       maxUsers: true,
+      referredByPartner: true,
+      isDemo: true,
     },
   });
 
@@ -142,6 +159,8 @@ export interface OperatorTenantDetail {
     maxCompanies: number;
     maxUsers: number;
     createdAt: Date;
+    referredByPartner: string | null;
+    isDemo: boolean;
   };
   usage: { companies: number; users: number };
   /** PT milik tenant — hanya REGISTRY kendali; bukunya tidak pernah dibuka. */
@@ -223,6 +242,8 @@ export async function tenantDetailForOperator(
       maxCompanies: true,
       maxUsers: true,
       createdAt: true,
+      referredByPartner: true,
+      isDemo: true,
     },
   });
   if (!tenant) return null;
@@ -807,6 +828,10 @@ export interface OperatorOverviewPlatform {
   /** Tagihan `issued` yang belum jatuh tempo. */
   openInvoices: number;
   openTotal: number;
+  /** Permintaan aktivasi yang masih TERBUKA (alur demo-first). Opsional:
+   *  tabelnya baru ada sejak migration platform 0011, dan pemasangan yang
+   *  belum memigrasikannya tidak boleh kehilangan ringkasan karenanya. */
+  openActivationRequests?: number;
 }
 
 export interface OperatorOverview {
@@ -970,6 +995,19 @@ export async function operatorOverview(
     console.error("[operator-store] ringkasan platform tak terbaca:", error);
   }
 
+  /* Permintaan aktivasi dibaca TERPISAH, dengan batas gagalnya sendiri: tabel
+     yang belum ada (migration platform 0011 belum diterapkan) hanya berarti
+     tidak ada baris "perlu ditangani" untuknya — bukan ringkasan yang mati. */
+  if (platform !== null) {
+    try {
+      platform.openActivationRequests = await deps.platform.activationRequest.count({
+        where: { status: "open" },
+      });
+    } catch (error) {
+      console.error("[operator-store] permintaan aktivasi tak terhitung:", error);
+    }
+  }
+
   return { control, revenue, platform };
 }
 
@@ -992,6 +1030,8 @@ export async function operatorOverview(
 export const TENANT_READ_ONLY_STATUSES: ReadonlySet<string> = new Set([
   "suspended",
   "cancelled",
+  /* Uji coba habis → beku hanya-baca (alur demo-first). */
+  "trial_ended",
   /* Pindah ke on-premise: bukunya di SaaS nonaktif — keadaan akhir. */
   "migrated_out",
 ]);
@@ -1295,4 +1335,157 @@ export async function tenantHealthForOperator(tenant: {
     books,
     conformance,
   });
+}
+
+/* ─────────────────── Permintaan aktivasi (alur demo-first) ───────────────── */
+
+export interface OperatorActivationRequest {
+  id: number;
+  tenantId: number;
+  /** `null` = tenantnya sudah tidak ada di kendali (dihapus). */
+  tenantName: string | null;
+  tenantSlug: string | null;
+  referredByPartner: string | null;
+  requestedByName: string | null;
+  tenantStatus: string;
+  note: string | null;
+  status: string;
+  handledBy: string | null;
+  handledAt: Date | null;
+  createdAt: Date;
+}
+
+/**
+ * Permintaan aktivasi dari customer (`activation_requests`, migration platform
+ * 0011) — daftar kerja "siapa yang menunggu dihubungi". `null` = platform tak
+ * terjangkau (tahan-mati: daftar tenant di atasnya tetap tampil).
+ */
+export async function activationRequestsForOperator(
+  filter: { status?: "open" | "handled"; tenantId?: number; limit?: number } = {},
+  deps: { control: ControlClient; platform: PlatformClient } = {
+    control: controlDb,
+    platform: platformDb,
+  }
+): Promise<OperatorActivationRequest[] | null> {
+  let rows;
+  try {
+    rows = await deps.platform.activationRequest.findMany({
+      where: {
+        ...(filter.status ? { status: filter.status } : {}),
+        ...(filter.tenantId ? { tenantId: filter.tenantId } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: filter.limit ?? 100,
+    });
+  } catch (error) {
+    console.error("[operator-store] permintaan aktivasi tak terbaca:", error);
+    return null;
+  }
+  const tenants = rows.length
+    ? await deps.control.tenant.findMany({
+        where: { id: { in: [...new Set(rows.map((r) => r.tenantId))] } },
+        select: { id: true, name: true, slug: true, referredByPartner: true },
+      })
+    : [];
+  const byId = new Map(tenants.map((t) => [t.id, t]));
+  return rows.map((r) => ({
+    id: r.id,
+    tenantId: r.tenantId,
+    tenantName: byId.get(r.tenantId)?.name ?? null,
+    tenantSlug: byId.get(r.tenantId)?.slug ?? null,
+    referredByPartner: byId.get(r.tenantId)?.referredByPartner ?? null,
+    requestedByName: r.requestedByName,
+    tenantStatus: r.tenantStatus,
+    note: r.note,
+    status: r.status,
+    handledBy: r.handledBy,
+    handledAt: r.handledAt,
+    createdAt: r.createdAt,
+  }));
+}
+
+/* ─────────────── Retensi uji coba beku (migration platform 0012) ─────────── */
+
+export interface TrialRetentionRow {
+  tenantId: number;
+  tenantName: string;
+  tenantSlug: string;
+  trialEndedAt: Date;
+  /** Beku + N hari — tanggal hapus PALING CEPAT bila sakelar menyala. */
+  baseDeleteAt: Date;
+  /** Tanggal hapus yang berlaku (sesudah H-14 terkirim); `null` = belum diberi tahu. */
+  deleteAt: Date | null;
+  /** Kunci pemberitahuan yang sudah terkirim (`D-14:…`, `D-3:…`). */
+  noticesSent: string[];
+}
+
+/**
+ * Kandidat retensi uji coba beku — dihitung dengan perencana yang SAMA dengan
+ * penjadwal (`planTrialRetention`), jadi layar dan putaran tidak bisa berbeda
+ * pendapat soal tanggal. Tenant demo dan tenant dengan permintaan hapus sendiri
+ * dikecualikan, persis seperti di penjadwal. `null` = platform tak terjangkau.
+ */
+export async function trialRetentionForOperator(
+  days: number,
+  now: Date = new Date(),
+  deps: { control: ControlClient; platform: PlatformClient } = {
+    control: controlDb,
+    platform: platformDb,
+  }
+): Promise<TrialRetentionRow[] | null> {
+  try {
+    const frozen = await deps.platform.subscription.findMany({
+      where: { status: "trial_ended", trialEndedAt: { not: null } },
+      select: { id: true, tenantId: true, trialEndedAt: true },
+    });
+    if (frozen.length === 0) return [];
+    const ids = frozen.map((f) => f.tenantId);
+    const [tenants, pending, logs] = await Promise.all([
+      deps.control.tenant.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true, slug: true, status: true, isDemo: true },
+      }),
+      deps.control.tenantDeletionRequest.findMany({
+        where: { tenantId: { in: ids }, status: "pending" },
+        select: { tenantId: true },
+      }),
+      deps.platform.reminderLog.findMany({
+        where: { subscriptionId: { in: frozen.map((f) => f.id) }, kind: RETENTION_NOTICE_KIND },
+        select: { subscriptionId: true, dueKey: true, sentAt: true },
+      }),
+    ]);
+    const tenantById = new Map(tenants.map((t) => [t.id, t]));
+    const pendingIds = new Set(pending.map((p) => p.tenantId));
+    const candidates = frozen
+      .filter((f) => {
+        const t = tenantById.get(f.tenantId);
+        return t && !t.isDemo && t.status === "trial_ended" && !pendingIds.has(f.tenantId);
+      })
+      .map((f) => ({ subscriptionId: f.id, tenantId: f.tenantId, trialEndedAt: f.trialEndedAt! }));
+    const logsBySub = new Map<number, { dueKey: string; sentAt: Date }[]>();
+    for (const l of logs) {
+      const list = logsBySub.get(l.subscriptionId) ?? [];
+      list.push({ dueKey: l.dueKey, sentAt: l.sentAt });
+      logsBySub.set(l.subscriptionId, list);
+    }
+    const plan = planTrialRetention(candidates, logsBySub, now, days);
+    return plan.overview
+      .map((row) => {
+        const t = tenantById.get(row.tenantId)!;
+        const c = candidates.find((x) => x.subscriptionId === row.subscriptionId)!;
+        return {
+          tenantId: row.tenantId,
+          tenantName: t.name,
+          tenantSlug: t.slug,
+          trialEndedAt: c.trialEndedAt,
+          baseDeleteAt: row.baseDeleteAt,
+          deleteAt: row.deleteAt,
+          noticesSent: (logsBySub.get(row.subscriptionId) ?? []).map((l) => l.dueKey),
+        };
+      })
+      .sort((a, b) => a.baseDeleteAt.getTime() - b.baseDeleteAt.getTime());
+  } catch (error) {
+    console.error("[operator-store] retensi uji coba tak terbaca:", error);
+    return null;
+  }
 }

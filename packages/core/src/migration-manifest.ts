@@ -12,8 +12,8 @@
  * yang lupa diumumkan di sini membuat tes merah, bukan konsol yang diam.
  */
 export const MIGRATION_TERAKHIR = {
-  control: "0012_outbox_relay_books",
-  platform: "0010_drop_site_contents",
+  control: "0013_tenant_partner_demo",
+  platform: "0012_trial_retention",
   company: "0005_outbox",
 } as const;
 

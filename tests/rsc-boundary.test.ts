@@ -339,8 +339,19 @@ import { join } from "node:path";
  *   + `platform/export-panel` — tombol minta → kemajuan → unduh; menanyai
  *     `/api/tenant/export/jobs` selama pekerjaannya berjalan. Halaman
  *     `/platform/privacy` tetap server; sakelar pelaksananya dibaca di sana.
+ * 209 → 211 (24 Okt 2026, alur demo-first — konsol operator):
+ *   + `components/operator/create-trial-form` — formulir "Buat tenant uji
+ *     coba" (react-hook-form + konfirmasi). Halaman `/tenants/new` tetap server;
+ *     katalog paket dibaca di sana.
+ *   + `components/operator/activation-requests` — daftar permintaan aktivasi
+ *     dengan satu tindakan beralasan ("tandai ditangani"). Daftarnya dibaca
+ *     server (`/tenants`, `/tenants/[id]`) dan dioper sebagai baris serial.
+ * 211 → 212 (24 Okt 2026, retensi uji coba beku):
+ *   + `components/operator/trial-retention-form` — sakelar hapus otomatis (bawaan
+ *     MATI) + masa retensi, konfirmasi ketik-HAPUS. Halaman `/settings` tetap
+ *     server; daftar kandidatnya dirender di sana.
  */
-const AMBANG_KLIEN = 209;
+const AMBANG_KLIEN = 212;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -504,6 +515,8 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/app/(operator)/error.tsx",
   "apps/operator/src/app/(operator)/login/login-form.tsx",
   "apps/operator/src/app/global-error.tsx",
+  /* Permintaan aktivasi (alur demo-first) — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/activation-requests.tsx",
   /* Pasang authenticator — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/authenticator-setup.tsx",
   "apps/operator/src/components/operator/brand-mark-panel.tsx",
@@ -515,6 +528,8 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/components/operator/content-editor.tsx",
   /* Tinjau & terbit isi halaman depan — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/content-publish-controls.tsx",
+  /* Buat tenant uji coba (alur demo-first) — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/create-trial-form.tsx",
   /* Register lisensi on-premise — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/licence-register-panel.tsx",
   /* Kunci penanda lisensi (migration platform 0007) — lihat `AMBANG_KLIEN`. */
@@ -541,6 +556,8 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/components/operator/tenant-actions.tsx",
   /* Bantuan pengguna — formulir alasan per tindakan. Lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/tenant-user-support.tsx",
+  /* Retensi uji coba beku — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/trial-retention-form.tsx",
   "components/auth/auth-shell.tsx",
   "components/auth/signed-in-as.tsx",
   "components/dashboard/dashboard-export-actions.tsx",

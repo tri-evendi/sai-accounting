@@ -179,11 +179,12 @@
     "mockDashboardTitle": "Dasbor",
     "mockJournalMemoTwo": "Pelunasan faktur INV-2026-0042 — masuk ke bank",
     "quoteCta": "Minta penawaran",
-    "quoteNote": "Akun dibuka lewat penawaran: kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Harga di atas adalah titik mulainya.",
-    "faqTrialAQuote": "Uji coba swalayan sedang ditutup. Akses diberikan lewat penawaran — kami sepakati dulu jumlah PT, migrasi datanya, dan cara pembayaran, termasuk masa percobaan bila memang dibutuhkan.",
+    "quoteNote": "Mulai dengan demo, lalu penawaran: kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu, dan akun uji coba disiapkan untuk grup Anda. Harga di atas adalah titik mulainya.",
+    "faqTrialAQuote": "Ada — tetapi tidak lewat pendaftaran mandiri. Sesudah demo, kami siapkan akun uji coba untuk grup Anda dengan jumlah PT yang sesuai. Saat uji coba berakhir tidak ada tagihan otomatis: akun menjadi hanya-baca sampai Anda memutuskan.",
     "compareHeading": "Naik paket lebih murah daripada menumpuk paket kecil",
     "compareRow": "{count} × {small} {stacked} → {large} {upgrade},",
-    "compareSaving": "hemat {amount}/bulan"
+    "compareSaving": "hemat {amount}/bulan",
+    "demoCta": "Jadwalkan demo"
   },
   "common": {
     "skipToContent": "Langsung ke isi",
@@ -553,11 +554,11 @@
       "termsLinkLabel": "syarat & ketentuan",
       "termsAnd": "dan",
       "privacyLinkLabel": "kebijakan privasi",
-      "closedTitle": "Minta penawaran",
-      "closedBody": "Akun dibuka lewat penawaran, bukan pendaftaran mandiri — supaya kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Prosesnya tiga langkah, dan langkah pertamanya satu pesan.",
-      "quoteStep1": "Anda kirim satu pesan: berapa PT, berapa pengguna, dan dari sistem apa datanya dipindahkan.",
-      "quoteStep2": "Kami balas dengan penawaran: kuota, harga, masa kontrak, dan syarat bayar — hitam di atas putih.",
-      "quoteStep3": "Setelah disetujui, akunnya kami siapkan beserta migrasi datanya. Anda masuk ke buku yang sudah terisi.",
+      "closedTitle": "Jadwalkan demo atau minta penawaran",
+      "closedBody": "Akun dibuka sesudah demo singkat, bukan lewat pendaftaran mandiri — supaya jumlah PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Langkah pertamanya satu pesan.",
+      "quoteStep1": "Anda kirim satu pesan: berapa PT, berapa pengguna, dan dari sistem apa datanya dipindahkan. Kami jadwalkan demo.",
+      "quoteStep2": "Sesudah demo, kami siapkan akun uji coba untuk grup Anda — tanpa kartu, dan tanpa tagihan otomatis saat uji coba berakhir.",
+      "quoteStep3": "Siap melanjutkan? Kami kirim penawaran tertulis (kuota, harga, masa kontrak, syarat bayar), lalu akunnya diaktifkan begitu disetujui.",
       "closedWhatsapp": "Hubungi lewat WhatsApp",
       "closedEmail": "Kirim surel ke {email}",
       "closedSignIn": "Sudah punya akun? Masuk"
@@ -4398,7 +4399,10 @@
     "licencePassphraseTooLong": "Frasa sandi terlalu panjang (maksimal 1024 karakter).",
     "licencePassphraseMismatch": "Kedua frasa sandi tidak sama.",
     "nikInvalid": "NIK harus 16 digit",
-    "nitkuInvalid": "NITKU harus 22 digit"
+    "nitkuInvalid": "NITKU harus 22 digit",
+    "transferProofRequired": "Referensi bukti transfer wajib diisi (minimal 3 karakter).",
+    "retentionDaysRange": "Masa retensi 30–3650 hari, atau 0 untuk mengikuti pengaturan server.",
+    "retentionConfirmRequired": "Ketik HAPUS untuk menyalakan penghapusan otomatis."
   },
   "taxSettings": {
     "sectionTitle": "PPN",
@@ -4624,8 +4628,6 @@
     "statusLabel": "Status",
     "trialDaysLeft": "Uji coba berakhir dalam {days} hari.",
     "trialOver": "Masa uji coba sudah berakhir.",
-    "trialFirstInvoice": "Setelah itu tagihan pertama sebesar {amount} terbit (sudah termasuk PPN).",
-    "trialUnpaidNote": "Tidak dibayar berarti akun menunggak lalu ditangguhkan — hanya-baca. Pembukuan Anda tidak dihapus dan tetap bisa diunduh.",
     "trialEndsAt": "Uji coba berakhir",
     "usageHeading": "Pemakaian",
     "quotaFull": "Kuota penuh — naik paket untuk menambah.",
@@ -4665,7 +4667,8 @@
       "past_due": "Menunggak",
       "suspended": "Ditangguhkan (hanya-baca)",
       "cancelled": "Berhenti",
-      "migrated_out": "Pindah ke on-premise"
+      "migrated_out": "Pindah ke on-premise",
+      "trial_ended": "Uji coba berakhir (hanya-baca)"
     },
     "invoiceStatus": {
       "draft": "Draf",
@@ -4699,7 +4702,10 @@
     "deletionCancelled": "Permintaan penghapusan dibatalkan. Tidak ada yang berubah.",
     "deletionFailed": "Permintaan gagal diproses. Silakan coba lagi.",
     "deletionAlreadyPending": "Sudah ada permintaan penghapusan yang menunggu.",
-    "deletionNonePending": "Tidak ada permintaan penghapusan yang menunggu."
+    "deletionNonePending": "Tidak ada permintaan penghapusan yang menunggu.",
+    "trialFreezeNote": "Setelah uji coba berakhir, buku menjadi hanya-baca (data tetap bisa diekspor) — TIDAK ada tagihan otomatis. Untuk melanjutkan, minta aktivasi.",
+    "trialActivationPrice": "Harga paket ini bila diaktifkan: {amount} per bulan (sudah termasuk PPN).",
+    "trialEndedNote": "Masa uji coba sudah berakhir: buku besar HANYA-BACA. Membaca dan mengekspor tetap bisa, dan tidak ada tagihan yang terbit. Minta aktivasi untuk melanjutkan — data Anda tidak dihapus."
   },
   "billing": {
     "payColumn": "Bayar",
@@ -4720,7 +4726,36 @@
     "saveProfile": "Simpan Profil",
     "savingProfile": "Menyimpan...",
     "profileSaved": "Profil pajak tersimpan",
-    "errProfile": "Gagal menyimpan profil pajak"
+    "errProfile": "Gagal menyimpan profil pajak",
+    "trialNotice": {
+      "subjectEnding": "Masa uji coba berakhir {when} ({date}) — SAI Accounting",
+      "subjectLate": "Masa uji coba sudah berakhir ({date}) — minta aktivasi — SAI Accounting",
+      "langLabel": "Bahasa Indonesia",
+      "greeting": "Halo,",
+      "bodyEnding": "Masa uji coba akun SAI Accounting Anda berakhir pada {date}.",
+      "bodyLate": "Masa uji coba akun SAI Accounting Anda sudah berakhir pada {date}. Akun akan dibekukan paling cepat pada {freezeDate}.",
+      "readOnly": "Setelah itu buku besar menjadi HANYA-BACA: membaca dan mengekspor data tetap bisa, dan TIDAK ada tagihan yang terbit otomatis. Data Anda tidak dihapus.",
+      "activate": "Ingin melanjutkan? Tekan \"Minta aktivasi\" di menu Langganan aplikasi, atau hubungi kami — kami bantu memilih paket dan mengaktifkan akun Anda.",
+      "contact": "Hubungi kami: {channels}",
+      "contactNone": "Balas surel ini atau hubungi kontak SAI Anda."
+    },
+    "activation": {
+      "button": "Minta aktivasi",
+      "done": "Permintaan aktivasi tercatat. Tim kami akan menghubungi Anda.",
+      "whatsapp": "Hubungi via WhatsApp",
+      "email": "Kirim surel",
+      "noChannel": "Kanal kontak belum disetel; tim kami akan menghubungi alamat surel akun Anda.",
+      "errSave": "Permintaan aktivasi belum tercatat. Coba lagi sebentar lagi.",
+      "waText": "Halo, saya ingin mengaktifkan akun SAI Accounting saya ({account}).",
+      "mailSubject": "Permintaan aktivasi akun {account}"
+    },
+    "retentionNotice": {
+      "subject": "Akun uji coba Anda akan dihapus pada {date} — unduh data Anda — SAI Accounting",
+      "body": "Masa uji coba akun SAI Accounting Anda sudah berakhir dan bukunya beku hanya-baca. Sesuai kebijakan retensi, akun ini akan DIHAPUS pada {date} ({days} hari lagi): pengguna dianonimkan dan seluruh PT dinonaktifkan. Penghapusan tidak bisa dibatalkan.",
+      "export": "Unduh salinan lengkap data Anda (CSV seluruh tabel + dokumen) sebelum tanggal itu: {url}",
+      "exportNoLink": "Unduh salinan lengkap data Anda sebelum tanggal itu lewat menu Privasi & data di aplikasi.",
+      "keep": "Ingin tetap memakai akun ini? Minta aktivasi lewat menu Langganan atau hubungi kami sebelum tanggal penghapusan."
+    }
   },
   "operator": {
     "consoleTitle": "Konsol operator",
@@ -4758,7 +4793,7 @@
       "schedulerFailing": "Putaran penjadwal terakhir gagal ({count} galat)",
       "schedulerFailingWhy": "Periksa ini dulu. Uji coba kedaluwarsa yang menumpuk dan tagihan yang tidak terbit biasanya berasal dari sini.",
       "trialsExpired": "{count} uji coba sudah berakhir tetapi statusnya belum berubah",
-      "trialsExpiredWhy": "Tenant ini masih memakai buku dengan status uji coba.",
+      "trialsExpiredWhy": "Pemberitahuan beku sudah atau akan dikirim penjadwal; buku menjadi hanya-baca 7 hari sesudahnya — tanpa tagihan.",
       "invoicesOverdue": "{count} tagihan lewat jatuh tempo",
       "invoicesOverdueWhy": "Tagihan terbit tetapi belum dibayar. Bila tidak ditindak, proses dunning yang berjalan.",
       "tenantsPastDue": "{count} tenant menunggak",
@@ -4766,7 +4801,9 @@
       "tenantsSuspended": "{count} tenant ditangguhkan atau berhenti",
       "tenantsSuspendedWhy": "Tenant hanya bisa membaca bukunya. Buka tenant untuk memulihkan.",
       "trialsEndingSoon": "{count} uji coba berakhir dalam 7 hari",
-      "trialsEndingSoonWhy": "Hubungi sebelum uji coba berakhir."
+      "trialsEndingSoonWhy": "Hubungi sebelum uji coba berakhir.",
+      "activationRequests": "{count} customer meminta aktivasi",
+      "activationRequestsWhy": "Mereka sudah menekan \"Minta aktivasi\" dan menunggu dihubungi lewat WhatsApp atau surel."
     },
     "overview": {
       "heading": "Ringkasan platform",
@@ -5675,15 +5712,17 @@
     },
     "quote": {
       "title": "Aktifkan dari penawaran",
-      "description": "Untuk penawaran yang sudah disetujui dan dibayar: atur paket, periode, dan mode tagih manual sekaligus.",
+      "description": "Untuk penawaran yang sudah disetujui dan dibayar: atur paket, periode, dan mode tagih manual sekaligus — juga untuk uji coba yang sudah beku.",
       "open": "Aktifkan dari penawaran",
-      "explain": "Menjalankan tiga langkah berurutan: ganti paket (bila berbeda), perpanjang periode, lalu atur mode tagih manual. Berhenti pada langkah pertama yang gagal. Perpanjangan menerbitkan tagihan Rp 0; faktur sebenarnya dibuat di buku PT penyedia.",
+      "explain": "Menjalankan tiga langkah berurutan: ganti paket (bila berbeda), perpanjang periode, lalu atur mode tagih manual. Berhenti pada langkah pertama yang gagal. TIDAK menerbitkan tagihan Rp 0: yang dicatat adalah nomor penawaran + bukti transfer, sebab fakturnya dibuat di buku PT penyedia.",
       "refLabel": "Nomor penawaran / kontrak",
       "submit": "Aktifkan hak pakai",
-      "confirmBody": "Aktifkan {tenant} dari penawaran {quote}: paket {plan}, {periods} periode, mode tagih manual?",
+      "confirmBody": "Aktifkan {tenant} dari penawaran {quote}: paket {plan}, {periods} periode, mode tagih manual? Bukti transfer: {proof}.",
       "done": "Hak pakai aktif dari penawaran {quote}.",
       "partial": "Belum selesai: {steps}. Lanjutkan langkah yang tersisa dengan tombol masing-masing.",
-      "errInput": "Isian belum lengkap: nomor penawaran, paket, periode 1–24, dan alasan wajib diisi."
+      "errInput": "Isian belum lengkap: nomor penawaran, paket, periode 1–24, dan alasan wajib diisi.",
+      "proofLabel": "Referensi bukti transfer",
+      "proofHint": "Berita/nomor referensi rekening koran, atau tautan dokumen bukti."
     },
     "licences": {
       "heading": "Lisensi on-premise",
@@ -5846,6 +5885,102 @@
         "too_small": "Gambar terlalu kecil: sisi terpendek minimal {min} px.",
         "too_big_dimensions": "Gambar terlalu besar: sisi terpanjang maksimal 4096 px."
       }
+    },
+    "trial": {
+      "open": "Buat uji coba",
+      "title": "Buat tenant uji coba",
+      "description": "Untuk prospek sesudah demo: paket, kuota, dan lama uji coba Anda yang menentukan. Uji coba yang habis beku hanya-baca — tidak ada tagihan otomatis.",
+      "explain": "Pemilik akun menerima surel berisi tautan untuk menentukan kata sandinya sendiri — Anda tidak pernah memegang kata sandinya. Saat uji coba habis, pemilik sudah diberi tahu sedikitnya 7 hari sebelumnya, lalu buku menjadi hanya-baca (ekspor tetap bisa) sampai Anda mengaktifkannya dari penawaran.",
+      "tenantName": "Nama akun (grup / perusahaan prospek)",
+      "ownerName": "Nama pemilik akun",
+      "ownerEmail": "Surel pemilik akun",
+      "ownerEmailHint": "Tautan atur kata sandi dikirim ke alamat ini. Alamat yang sudah punya akun ditolak.",
+      "trialDays": "Lama uji coba (hari)",
+      "trialDaysHint": "Bawaan 30 hari — satu siklus tutup bulan. Maksimal {max} hari.",
+      "billingModeHint": "Uji coba tidak pernah ditagih otomatis. \"Tanpa tagihan\" untuk prospek biasa; \"Manual\" bila penagihannya sudah disepakati di luar sistem.",
+      "maxCompanies": "Kuota PT (0 = ikut paket)",
+      "maxUsers": "Kuota pengguna (0 = ikut paket)",
+      "quotaHint": "Bawaan paket: {value}.",
+      "isDemo": "Tenant DEMO (untuk presentasi, boleh diisi ulang data contoh)",
+      "isDemoHint": "Tenant demo lahir aktif tanpa tanggal akhir dan tidak pernah ikut retensi penghapusan. Isi data contohnya dengan bun run demo:seed.",
+      "submit": "Buat uji coba",
+      "confirmBody": "Buat akun {tenant} di paket {plan} selama {days} hari? Tautan atur kata sandi dikirim ke {email}. Tidak ada tagihan otomatis di akhir uji coba.",
+      "confirmDemo": "Buat tenant DEMO {tenant} di paket {plan}? Tautan atur kata sandi dikirim ke {email}.",
+      "created": "Akun {slug} dibuat; tautan atur kata sandi dikirim ke {email}.",
+      "errEmailTaken": "Alamat surel itu sudah punya akun.",
+      "warnNoOrigin": "Tautan atur kata sandi TIDAK terkirim: AUTH_URL belum diset. Kirim dari rincian tenant setelah diperbaiki.",
+      "warnMail": "Akun dibuat, tetapi surel sambutan gagal terkirim. Kirim ulang lewat \"Kirim tautan atur ulang\" di rincian tenant.",
+      "warnSubscription": "Langganan platform belum tertulis; putaran penjadwal berikutnya yang melahirkannya.",
+      "demoBadge": "Demo",
+      "endedNote": "Uji coba berakhir: buku hanya-baca, ekspor tetap terbuka, tanpa tagihan. Aktifkan dari penawaran atau perpanjang uji coba di bawah.",
+      "extendOpen": "Perpanjang uji coba",
+      "extendTitle": "Perpanjang uji coba",
+      "extendDescription": "Tanggal akhir baru dihitung dari hari ini. Uji coba yang sudah beku dicairkan kembali.",
+      "extendExplain": "Tanpa tagihan dan tanpa periode berbayar — hanya tanggal akhir uji coba yang bergeser. Pemilik akan diberi tahu ulang sebelum tanggal baru.",
+      "extendSubmit": "Perpanjang",
+      "extendConfirm": "Perpanjang uji coba {tenant} {days} hari dari hari ini?",
+      "extendDone": "Uji coba diperpanjang sampai {date}.",
+      "extendNotApplicable": "Tidak ada uji coba untuk diperpanjang (status: {status}).",
+      "extendOnlyTrial": "Hanya untuk tenant yang sedang uji coba atau uji cobanya sudah beku."
+    },
+    "partner": {
+      "label": "Mitra perujuk (opsional)",
+      "hint": "Nama mitra yang membawa prospek ini — dasar komisi yang dihitung manual.",
+      "hintEdit": "Kosongkan untuk menghapus atribusi.",
+      "column": "Mitra",
+      "short": "Mitra: {partner}",
+      "title": "Atribusi mitra",
+      "description": "Mitra yang membawa tenant ini, untuk menghitung komisi secara manual.",
+      "current": "Mitra: {partner}",
+      "none": "Belum ada mitra tercatat.",
+      "edit": "Ubah mitra",
+      "save": "Simpan mitra",
+      "saved": "Mitra dicatat: {partner}.",
+      "cleared": "Atribusi mitra dihapus.",
+      "unchanged": "Mitra tidak berubah."
+    },
+    "activation": {
+      "heading": "Permintaan aktivasi",
+      "description": "Customer yang menekan \"Minta aktivasi\" dan menunggu dihubungi. Aktifkan dari rincian tenant, lalu tandai ditangani.",
+      "badge": "Minta aktivasi",
+      "colRequestedBy": "Diminta oleh",
+      "colNote": "Pesan",
+      "markHandled": "Tandai ditangani",
+      "open": "Terbuka",
+      "handledAt": "Ditangani {date}",
+      "confirm": "Tandai permintaan aktivasi {tenant} sudah ditangani?",
+      "reasonPlaceholder": "mis. sudah ditelepon, penawaran dikirim",
+      "empty": "Tidak ada permintaan aktivasi.",
+      "handledDone": "Permintaan aktivasi ditandai ditangani.",
+      "errAlreadyHandled": "Permintaan itu sudah ditangani.",
+      "errNotFound": "Permintaan aktivasi tidak ditemukan."
+    },
+    "retention": {
+      "heading": "Retensi uji coba beku",
+      "descriptionOff": "Hapus otomatis MATI. Penjadwal hanya melaporkan tenant uji coba yang beku lebih dari {days} hari — tidak ada surel dan tidak ada penghapusan.",
+      "descriptionOn": "Hapus otomatis MENYALA. Tenant uji coba yang beku lebih dari {days} hari menerima pemberitahuan H-14 dan H-3 berisi tautan ekspor, lalu dihapus (anonimisasi + PT nonaktif; buku besar disimpan sesuai UU KUP). Tidak bisa dibalik.",
+      "switchLabel": "Hapus otomatis tenant uji coba beku",
+      "optionEnv": "Ikut pengaturan server (saat ini: {state})",
+      "optionOn": "Nyala — hapus sesudah pemberitahuan",
+      "optionOff": "Mati — hanya laporkan",
+      "stateOn": "nyala",
+      "stateOff": "mati",
+      "switchHint": "Bawaannya MATI (env TRIAL_AUTO_DELETION hanya menyala bila ditulis persis on). Tenant demo dan tenant yang punya permintaan hapus sendiri tidak pernah ikut.",
+      "daysLabel": "Masa retensi sesudah beku (hari, 0 = ikut server)",
+      "daysHint": "Pengaturan server saat ini: {days} hari. Rentang 30–3650.",
+      "confirmLabel": "Ketik HAPUS untuk menyalakan",
+      "save": "Simpan retensi",
+      "saved": "Pengaturan retensi uji coba disimpan.",
+      "confirmTitle": "Nyalakan penghapusan otomatis?",
+      "confirmBody": "Sesudah ini penjadwal MENGHAPUS tenant uji coba yang beku lebih dari {days} hari (setelah pemberitahuan H-14 dan H-3): pengguna dianonimkan dan PT dinonaktifkan. Penghapusan tidak bisa dibalik.",
+      "confirmSubmit": "Ya, nyalakan",
+      "candidatesHeading": "Kandidat penghapusan uji coba",
+      "candidatesNote": "Dihitung dengan aturan yang sama dengan penjadwal. Tanggal hapus berlaku sesudah pemberitahuan H-14 terkirim; selama sakelar mati tidak ada yang dikirim atau dihapus.",
+      "candidatesEmpty": "Tidak ada tenant uji coba yang beku.",
+      "colEnded": "Beku sejak",
+      "colDelete": "Dihapus pada",
+      "colNotices": "Pemberitahuan",
+      "notNotified": "belum diberi tahu (paling cepat {date})"
     }
   },
   "docs": {

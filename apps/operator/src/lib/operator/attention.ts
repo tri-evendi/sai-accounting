@@ -56,6 +56,7 @@ export interface AttentionItem {
     | "schedulerNever"
     | "schedulerFailing"
     | "trialsExpired"
+    | "activationRequests"
     | "invoicesOverdue"
     | "tenantsPastDue"
     | "tenantsSuspended"
@@ -78,6 +79,8 @@ export interface AttentionInput {
   /** `null` = `sai_platform` tak terjangkau — bidangnya memang boleh mati. */
   platform: {
     overdueInvoices: number;
+    /** Permintaan aktivasi terbuka (alur demo-first); tak ada = 0. */
+    openActivationRequests?: number;
   } | null;
 }
 
@@ -142,6 +145,14 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
       tone: "warning",
       href: "/tenants?status=trialing",
     });
+  }
+
+  /* ── 2b. Prospek yang MEMINTA diaktifkan (alur demo-first) ──────────────
+     Orang yang sudah menekan "Minta aktivasi" sedang menunggu dihubungi —
+     calon pendapatan yang paling dekat, dan yang paling cepat dingin. */
+  const minta = platform?.openActivationRequests ?? 0;
+  if (minta > 0) {
+    out.push({ key: "activationRequests", count: minta, tone: "warning", href: "/tenants" });
   }
 
   /* ── 3. Tagihan lewat jatuh tempo ──────────────────────────────────────── */

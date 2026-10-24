@@ -58,6 +58,10 @@ const DIIZINKAN: Record<string, { jumlah: number; alasan: string }> = {
     jumlah: 1,
     alasan: "`dateKey` = kunci `reminder_logs.due_key` dan nomor `PINV-S…` yang sudah tersimpan",
   },
+  "packages/billing/src/trial-retention.ts": {
+    jumlah: 1,
+    alasan: "`dateKey` = kunci `reminder_logs.due_key` pemberitahuan retensi (`D-14:`/`D-3:`) — bentuk yang sama dengan `subscription-lifecycle`",
+  },
   "apps/operator/src/lib/operator/writes.ts": {
     jumlah: 1,
     alasan: "nomor tagihan kompensasi wajib sebentuk dengan `dateKey` nomor penjadwal",

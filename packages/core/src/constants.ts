@@ -140,6 +140,10 @@ export const TENANT_STATUSES = [
    * buku tetap tersimpan di SaaS sampai alur penghapusan #142 dijalankan.
    * Konstanta & penjaganya: `@sai/core/tenant-migration`. */
   "migrated_out",
+  /* Uji coba habis → BEKU hanya-baca, tanpa tagihan (alur demo-first, 24 Okt
+   * 2026; `docs/KOMERSIALISASI.md` §1.2). Salinan status langganan
+   * `trial_ended` — lihat `SUBSCRIPTION_STATUSES` di `@sai/billing`. */
+  "trial_ended",
 ] as const;
 export type TenantStatus = (typeof TENANT_STATUSES)[number];
 

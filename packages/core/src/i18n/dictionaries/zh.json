@@ -179,11 +179,12 @@
     "mockDashboardTitle": "仪表盘",
     "mockJournalMemoTwo": "收到货款 — 发票 INV-2026-0042，存入银行",
     "quoteCta": "获取报价",
-    "quoteNote": "账户通过报价开通：先就公司配额、数据迁移和付款方式达成一致。上述价格为起始价。",
-    "faqTrialAQuote": "自助试用目前已关闭。开通需通过报价——我们会先就公司数量、数据迁移和付款方式达成一致，必要时也包含试用期。",
+    "quoteNote": "先预约演示，再获取报价：先就公司配额、数据迁移和付款方式达成一致，并为您的集团开通试用账户。上述价格为起始价。",
+    "faqTrialAQuote": "有——但不通过自助注册。演示之后，我们会为您的集团开通相应公司数量的试用账户。试用结束时不会自动开具账单：账户变为只读，直到您做出决定。",
     "compareHeading": "升级套餐比叠加小套餐更便宜",
     "compareRow": "{count} × {small} {stacked} → {large} {upgrade}，",
-    "compareSaving": "每月节省 {amount}"
+    "compareSaving": "每月节省 {amount}",
+    "demoCta": "预约演示"
   },
   "common": {
     "skipToContent": "跳到正文",
@@ -553,11 +554,11 @@
       "termsLinkLabel": "条款与条件",
       "termsAnd": "及",
       "privacyLinkLabel": "隐私政策",
-      "closedTitle": "获取报价",
-      "closedBody": "账户通过报价开通，而非自助注册——以便先就公司配额、数据迁移和付款方式达成一致。共三步，第一步只需一条消息。",
-      "quoteStep1": "您发送一条消息：几家公司、几位用户，以及数据来自哪个系统。",
-      "quoteStep2": "我们回复报价：配额、价格、合同期限与付款条件——书面确认。",
-      "quoteStep3": "确认后，我们会连同数据迁移一起为您开通账户。您登录时账簿已填好。",
+      "closedTitle": "预约演示或获取报价",
+      "closedBody": "账户在简短演示之后开通，而非自助注册——以便先就公司数量、数据迁移和付款方式达成一致。第一步只需一条消息。",
+      "quoteStep1": "您发送一条消息：几家公司、几位用户，以及数据来自哪个系统。我们会安排演示。",
+      "quoteStep2": "演示之后，我们会为您的集团开通试用账户——无需银行卡，试用结束时也不会自动开具账单。",
+      "quoteStep3": "准备继续？我们会发送书面报价（配额、价格、合同期限、付款条件），确认后即开通账户。",
       "closedWhatsapp": "通过 WhatsApp 联系我们",
       "closedEmail": "发送邮件至 {email}",
       "closedSignIn": "已有账户？登录"
@@ -4398,7 +4399,10 @@
     "licencePassphraseTooLong": "口令过长（最多 1024 个字符）。",
     "licencePassphraseMismatch": "两次输入的口令不一致。",
     "nikInvalid": "NIK 必须为 16 位",
-    "nitkuInvalid": "NITKU 必须为 22 位"
+    "nitkuInvalid": "NITKU 必须为 22 位",
+    "transferProofRequired": "转账凭证参考为必填项（至少 3 个字符）。",
+    "retentionDaysRange": "保留期为 30–3650 天，或填 0 以沿用服务器设置。",
+    "retentionConfirmRequired": "输入 HAPUS 以开启自动删除。"
   },
   "taxSettings": {
     "sectionTitle": "增值税（PPN）",
@@ -4624,8 +4628,6 @@
     "statusLabel": "状态",
     "trialDaysLeft": "试用期将在 {days} 天后结束。",
     "trialOver": "试用期已结束。",
-    "trialFirstInvoice": "届时将出具第一张账单，金额 {amount}（含增值税）。",
-    "trialUnpaidNote": "逾期未付将转为欠费并随后暂停——变为只读。您的账簿不会被删除，仍可下载。",
     "trialEndsAt": "试用截止",
     "usageHeading": "用量",
     "quotaFull": "配额已满——升级套餐以增加。",
@@ -4665,7 +4667,8 @@
       "past_due": "已逾期",
       "suspended": "已暂停(只读)",
       "cancelled": "已终止",
-      "migrated_out": "已迁移至本地部署"
+      "migrated_out": "已迁移至本地部署",
+      "trial_ended": "试用已结束（只读）"
     },
     "invoiceStatus": {
       "draft": "草稿",
@@ -4699,7 +4702,10 @@
     "deletionCancelled": "删除申请已取消。一切保持不变。",
     "deletionFailed": "请求处理失败，请重试。",
     "deletionAlreadyPending": "已有一个待处理的删除申请。",
-    "deletionNonePending": "没有待处理的删除申请。"
+    "deletionNonePending": "没有待处理的删除申请。",
+    "trialFreezeNote": "试用结束后，账簿将变为只读（仍可导出数据）——不会自动开具账单。如需继续使用，请申请开通。",
+    "trialActivationPrice": "开通后本套餐价格：每月 {amount}（含增值税）。",
+    "trialEndedNote": "试用期已结束：账簿为只读。仍可查看和导出，且未开具任何账单。请申请开通以继续使用——您的数据不会被删除。"
   },
   "billing": {
     "payColumn": "支付",
@@ -4720,7 +4726,36 @@
     "saveProfile": "保存资料",
     "savingProfile": "保存中...",
     "profileSaved": "税务资料已保存",
-    "errProfile": "保存税务资料失败"
+    "errProfile": "保存税务资料失败",
+    "trialNotice": {
+      "subjectEnding": "试用期将于 {when}（{date}）结束 — SAI Accounting",
+      "subjectLate": "试用期已结束（{date}）— 请申请开通 — SAI Accounting",
+      "langLabel": "中文",
+      "greeting": "您好，",
+      "bodyEnding": "您的 SAI Accounting 账户试用期将于 {date} 结束。",
+      "bodyLate": "您的 SAI Accounting 账户试用期已于 {date} 结束。账户最早将于 {freezeDate} 冻结。",
+      "readOnly": "此后账簿将变为只读：您仍可查看和导出数据，系统不会自动开具任何账单。您的数据不会被删除。",
+      "activate": "想继续使用？请在应用的“订阅”菜单中点击“申请开通”，或联系我们——我们将协助您选择套餐并开通账户。",
+      "contact": "联系我们：{channels}",
+      "contactNone": "请回复此邮件或联系您的 SAI 对接人。"
+    },
+    "activation": {
+      "button": "申请开通",
+      "done": "开通申请已记录。我们的团队会与您联系。",
+      "whatsapp": "通过 WhatsApp 联系",
+      "email": "发送邮件",
+      "noChannel": "尚未配置联系渠道；我们的团队将通过您账户的邮箱联系您。",
+      "errSave": "开通申请未能记录，请稍后重试。",
+      "waText": "您好，我想开通我的 SAI Accounting 账户（{account}）。",
+      "mailSubject": "账户 {account} 开通申请"
+    },
+    "retentionNotice": {
+      "subject": "您的试用账户将于 {date} 删除——请下载您的数据——SAI Accounting",
+      "body": "您的 SAI Accounting 账户试用期已结束，账簿已冻结为只读。根据保留政策，该账户将于 {date}（{days} 天后）被删除：用户将被匿名化，所有公司将被停用。删除后无法恢复。",
+      "export": "请在该日期前下载您数据的完整副本（所有表格的 CSV 及文档）：{url}",
+      "exportNoLink": "请在该日期前通过应用中的“隐私与数据”菜单下载您数据的完整副本。",
+      "keep": "想保留此账户？请在删除日期前通过“订阅”菜单申请开通，或联系我们。"
+    }
   },
   "operator": {
     "consoleTitle": "运营控制台",
@@ -4758,7 +4793,7 @@
       "schedulerFailing": "上一轮调度失败（{count} 个错误）",
       "schedulerFailingWhy": "请先检查这里。过期试用堆积和账单未开出通常源于此。",
       "trialsExpired": "{count} 个试用已结束，但状态未变",
-      "trialsExpiredWhy": "这些租户仍以试用状态使用账簿。",
+      "trialsExpiredWhy": "调度程序已发送或将发送冻结通知；7 天后账簿变为只读——不会开具账单。",
       "invoicesOverdue": "{count} 张账单已逾期",
       "invoicesOverdueWhy": "已开出但未付款。若不处理，将进入催收流程。",
       "tenantsPastDue": "{count} 个租户欠费",
@@ -4766,7 +4801,9 @@
       "tenantsSuspended": "{count} 个租户已暂停或已停止",
       "tenantsSuspendedWhy": "租户只能查看账簿。打开租户即可恢复。",
       "trialsEndingSoon": "{count} 个试用将在 7 天内结束",
-      "trialsEndingSoonWhy": "请在试用结束前联系对方。"
+      "trialsEndingSoonWhy": "请在试用结束前联系对方。",
+      "activationRequests": "{count} 位客户申请开通",
+      "activationRequestsWhy": "他们已点击“申请开通”，正在等待通过 WhatsApp 或邮件联系。"
     },
     "overview": {
       "heading": "平台概览",
@@ -5675,15 +5712,17 @@
     },
     "quote": {
       "title": "从报价激活",
-      "description": "适用于已接受并付款的报价：一步设置套餐、期限和手动计费模式。",
+      "description": "适用于已批准并付款的报价：一次性设置套餐、周期和手动计费模式——也适用于已冻结的试用。",
       "open": "从报价激活",
-      "explain": "依次执行三步：更换套餐（如不同）、延长期限、设为手动计费。任一步失败即停止。续期会开出 Rp 0 账单；正式发票在服务商账簿中开具。",
+      "explain": "依次执行三个步骤：更换套餐（若不同）、延长周期、设置手动计费模式。在第一个失败的步骤处停止。不会开具 0 元账单：系统记录报价编号和转账凭证，因为发票在服务商自己的账簿中开具。",
       "refLabel": "报价 / 合同编号",
       "submit": "激活使用权",
-      "confirmBody": "从报价 {quote} 激活 {tenant}：套餐 {plan}，{periods} 个周期，手动计费模式？",
+      "confirmBody": "依据报价 {quote} 开通 {tenant}：套餐 {plan}，{periods} 个周期，手动计费？转账凭证：{proof}。",
       "done": "已根据报价 {quote} 激活使用权。",
       "partial": "未完成：{steps}。请用各自的按钮完成剩余步骤。",
-      "errInput": "信息不完整：报价编号、套餐、期限（1–24）和理由均为必填。"
+      "errInput": "信息不完整：报价编号、套餐、期限（1–24）和理由均为必填。",
+      "proofLabel": "转账凭证参考",
+      "proofHint": "银行流水参考号，或凭证文件的链接。"
     },
     "licences": {
       "heading": "本地部署许可证",
@@ -5846,6 +5885,102 @@
         "too_small": "图片太小：最短边至少需要 {min} px。",
         "too_big_dimensions": "图片太大：最长边最多 4096 px。"
       }
+    },
+    "trial": {
+      "open": "创建试用",
+      "title": "创建试用租户",
+      "description": "用于演示后的潜在客户：由您选择套餐、配额和试用时长。试用结束后账户冻结为只读——不会自动开具账单。",
+      "explain": "账户所有者会收到一封邮件，通过链接自行设置密码——您永远不会持有其密码。试用结束前至少 7 天会通知所有者，之后账簿变为只读（仍可导出），直到您依据报价开通。",
+      "tenantName": "账户名称（潜在客户的集团/公司）",
+      "ownerName": "账户所有者姓名",
+      "ownerEmail": "账户所有者邮箱",
+      "ownerEmailHint": "设置密码的链接将发送到此地址。已有账户的地址会被拒绝。",
+      "trialDays": "试用时长（天）",
+      "trialDaysHint": "默认 30 天——一个月结周期。最多 {max} 天。",
+      "billingModeHint": "试用期永远不会自动计费。普通潜在客户选“不计费”；若已在系统外约定计费方式，选“手动”。",
+      "maxCompanies": "公司配额（0 = 按套餐）",
+      "maxUsers": "用户配额（0 = 按套餐）",
+      "quotaHint": "套餐默认值：{value}。",
+      "isDemo": "演示租户（用于演示，可重新填充示例数据）",
+      "isDemoHint": "演示租户创建即为启用状态，无结束日期，且永不参与删除保留策略。可用 bun run demo:seed 填充示例数据。",
+      "submit": "创建试用",
+      "confirmBody": "以 {plan} 套餐创建账户 {tenant}，试用 {days} 天？设置密码的链接将发送至 {email}。试用结束时不会自动开具账单。",
+      "confirmDemo": "以 {plan} 套餐创建演示租户 {tenant}？设置密码的链接将发送至 {email}。",
+      "created": "账户 {slug} 已创建；设置密码的链接已发送至 {email}。",
+      "errEmailTaken": "该邮箱地址已有账户。",
+      "warnNoOrigin": "设置密码的链接未发送：未设置 AUTH_URL。修复后请在租户详情页发送。",
+      "warnMail": "账户已创建，但欢迎邮件发送失败。请在租户详情页通过“发送重置链接”重新发送。",
+      "warnSubscription": "平台订阅尚未写入；下一次调度运行时会自动创建。",
+      "demoBadge": "演示",
+      "endedNote": "试用已结束：账簿只读，仍可导出，无账单。可在下方依据报价开通或延长试用。",
+      "extendOpen": "延长试用",
+      "extendTitle": "延长试用",
+      "extendDescription": "新的结束日期从今天起算。已冻结的试用将被解冻。",
+      "extendExplain": "不开具账单，也不产生付费期——仅移动试用结束日期。新日期之前会再次通知所有者。",
+      "extendSubmit": "延长",
+      "extendConfirm": "将 {tenant} 的试用从今天起延长 {days} 天？",
+      "extendDone": "试用已延长至 {date}。",
+      "extendNotApplicable": "没有可延长的试用（状态：{status}）。",
+      "extendOnlyTrial": "仅适用于正在试用或试用已冻结的租户。"
+    },
+    "partner": {
+      "label": "推荐合作伙伴（可选）",
+      "hint": "带来此潜在客户的合作伙伴名称——用于手动计算佣金。",
+      "hintEdit": "留空以移除归属。",
+      "column": "合作伙伴",
+      "short": "合作伙伴：{partner}",
+      "title": "合作伙伴归属",
+      "description": "带来此租户的合作伙伴，用于手动计算佣金。",
+      "current": "合作伙伴：{partner}",
+      "none": "尚未记录合作伙伴。",
+      "edit": "更改合作伙伴",
+      "save": "保存合作伙伴",
+      "saved": "已记录合作伙伴：{partner}。",
+      "cleared": "已移除合作伙伴归属。",
+      "unchanged": "合作伙伴未更改。"
+    },
+    "activation": {
+      "heading": "开通申请",
+      "description": "点击了“申请开通”并等待联系的客户。请在租户详情页开通，然后标记为已处理。",
+      "badge": "已申请开通",
+      "colRequestedBy": "申请人",
+      "colNote": "留言",
+      "markHandled": "标记为已处理",
+      "open": "待处理",
+      "handledAt": "已于 {date} 处理",
+      "confirm": "将 {tenant} 的开通申请标记为已处理？",
+      "reasonPlaceholder": "例如：已致电，已发送报价",
+      "empty": "暂无开通申请。",
+      "handledDone": "开通申请已标记为已处理。",
+      "errAlreadyHandled": "该申请已处理。",
+      "errNotFound": "未找到开通申请。"
+    },
+    "retention": {
+      "heading": "已冻结试用的保留期",
+      "descriptionOff": "自动删除已关闭。调度程序仅报告冻结超过 {days} 天的试用租户——不发邮件，也不删除。",
+      "descriptionOn": "自动删除已开启。冻结超过 {days} 天的试用租户将在删除前 14 天和 3 天收到附导出链接的通知，随后被删除（匿名化并停用公司；账簿按税法保留）。不可撤销。",
+      "switchLabel": "自动删除已冻结的试用租户",
+      "optionEnv": "沿用服务器设置（当前：{state}）",
+      "optionOn": "开启——通知后删除",
+      "optionOff": "关闭——仅报告",
+      "stateOn": "开启",
+      "stateOff": "关闭",
+      "switchHint": "默认关闭（环境变量 TRIAL_AUTO_DELETION 仅在精确设为 on 时开启）。演示租户和自行提出删除申请的租户永远不包括在内。",
+      "daysLabel": "冻结后的保留期（天，0 = 沿用服务器）",
+      "daysHint": "当前服务器设置：{days} 天。范围 30–3650。",
+      "confirmLabel": "输入 HAPUS 以开启",
+      "save": "保存保留设置",
+      "saved": "试用保留设置已保存。",
+      "confirmTitle": "开启自动删除？",
+      "confirmBody": "此后调度程序将删除冻结超过 {days} 天的试用租户（在提前 14 天和 3 天通知之后）：用户被匿名化，公司被停用。删除不可撤销。",
+      "confirmSubmit": "是，开启",
+      "candidatesHeading": "试用删除候选",
+      "candidatesNote": "与调度程序使用相同规则计算。删除日期在 14 天通知发出后生效；开关关闭期间不会发送或删除任何内容。",
+      "candidatesEmpty": "没有已冻结的试用租户。",
+      "colEnded": "冻结日期",
+      "colDelete": "删除日期",
+      "colNotices": "通知",
+      "notNotified": "尚未通知（最早 {date}）"
     }
   },
   "docs": {

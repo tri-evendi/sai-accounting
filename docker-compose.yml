@@ -96,6 +96,10 @@ x-env:
     PLATFORM_SELLER_NPWP:
     PLATFORM_SELLER_NAME:
     SELF_SERVE_SIGNUP:
+    # Retensi uji coba BEKU (alur demo-first, migration platform 0012). Bawaan
+    # MATI: hanya `on` yang menyalakan, dan konsol `/settings` menang atas env.
+    TRIAL_AUTO_DELETION:
+    TRIAL_RETENTION_DAYS:
   # ⚠ RAHASIA CADANGAN — hanya `svc-integrator` (jalur `tenant`) dan perkakas
   # `job-backup`. Ditolak di layanan lain oleh penjaga.
   backup: &env-backup
@@ -237,6 +241,8 @@ services:
     # pemilik, bukan sebagai peran aplikasi dari `.env`.
     environment:
       <<: [*env-books, *env-db-instances, *env-mail, *env-billing]
+      # Tautan ekspor di surel retensi uji coba (penjadwal, host PELANGGAN).
+      AUTH_URL:
       DATABASE_URL: postgres://${PG_OWNER_USER:-${PG_USER:-sai}}:${PG_OWNER_PASSWORD:-${PG_PASSWORD}}@pg:5432/${DB_NAME:-sai_production}
       CONTROL_DATABASE_URL: postgres://${PG_OWNER_USER:-${PG_USER:-sai}}:${PG_OWNER_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_control
       PLATFORM_DATABASE_URL: postgres://${PG_OWNER_USER:-${PG_USER:-sai}}:${PG_OWNER_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_platform
@@ -462,6 +468,8 @@ services:
     init: true
     environment:
       <<: [*env-books, *env-db-instances, *env-mail, *env-billing]
+      # Tautan ekspor di surel retensi uji coba (penjadwal, host PELANGGAN).
+      AUTH_URL:
       LICENCE_FILE:
       # `WORKER_LEADER_ROLES` hanya dari override HA — compose dasar tidak
       # pernah menyalakan leader election (`tests/leader-election.test.ts`).

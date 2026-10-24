@@ -33,6 +33,22 @@ eksplisit → tenggang 30 hari → eksekusi: nonaktif + anonimisasi (buku UTUH)
 | Penghancuran menunggu retensi | `ledgerDropVerdict` + `retention_until` = 10 tahun sejak entri jurnal termuda, dihitung SAAT eksekusi (`retentionUntilFrom`) |
 | Penghancuran menuntut manusia | skrip operator, konfirmasi ketik-ulang slug — pola adopsi #134; TIDAK ada tombol self-service |
 
+### 1a. Retensi uji coba BEKU (alur demo-first, 24 Okt 2026)
+
+Uji coba yang habis beku hanya-baca (`trial_ended`, ekspor tetap jalan). Sesudah
+N hari beku (bawaan **90**, konsol `/settings` → *Retensi uji coba beku*,
+env `TRIAL_RETENTION_DAYS`) tenant uji coba **boleh** dihapus — memakai mesin
+§2 yang sama persis (`executeTenantDeletion`: `cancelled`, PT nonaktif, data
+pribadi dianonimkan, **buku besar utuh** sampai `retention_until`).
+
+| Aturan | Ditegakkan oleh |
+|---|---|
+| Sakelar hapus otomatis **bawaan MATI**; mati = penjadwal hanya melapor (tanpa surel, tanpa hapus) | `trialAutoDeletionFrom` (gagal-tertutup: hanya `true` di konsol atau `TRIAL_AUTO_DELETION=on`), langkah 4b `scripts/subscription-scheduler.ts` |
+| Pemberitahuan **H-14 dan H-3** berisi tautan ekspor (`/platform/privacy`) adalah SYARAT; tenant yang sudah lama beku saat sakelar dinyalakan menerima H-14 dulu | `planTrialRetention` (`packages/billing/src/trial-retention.ts`), `reminder_logs.kind = trial_deletion` |
+| Tenant demo & tenant dengan permintaan hapus sendiri tidak pernah menjadi kandidat | langkah 4b penjadwal, `trialRetentionForOperator` |
+| Eksekusi tercatat sebagai permintaan penghapusan beratas nama sistem + jejak `tenant.deletion.execute` beraktor `system:retensi-uji-coba` | langkah 4b penjadwal |
+| Menyalakan sakelar menuntut owner konsol (`site.settings`) + ketik `HAPUS`; nilai lama/baru di jejak operator | `operatorSaveTrialRetention` |
+
 ## 2. UU PDP No. 27/2022 — hak yang dilayani
 
 | Hak | Mekanisme |

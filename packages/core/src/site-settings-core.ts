@@ -29,6 +29,10 @@ export interface SiteSettingsRow {
   manualPaymentInstructions: string | null;
   selfServeSignupOpen: boolean | null;
   ppnEnabled: boolean | null;
+  /** Retensi uji coba beku (migration platform 0012). Opsional di TIPE: baris
+   *  yang dibaca sebelum migration itu diterapkan memang tidak memuatnya. */
+  trialAutoDeletion?: boolean | null;
+  trialRetentionDays?: number | null;
   updatedBy: string;
   updatedAt: Date;
 }
@@ -64,6 +68,8 @@ const PILIHAN: Record<keyof SiteSettingsRow, true> = {
   manualPaymentInstructions: true,
   selfServeSignupOpen: true,
   ppnEnabled: true,
+  trialAutoDeletion: true,
+  trialRetentionDays: true,
   updatedBy: true,
   updatedAt: true,
 };
@@ -134,4 +140,50 @@ export function ppnEnabledFrom(
   if (row?.ppnEnabled === true) return true;
   if (row?.ppnEnabled === false) return false;
   return env.PLATFORM_PPN_DISABLED !== "true";
+}
+
+/**
+ * Hapus otomatis tenant UJI COBA BEKU setelah masa retensinya? (alur
+ * demo-first, migration platform 0012). Basis data di atas environment.
+ *
+ * ⚠ GAGAL-TERTUTUP, sama persis dengan `signupOpenFrom`: baris tidak ada →
+ * env; kolom `null` → env; env hanya MENYALA bila ditulis persis `on`. Tidak
+ * diset, salah ketik, atau basis data tak terbaca (pemanggil mengoper `null`)
+ * → MATI. Penghapusan tidak bisa dibalik; kehilangan informasi tidak boleh
+ * pernah menyalakannya.
+ */
+export function trialAutoDeletionFrom(
+  row: Pick<SiteSettingsRow, "trialAutoDeletion"> | null,
+  env: Record<string, string | undefined>
+): boolean {
+  if (row?.trialAutoDeletion === true) return true;
+  if (row?.trialAutoDeletion === false) return false;
+  return env.TRIAL_AUTO_DELETION?.trim() === "on";
+}
+
+/** Batas masa retensi uji coba beku — di bawah 30 hari prospek tidak sempat
+ *  mengekspor; di atas 10 tahun angkanya pasti salah ketik. */
+export const TRIAL_RETENTION_DAYS_MIN = 30;
+export const TRIAL_RETENTION_DAYS_MAX = 3650;
+export const TRIAL_RETENTION_DAYS_DEFAULT = 90;
+
+/**
+ * Masa retensi uji coba beku, dalam hari. Basis data → env
+ * `TRIAL_RETENTION_DAYS` → 90. Nilai di luar 30–3650 (atau bukan bilangan
+ * bulat) diabaikan dan jatuh ke sumber berikutnya — angka yang tidak masuk
+ * akal tidak boleh mempercepat penghapusan.
+ */
+export function trialRetentionDaysFrom(
+  row: Pick<SiteSettingsRow, "trialRetentionDays"> | null,
+  env: Record<string, string | undefined>
+): number {
+  const sah = (n: number | null | undefined): n is number =>
+    typeof n === "number" &&
+    Number.isInteger(n) &&
+    n >= TRIAL_RETENTION_DAYS_MIN &&
+    n <= TRIAL_RETENTION_DAYS_MAX;
+  if (sah(row?.trialRetentionDays)) return row!.trialRetentionDays as number;
+  const fromEnv = Number.parseInt(env.TRIAL_RETENTION_DAYS ?? "", 10);
+  if (sah(fromEnv)) return fromEnv;
+  return TRIAL_RETENTION_DAYS_DEFAULT;
 }

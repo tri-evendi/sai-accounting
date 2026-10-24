@@ -195,6 +195,11 @@ const TENANT_API_ROUTES = new Set([
   // (kuota, prorata, dan penolakan turun-paket ditimbang di server). Kewenangan
   // kontraktual `tenant.billing` — owner, bukan peran di sebuah PT.
   "tenant/billing/plan-change/route.ts",
+  // "Minta aktivasi" (alur demo-first, 24 Okt 2026): owner meminta akunnya
+  // diaktifkan — kewenangan kontraktual `tenant.billing`, dan WAJIB tetap
+  // bekerja saat seluruh PT hanya-baca (`trial_ended`), keadaan yang penjaga
+  // perusahaan justru tolak.
+  "tenant/billing/activation-request/route.ts",
   // Server surel milik AKUN: dari mana faktur & pengingat pelanggan berangkat.
   // Kewenangan `tenant.settings` — satu konfigurasi untuk seluruh PT di bawah
   // tenant, jadi penjaga per-PT justru salah alat: pemegang izin di satu PT

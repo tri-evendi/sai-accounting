@@ -72,6 +72,7 @@ model Tenant {
 
   /// pending_verification | trialing | active | past_due | suspended | cancelled
   /// | migrated_out (pindah ke on-premise, migration kendali 0010)
+  /// | trial_ended (uji coba habis → beku hanya-baca, alur demo-first)
   /// String + z.enum (`TENANT_STATUSES` di src/lib/constants.ts), snake_case —
   /// konvensi docs/DATABASE.md, bukan enum Prisma.
   status String @default("pending_verification") @db.VarChar(30)
@@ -99,6 +100,18 @@ model Tenant {
   /// Kapan tenant dinyatakan `migrated_out` (`tenant:mark-migrated-out`).
   migratedOutAt DateTime? @map("migrated_out_at")
 
+  /// Mitra yang MEMBAWA tenant ini (migration kendali 0013, alur demo-first) —
+  /// teks bebas, sengaja bukan tabel mitra: tujuannya satu, yaitu komisi yang
+  /// dihitung MANUAL dari daftar tenant. Ditulis konsol operator (beralasan,
+  /// berjejak). NULL = datang sendiri / tidak diketahui.
+  referredByPartner String? @map("referred_by_partner") @db.VarChar(100)
+
+  /// Tenant DEMO (migration kendali 0013): boleh diisi ulang data contoh oleh
+  /// `bun run demo:seed` / `demo:reset`, dan TIDAK PERNAH ikut retensi
+  /// penghapusan uji coba. Skrip demo MENOLAK tenant yang tidak bertanda ini —
+  /// bendera inilah yang memisahkan buku contoh dari buku sungguhan.
+  isDemo Boolean @default(false) @map("is_demo")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -110,6 +123,7 @@ model Tenant {
   mailSetting      TenantMailSetting?
 
   @@index([status])
+  @@index([referredByPartner])
   @@map("tenants")
 }
 

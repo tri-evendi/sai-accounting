@@ -1,7 +1,8 @@
 /**
- * PENJADWAL LANGGANAN (issue #140) — trial berakhir, penerbitan tagihan,
- * dunning, suspensi, pengingat, sinkronisasi pemakaian, rekonsiliasi, dan
- * deteksi penyediaan yatim. Satu putaran per pemanggilan; tidak ada daemon.
+ * PENJADWAL LANGGANAN (issue #140) — uji coba berakhir (BEKU, tanpa tagihan
+ * sejak 24 Okt 2026), dunning, suspensi, pengingat, sinkronisasi pemakaian,
+ * rekonsiliasi, dan deteksi penyediaan yatim. Satu putaran per pemanggilan;
+ * tidak ada daemon.
  *
  *   bun run scheduler:subscriptions
  *
@@ -22,9 +23,9 @@
  * Tiga mekanisme, semuanya di basis data, bukan di memori skrip:
  *   1. Perpindahan status lewat mesin murni (`transition`) — event yang sudah
  *      lewat menghasilkan `null` (bukan-perpindahan), bukan efek kedua.
- *   2. Nomor tagihan DETERMINISTIK (`invoiceNumberFor`) + UNIQUE di
- *      `platform_invoices.number` — putaran kedua menabrak constraint dan
- *      melewatinya, bukan menagih dua kali.
+ *   2. (Dulu: nomor tagihan deterministik untuk tagihan akhir uji coba. Sejak
+ *      alur demo-first penjadwal TIDAK menerbitkan tagihan apa pun — lihat
+ *      langkah 1.)
  *   3. Pengingat dicatat di `reminder_logs` dengan UNIQUE
  *      (subscription, kind, due_key) — surel yang sama tidak terkirim dua kali.
  *
@@ -34,10 +35,16 @@
  * rekonsiliasi (langkah terakhir putaran ini juga) dan sembuh pada putaran
  * berikutnya — bukan tenant yang naik kelas tanpa catatan.
  *
- * ══ TIDAK ADA PENGHAPUSAN DATA ══════════════════════════════════════════════
+ * ══ TIDAK ADA PENGHAPUSAN DATA — SATU PENGECUALIAN BERSAKELAR ══════════════
  * Tidak satu pun langkah menghapus baris — suspensi mengubah STATUS (buku
  * menjadi hanya-baca lewat penjaga), pembatalan mengubah STATUS. Deteksi
  * basis data yatim hanya MELAPOR; drop adalah keputusan orang.
+ *
+ * Pengecualiannya langkah 4b (retensi uji coba beku, alur demo-first): BILA
+ * operator menyalakan sakelarnya di konsol `/settings` (bawaan MATI), tenant
+ * uji coba yang beku melewati masa retensi dieksekusi lewat mesin penghapusan
+ * UU PDP yang sudah ada — anonimisasi + nonaktif, buku besar TETAP utuh sampai
+ * `retention_until`. Skrip ini sendiri tetap tidak memanggil delete/drop apa pun.
  */
 
 import "dotenv/config";
@@ -50,23 +57,47 @@ import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import {
   GRACE_PERIOD_DAYS,
-  invoiceNumberFor,
-  platformInvoiceAmounts,
+  TRIAL_NOTICE_PREFIX,
   nextPeriod,
   pendingReminder,
+  pendingTrialNotice,
   planDunning,
   planGraceExpiries,
   planOrphanSubscriptionAdoptions,
-  planTrialExpiries,
+  planTrialFreezes,
   tenantStatusForSubscription,
   transition,
+  trialFreezeAt,
+  trialNoticeSuffix,
   type SubscriptionEvent,
 } from "@sai/billing/subscription-lifecycle";
-import { ppnEnabledFrom, readSiteSettingsRow } from "@sai/core/site-settings-core";
+import { retentionNoticeMail, trialNoticeMail } from "@sai/billing/trial-notice";
+import {
+  RETENTION_NOTICE_KIND,
+  planTrialRetention,
+  type RetentionLog,
+} from "@sai/billing/trial-retention";
+import { contactChannels } from "@sai/core/contact-channels";
+import { loadDictionary } from "@sai/core/i18n/load";
+import {
+  effectiveSetting,
+  readSiteSettingsRow,
+  trialAutoDeletionFrom,
+  trialRetentionDaysFrom,
+  type SiteSettingsRow,
+} from "@sai/core/site-settings-core";
+/* Mesin penghapusan UU PDP yang SUDAH ADA (#142) — diimpor relatif, pola yang
+   sama dengan `scripts/execute-tenant-deletion.ts`. Retensi uji coba beku tidak
+   punya mesin hapus sendiri: dua jalan penghapusan adalah dua kumpulan aturan
+   anonimisasi yang akan menyimpang. */
+import {
+  executeTenantDeletion,
+  makeLatestJournalDateReader,
+} from "../apps/operator/src/lib/operator/writes";
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
+import { billingModeIsAutomatic } from "@sai/billing/platform-constants";
 import { sendMail } from "@sai/platform/mailer-core";
-import { resolvePaymentGateway } from "@sai/billing/payment-gateway";
 /* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
  * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */
 import { runReconciliation } from "@sai/platform/platform-reconciliation";
@@ -129,6 +160,8 @@ async function applyEvent(
       ...(next === "past_due" ? { pastDueSince: now } : {}),
       ...(event === "payment_received" ? { pastDueSince: null } : {}),
       ...(next === "cancelled" ? { cancelledAt: now } : {}),
+      /* Jangkar retensi uji coba beku — kapan bukunya menjadi hanya-baca. */
+      ...(next === "trial_ended" ? { trialEndedAt: now } : {}),
     },
   });
   await recordSubscriptionEvent(
@@ -341,29 +374,31 @@ async function main() {
   }
 
   /*
-   * ══ SAKELAR PPN: BASIS DATA → ENVIRONMENT (migration 0017) ═══════════════
-   * Dibaca SEKALI per putaran, bukan per tagihan: dua tagihan di satu putaran
-   * yang lahir di sisi berbeda dari satu perubahan sakelar akan menjadi dua
-   * tagihan yang tidak bisa dijelaskan kepada siapa pun.
+   * ══ TIDAK ADA LAGI SAKELAR PPN DI SINI (alur demo-first, 24 Okt 2026) ═════
+   * PPN dulu dibaca karena langkah 1 menerbitkan tagihan akhir uji coba.
+   * Langkah itu kini MEMBEKUKAN, tidak menagih — penjadwal tidak menerbitkan
+   * satu tagihan pun, jadi tidak ada nominal yang perlu dihitung di sini.
+   * Jalur uang yang masih membaca PPN (prorata pindah paket) membacanya lewat
+   * `resolvePpnEnabled`.
    *
-   * ⚠ Dibaca lewat `site-settings-core` — INTI tanpa `server-only`/`next/cache`
-   * — dengan klien yang SUDAH dipegang skrip ini. Mengimpor pembungkus Next-nya
-   * akan menggagalkan skrip; mengimpor `lib/platform-db` akan membuka pool
-   * kedua di proses yang sengaja dibatasi satu koneksi.
-   *
-   * Gagal baca TIDAK menggagalkan putaran: ia jatuh ke environment (yang
-   * bawaannya PPN AKTIF), lalu disebut di log. Arah itu dipilih sadar — tagihan
-   * yang terbit tanpa PPN karena basis data sekejap tak terbaca adalah tagihan
-   * yang harus dibetulkan dengan nota, sedangkan PPN yang ikut terbit saat
-   * mestinya tidak adalah angka yang bisa dikoreksi sebelum dibayar.
+   * Yang dibaca dari pengaturan situs sekarang adalah KANAL KONTAK: surel
+   * pemberitahuan uji coba menyuruh orang "hubungi kami", dan kalimat itu tanpa
+   * alamat adalah jalan buntu. Dibaca lewat INTI (`site-settings-core`) dengan
+   * klien milik skrip ini; gagal baca jatuh ke environment.
    */
-  let ppnAktif = process.env.PLATFORM_PPN_DISABLED !== "true";
+  let contact = contactChannels(process.env);
+  /* Baris pengaturan juga memegang sakelar RETENSI uji coba beku (langkah 4b).
+     Tak terbaca = `null` = environment, yang bawaannya MATI (gagal-tertutup). */
+  let settingsRow: SiteSettingsRow | null = null;
   try {
-    ppnAktif = ppnEnabledFrom(await readSiteSettingsRow(platform), process.env);
+    const row = await readSiteSettingsRow(platform);
+    settingsRow = row;
+    contact = contactChannels({
+      PLATFORM_CONTACT_WHATSAPP: effectiveSetting(row?.contactWhatsapp, process.env.PLATFORM_CONTACT_WHATSAPP),
+      PLATFORM_CONTACT_EMAIL: effectiveSetting(row?.contactEmail, process.env.PLATFORM_CONTACT_EMAIL),
+    });
   } catch (e) {
-    console.warn(
-      `[penjadwal] sakelar PPN tak terbaca dari basis data — memakai environment (PPN ${ppnAktif ? "aktif" : "mati"}): ${e}`
-    );
+    console.warn(`[penjadwal] kanal kontak tak terbaca dari basis data — memakai environment: ${e}`);
   }
 
   const subscriptions = await platform.subscription.findMany({
@@ -387,108 +422,55 @@ async function main() {
     },
   });
 
-  /* ── 1. Trial habis → siklus tagih dimulai + tagihan pertama terbit ────── */
-  for (const id of planTrialExpiries(subscriptions, now)) {
+  /* Jejak pengingat dibaca SEKALI: langkah 1 memakainya untuk membuktikan
+   * pemberitahuan beku sudah terkirim, langkah 4 untuk tahu apa yang belum. */
+  const reminderLogs = await platform.reminderLog.findMany({
+    select: { subscriptionId: true, kind: true, dueKey: true, sentAt: true },
+  });
+
+  /* ── 1. Uji coba habis → BEKU hanya-baca. TANPA tagihan, tanpa dunning ────
+   *
+   * Keputusan pemilik 24 Okt 2026 (alur demo-first, `docs/KOMERSIALISASI.md`
+   * §1.2 + K-3): uji coba tanpa metode bayar berakhir dengan BEKU, bukan dengan
+   * tagihan. Sampai hari itu langkah ini menerbitkan tagihan Rp 664.890 + PPN
+   * untuk akun yang tidak pernah memberi cara membayar, lalu dunning dan
+   * penangguhan menyusul — gabungan terburuk dari dua praktik baku.
+   *
+   * Sekarang: `trialing` → `trial_ended` (hanya-baca; ekspor tetap terbuka),
+   * TIDAK ADA baris `platform_invoices`, TIDAK ADA surel `invoice_due`, TIDAK
+   * ADA masa tenggang. Berlaku untuk SEMUA mode penagihan.
+   *
+   * ⚠ Beku hanya terjadi setelah pemberitahuan `F-` terbukti terkirim sedikitnya
+   * `FREEZE_NOTICE_DAYS` hari sebelumnya (`planTrialFreezes`). Itu yang menjaga
+   * akun LAMA — uji coba yang sudah lama habis tetapi dibiarkan `trialing` —
+   * dari menjadi hanya-baca seketika pada putaran pertama sesudah rilis: mereka
+   * menerima pemberitahuan dulu (langkah 4), dan beku tujuh hari kemudian. */
+  const firstNoticeAt = new Map<number, Date>();
+  for (const sub of subscriptions) {
+    if (sub.status !== "trialing" || !sub.trialEndsAt) continue;
+    const suffix = trialNoticeSuffix(sub.trialEndsAt);
+    for (const log of reminderLogs) {
+      if (
+        log.subscriptionId === sub.id &&
+        log.kind === "trial_ending" &&
+        log.dueKey.startsWith(`${TRIAL_NOTICE_PREFIX}-`) &&
+        log.dueKey.endsWith(suffix)
+      ) {
+        const prev = firstNoticeAt.get(sub.id);
+        if (!prev || log.sentAt.getTime() < prev.getTime()) firstNoticeAt.set(sub.id, log.sentAt);
+      }
+    }
+  }
+  for (const id of planTrialFreezes(subscriptions, firstNoticeAt, now)) {
     const sub = subscriptions.find((s) => s.id === id)!;
     try {
-      const period = nextPeriod(sub.billingCycle === "yearly" ? "yearly" : "monthly", now);
       const applied = await applyEvent(platform, control, sub, "trial_expired", now);
       if (applied === null) continue;
-      summary.transitions.push(`sub #${sub.id}: trialing → ${applied} (trial habis)`);
-      await platform.subscription.update({
-        where: { id: sub.id },
-        data: { currentPeriodStart: period.start, currentPeriodEnd: period.end },
-      });
-      await recordSubscriptionEvent(
-        platform,
-        {
-          subscriptionId: sub.id,
-          tenantId: sub.tenantId,
-          kind: "period",
-          actor: "scheduler",
-          details: {
-            via: "trial_expired",
-            from: period.start.toISOString(),
-            to: period.end.toISOString(),
-          },
-        },
-        now
-      );
-
-      /* Tagihan pertama — nomor deterministik = kunci idempotensinya.
-       * PPN dihitung lewat lib/tax.ts (issue #141) — tarifnya tidak pernah
-       * diketik ulang; sakelar PLATFORM_PPN_DISABLED = mekanisme untuk
-       * jawaban penasihat pajak, bukan kebijakan yang kami tetapkan. */
-      const number = invoiceNumberFor(sub.id, period.start);
-      const amounts = platformInvoiceAmounts(sub.price.toString(), ppnAktif);
-      try {
-        const invoice = await platform.platformInvoice.create({
-          data: {
-            tenantId: sub.tenantId,
-            subscriptionId: sub.id,
-            number,
-            status: "issued",
-            issueDate: now,
-            dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
-            amount: amounts.amount,
-            taxAmount: amounts.taxAmount,
-            total: amounts.total,
-            currency: sub.currency,
-          },
-        });
-        console.log(
-          `+ trial habis: sub #${sub.id} → active, tagihan ${number} terbit ` +
-            `(DPP ${amounts.amount} + PPN ${amounts.taxAmount} = ${amounts.total})`
-        );
-        summary.issued.push(`${number} (sub #${sub.id}, total ${amounts.total})`);
-
-        /* Tagih-lalu-ingatkan (bukan auto-debit): instruksi bayar (VA) dibuat
-         * BERSAMA tagihannya bila gerbang terpasang — surel pengingat H-x
-         * tinggal menyebut nomornya. Jalur `manual` tidak membuat charge;
-         * pelanggan melihat instruksi transfer di /tenant. */
-        const gateway = resolvePaymentGateway();
-        if (gateway.name !== "manual") {
-          try {
-            const charge = await gateway.createCharge({
-              invoiceNumber: number,
-              grossAmount: amounts.total,
-              method: "virtual_account",
-              bank: process.env.PAYMENT_DEFAULT_VA_BANK ?? "bca",
-            });
-            await platform.payment.create({
-              data: {
-                tenantId: sub.tenantId,
-                platformInvoiceId: invoice.id,
-                status: "pending",
-                method: charge.method,
-                gateway: charge.gateway,
-                gatewayRef: charge.gatewayRef,
-                amount: amounts.total,
-                currency: sub.currency,
-                bank: charge.bank ?? null,
-                vaNumber: charge.vaNumber ?? null,
-                qrString: charge.qrString ?? null,
-                expiresAt: charge.expiresAt ?? null,
-              },
-            });
-            console.log(`  ↳ VA ${charge.bank ?? "?"} ${charge.vaNumber ?? "?"} disiapkan (${charge.gatewayRef})`);
-          } catch (chargeError) {
-            if ((chargeError as { code?: string }).code === "P2002") {
-              console.log("  = instruksi bayar sudah ada — tidak dibuat dua kali");
-            } else {
-              /* Gerbang mati ≠ tagihan batal: tagihannya SUDAH terbit; VA bisa
-               * dibuat pelanggan dari /tenant atau putaran berikutnya. */
-              errors.push(`charge tagihan ${number}: ${chargeError}`);
-            }
-          }
-        }
-      } catch (e) {
-        if ((e as { code?: string }).code === "P2002") {
-          console.log(`= tagihan ${number} sudah ada — tidak ditagih dua kali`);
-        } else throw e;
-      }
+      sub.status = applied;
+      console.log(`~ uji coba habis: sub #${sub.id} → ${applied} (beku hanya-baca, TANPA tagihan)`);
+      summary.transitions.push(`sub #${sub.id}: trialing → ${applied} (uji coba habis — beku, tanpa tagihan)`);
     } catch (e) {
-      errors.push(`trial-expiry sub #${id}: ${e}`);
+      errors.push(`trial-freeze sub #${id}: ${e}`);
     }
   }
 
@@ -543,13 +525,10 @@ async function main() {
     }
   }
 
-  /* ── 4. Pengingat H-7/H-3/H-1 (trial & jatuh tempo tagihan) ────────────── */
+  /* ── 4. Pengingat: pemberitahuan beku uji coba (F-) & jatuh tempo (H-) ──── */
   try {
-    const logs = await platform.reminderLog.findMany({
-      select: { subscriptionId: true, kind: true, dueKey: true },
-    });
     const sentBySub = new Map<string, Set<string>>();
-    for (const log of logs) {
+    for (const log of reminderLogs) {
       const key = `${log.subscriptionId}:${log.kind}`;
       if (!sentBySub.has(key)) sentBySub.set(key, new Set());
       sentBySub.get(key)!.add(log.dueKey);
@@ -561,6 +540,13 @@ async function main() {
         targets.push({ sub, kind: "trial_ending", target: sub.trialEndsAt });
       }
     }
+    /* Kamus tiga bahasa untuk surel pemberitahuan uji coba — dimuat sekali,
+       lewat pemuat TANPA `server-only` (`@sai/core/i18n/load`). */
+    const dictionaries = {
+      id: await loadDictionary("id"),
+      en: await loadDictionary("en"),
+      zh: await loadDictionary("zh"),
+    };
     const issuedInvoices = await platform.platformInvoice.findMany({
       /* Sama seperti dunning di atas: tagihan perpindahan paket tidak
        * mengirimkan pengingat jatuh tempo. Mengingatkan orang untuk membayar
@@ -583,7 +569,11 @@ async function main() {
     const invoiceBySub = new Map<number, (typeof issuedInvoices)[number]>();
     for (const inv of issuedInvoices) {
       const sub = subscriptions.find((s) => s.id === inv.subscriptionId);
-      if (sub) {
+      /* Surel jatuh tempo HANYA untuk mode `auto` (alur demo-first): akun
+         `none` tidak pernah ditagih, akun `manual` ditagih DI LUAR sistem —
+         surel "tagihan jatuh tempo" dari sini kepada keduanya adalah tagihan
+         yang tidak pernah mereka setujui. Gerbang yang sama dengan dunning. */
+      if (sub && billingModeIsAutomatic(sub.billingMode)) {
         targets.push({ sub, kind: "invoice_due", target: inv.dueDate });
         invoiceBySub.set(sub.id, inv);
       }
@@ -591,7 +581,10 @@ async function main() {
 
     for (const { sub, kind, target } of targets) {
       const sent = sentBySub.get(`${sub.id}:${kind}`) ?? new Set<string>();
-      const due = pendingReminder(target, now, sent);
+      /* Uji coba: pemberitahuan BEKU berawalan `F-` (termasuk `F-0` terlambat
+         untuk akun lama); jatuh tempo tagihan: pengingat `H-` seperti dulu. */
+      const trialNotice = kind === "trial_ending" ? pendingTrialNotice(target, now, sent) : null;
+      const due = kind === "trial_ending" ? trialNotice : pendingReminder(target, now, sent);
       if (!due) continue;
 
       /* Catat DULU (unique = idempoten), kirim SESUDAHNYA: putaran kembar
@@ -606,19 +599,32 @@ async function main() {
       }
 
       const recipients = await ownerEmails(control, sub.tenantId);
-      const dayLabel = due.sendKey.split(":")[0]; // "H-7" | "H-3" | "H-1"
+      const dayLabel = due.sendKey.split(":")[0]; // "H-7" | "F-3" | "F-0" …
       for (const to of recipients) {
+        if (kind === "trial_ending") {
+          /* "Minta aktivasi / hubungi kami" — BUKAN "tagihan pertama terbit
+             otomatis": uji coba yang habis beku, tidak ditagih. Tanggal beku
+             dihitung dengan aturan yang SAMA dengan langkah 1, dengan surel ini
+             sebagai pemberitahuan pertama bila memang belum ada. */
+          const freezeAt =
+            trialFreezeAt(target, firstNoticeAt.get(sub.id) ?? now) ?? target;
+          await sendMail({
+            to,
+            ...trialNoticeMail(dictionaries, {
+              kind: trialNotice?.late ? "late" : "ending",
+              trialEndDate: businessISODate(target),
+              freezeDate: businessISODate(freezeAt),
+              dayLabel: dayLabel.replace(`${TRIAL_NOTICE_PREFIX}-`, "H-"),
+              contact,
+            }),
+          });
+          continue;
+        }
         await sendMail({
           to,
-          subject:
-            kind === "trial_ending"
-              ? `Masa uji coba berakhir ${dayLabel} — SAI Accounting`
-              : `Tagihan langganan jatuh tempo ${dayLabel} — SAI Accounting`,
+          subject: `Tagihan langganan jatuh tempo ${dayLabel} — SAI Accounting`,
           text:
-            kind === "trial_ending"
-              ? `Halo,\n\nMasa uji coba langganan Anda berakhir pada ${businessISODate(target)}.\n` +
-                "Setelah itu siklus tagih dimulai dan tagihan pertama terbit otomatis.\n\n— SAI Accounting"
-              : `Halo,\n\nTagihan langganan Anda jatuh tempo pada ${businessISODate(target)}.\n` +
+            `Halo,\n\nTagihan langganan Anda jatuh tempo pada ${businessISODate(target)}.\n` +
                 paymentInstructionText(invoiceBySub.get(sub.id) && paymentByInvoice.get(invoiceBySub.get(sub.id)!.id)) +
                 "Bila terlewat, langganan menunggak dan setelah masa tenggang buku besar\n" +
                 "menjadi HANYA-BACA (data Anda tidak dihapus).\n\n— SAI Accounting",
@@ -629,6 +635,159 @@ async function main() {
     }
   } catch (e) {
     errors.push(`pengingat: ${e}`);
+  }
+
+  /* ── 4b. Retensi uji coba BEKU (alur demo-first, migration platform 0012) ──
+   *
+   * Tenant `trial_ended` yang beku lebih dari N hari (bawaan 90) dihapus lewat
+   * mesin penghapusan UU PDP yang sudah ada (`executeTenantDeletion`: tenant
+   * `cancelled`, PT nonaktif, data pribadi dianonimkan; buku besar UTUH sampai
+   * `retention_until`). Pemberitahuan H-14 dan H-3 berisi tautan ekspor adalah
+   * SYARAT (`planTrialRetention`).
+   *
+   * ⚠ SAKELARNYA BAWAAN MATI (`trialAutoDeletionFrom`: hanya `true` di konsol
+   * atau `TRIAL_AUTO_DELETION=on`). Selama mati langkah ini HANYA MELAPOR —
+   * tidak ada surel, tidak ada baris jejak pemberitahuan, tidak ada penghapusan.
+   * Tenant demo (`tenants.is_demo`) dan tenant yang punya permintaan hapus
+   * sendiri tidak pernah menjadi kandidat. */
+  try {
+    const autoDeletion = trialAutoDeletionFrom(settingsRow, process.env);
+    const retentionDays = trialRetentionDaysFrom(settingsRow, process.env);
+    const frozen = await platform.subscription.findMany({
+      where: { status: "trial_ended", trialEndedAt: { not: null } },
+      select: { id: true, tenantId: true, status: true, trialEndedAt: true },
+    });
+    if (frozen.length > 0) {
+      const tenantRows = await control.tenant.findMany({
+        where: { id: { in: frozen.map((f) => f.tenantId) } },
+        select: { id: true, slug: true, status: true, isDemo: true },
+      });
+      const pendingDeletion = new Set(
+        (
+          await control.tenantDeletionRequest.findMany({
+            where: { tenantId: { in: frozen.map((f) => f.tenantId) }, status: "pending" },
+            select: { tenantId: true },
+          })
+        ).map((r) => r.tenantId)
+      );
+      const tenantById = new Map(tenantRows.map((t) => [t.id, t]));
+      const candidates = frozen
+        .filter((f) => {
+          const t = tenantById.get(f.tenantId);
+          return t && !t.isDemo && t.status === "trial_ended" && !pendingDeletion.has(f.tenantId);
+        })
+        .map((f) => ({ subscriptionId: f.id, tenantId: f.tenantId, trialEndedAt: f.trialEndedAt! }));
+
+      const logsBySub = new Map<number, RetentionLog[]>();
+      for (const log of reminderLogs) {
+        if (log.kind !== RETENTION_NOTICE_KIND) continue;
+        const list = logsBySub.get(log.subscriptionId) ?? [];
+        list.push({ dueKey: log.dueKey, sentAt: log.sentAt });
+        logsBySub.set(log.subscriptionId, list);
+      }
+      const plan = planTrialRetention(candidates, logsBySub, now, retentionDays);
+
+      if (!autoDeletion) {
+        /* LAPOR SAJA. Kalimatnya menyebut sakelarnya, supaya pembaca jejak
+           putaran tahu kenapa tidak ada yang terjadi. */
+        for (const row of plan.overview) {
+          if (row.baseDeleteAt.getTime() <= now.getTime()) {
+            const slug = tenantById.get(row.tenantId)?.slug ?? `#${row.tenantId}`;
+            summary.transitions.push(
+              `retensi (sakelar MATI, tidak dihapus): tenant ${slug} beku ≥ ${retentionDays} hari — ` +
+                "akan diberi tahu lalu dihapus bila sakelar dinyalakan"
+            );
+          }
+        }
+      } else {
+        const dictionaries = {
+          id: await loadDictionary("id"),
+          en: await loadDictionary("en"),
+          zh: await loadDictionary("zh"),
+        };
+        const origin = (() => {
+          const raw = process.env.AUTH_URL?.trim().replace(/\/$/, "");
+          if (!raw) return null;
+          try {
+            return new URL(raw).origin;
+          } catch {
+            return null;
+          }
+        })();
+        for (const notice of plan.notices) {
+          try {
+            await platform.reminderLog.createMany({
+              data: notice.markKeys.map((dueKey) => ({
+                subscriptionId: notice.subscriptionId,
+                kind: RETENTION_NOTICE_KIND,
+                dueKey,
+              })),
+            });
+          } catch (e) {
+            if ((e as { code?: string }).code === "P2002") continue;
+            throw e;
+          }
+          const recipients = await ownerEmails(control, notice.tenantId);
+          for (const to of recipients) {
+            await sendMail({
+              to,
+              ...retentionNoticeMail(dictionaries, {
+                deleteDate: businessISODate(notice.deleteAt ?? now),
+                daysLeft: notice.daysLeft,
+                exportUrl: origin ? `${origin}/platform/privacy` : null,
+                contact,
+              }),
+            });
+          }
+          summary.reminders.push(
+            `${RETENTION_NOTICE_KIND} ${notice.sendKey} → sub #${notice.subscriptionId} (${recipients.length} owner)`
+          );
+        }
+
+        const controlUrl = process.env.CONTROL_DATABASE_URL!;
+        for (const del of plan.deletions) {
+          const tenant = tenantById.get(del.tenantId);
+          if (!tenant) continue;
+          try {
+            /* 1 — PLATFORM dulu (#137): langganan beku → `cancelled` lewat mesin. */
+            const sub = frozen.find((f) => f.id === del.subscriptionId)!;
+            await applyEvent(platform, control, sub, "cancel", now);
+            /* 2 — Permintaan penghapusan beratas nama SISTEM, tenggang berakhir
+               sekarang (pemberitahuan H-14/H-3 sudah menjadi tenggangnya), lalu
+               eksekusi lewat inti yang sama dengan tombol konsol. */
+            await control.tenantDeletionRequest.create({
+              data: {
+                tenantId: tenant.id,
+                requestedByUserId: 0,
+                status: "pending",
+                graceEndsAt: now,
+                note: `Retensi uji coba beku: ${retentionDays} hari sejak beku, pemberitahuan H-14/H-3 terkirim.`,
+              },
+            });
+            const result = await executeTenantDeletion(
+              { control, latestJournalDate: makeLatestJournalDateReader(controlUrl) },
+              {
+                tenantSlug: tenant.slug,
+                confirmSlug: tenant.slug,
+                actor: {
+                  operator: "system:retensi-uji-coba",
+                  reason: `Retensi uji coba beku ${retentionDays} hari (sakelar konsol menyala)`,
+                },
+              },
+              now
+            );
+            summary.transitions.push(`retensi: tenant ${tenant.slug} → ${result.outcome}`);
+            if (result.outcome !== "executed") {
+              errors.push(`retensi tenant ${tenant.slug}: ${result.outcome}`);
+            }
+          } catch (e) {
+            errors.push(`retensi tenant ${tenant.slug}: ${e}`);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    errors.push(`retensi-uji-coba: ${e}`);
   }
 
   /* ── 5. Sinkronisasi usage_counters dari jumlah SESUNGGUHNYA di kendali ──

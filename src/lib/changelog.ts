@@ -73,8 +73,32 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.26.0",
+    tanggal: "2026-10-25",
+    ringkas: "Pilihan bentuk usaha: PT, PT Perorangan, CV, Firma, dan usaha perorangan, dengan modal per sekutu dan tutup tahun yang membagi laba.",
+    butir: [
+      {
+        jenis: "baru",
+        teks: "Saat membuat perusahaan, pilih bentuk usahanya. CV dan Firma mendapat akun modal dan prive per sekutu; usaha perorangan mendapat modal dan prive pemilik.",
+      },
+      {
+        jenis: "baru",
+        teks: "Tutup tahun membagi laba ke modal tiap sekutu sesuai porsinya, dan Laporan Perubahan Ekuitas menampilkan rincian per pemilik.",
+      },
+      {
+        jenis: "baru",
+        teks: "Perkiraan PPh Final UMKM 0,5% per bulan, lengkap dengan pengingat batas waktu sesuai bentuk usaha. Bisa dinyalakan di Pengaturan.",
+      },
+      {
+        jenis: "baru",
+        teks: "Data identitas usaha: NIB, nomor akta atau pernyataan pendirian, dan SK Kemenkumham.",
+      },
+    ],
+  },
+  {
     versi: "0.25.0",
     tanggal: "2026-10-25",
+    sha: "7efc331",
     ringkas: "Undangan pengguna kembali berfungsi di semua perusahaan, dan panduan pemakaian kini bergambar.",
     butir: [
       {

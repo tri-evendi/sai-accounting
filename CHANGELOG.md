@@ -20,7 +20,20 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.25.0 — 2026-10-25 — belum digelar
+## 0.26.0 — 2026-10-25 — belum digelar
+
+Pilihan bentuk usaha: PT, PT Perorangan, CV, Firma, dan usaha perorangan, dengan modal per sekutu dan tutup tahun yang membagi laba.
+
+### Baru
+
+- Saat membuat perusahaan, pilih bentuk usahanya. CV dan Firma mendapat akun modal dan prive per sekutu; usaha perorangan mendapat modal dan prive pemilik.
+- Tutup tahun membagi laba ke modal tiap sekutu sesuai porsinya, dan Laporan Perubahan Ekuitas menampilkan rincian per pemilik.
+- Perkiraan PPh Final UMKM 0,5% per bulan, lengkap dengan pengingat batas waktu sesuai bentuk usaha. Bisa dinyalakan di Pengaturan.
+- Data identitas usaha: NIB, nomor akta atau pernyataan pendirian, dan SK Kemenkumham.
+
+---
+
+## 0.25.0 — 2026-10-25 (7efc331)
 
 Undangan pengguna kembali berfungsi di semua perusahaan, dan panduan pemakaian kini bergambar.
 

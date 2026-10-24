@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.22.1 — 2026-10-24 — belum digelar
+## 0.22.2 — 2026-10-24 — belum digelar
+
+Pembaruan keamanan pada layanan latar; tidak ada perubahan pada tampilan.
+
+### Perbaikan
+
+- Layanan latar diperbarui untuk menutup celah keamanan pada pengolahan data terkompresi (CVE-2026-111497).
+
+---
+
+## 0.22.1 — 2026-10-24 (6bed782)
 
 Layanan latar memakai memori jauh lebih sedikit, dan lisensi on-premise kini bisa diterbitkan; tidak ada perubahan pada tampilan.
 

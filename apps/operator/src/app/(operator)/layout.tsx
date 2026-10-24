@@ -35,6 +35,7 @@ import { Button } from "@sai/ui/button";
 import { OperatorShell } from "@op/components/operator/operator-shell";
 import { operatorMfaOff } from "@op/lib/operator/credentials";
 import { optionalOperatorSession } from "@op/lib/operator/guard";
+import { newLeadCount } from "@op/lib/operator/leads";
 import { operatorNav } from "@op/lib/operator/nav";
 import { getT } from "@sai/platform/i18n/server";
 import { SIDER_BG_DARK } from "@sai/ui/theme/antd-tokens";
@@ -98,7 +99,7 @@ export default async function OperatorLayout({ children }: { children: React.Rea
 
   return (
     <OperatorShell
-      nav={operatorNav(t)}
+      nav={operatorNav(t, { newLeads: await newLeadCount() })}
       labels={{
         consoleTitle: t("operator.consoleTitle"),
         auditedBadge: t("operator.auditedBadge"),

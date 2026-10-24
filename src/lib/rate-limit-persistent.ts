@@ -87,6 +87,15 @@ export const PERSISTENT_RATE_LIMITS = {
   /** Penerimaan undangan staf (#139) per IP — publik bertoken 256 bit; pagar
    *  ini menahan penebakan buta, bukan pemakaian wajar. */
   invitationAcceptIp: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
+  /**
+   * Formulir penawaran/demo publik (`/api/leads`, migration platform 0016)
+   * per SIDIK alamat IP (kuncinya HMAC, bukan alamatnya). Lima per jam cukup
+   * untuk satu kantor di balik NAT yang mengirim ulang karena salah ketik,
+   * dan terlalu sedikit untuk membanjiri daftar kerja tim penjualan.
+   */
+  leadIp: { windowMs: 60 * 60 * 1000, maxAttempts: 5 },
+  /** Per nomor WhatsApp — tiga per hari: satu nomor tidak butuh lebih. */
+  leadPhone: { windowMs: 24 * 60 * 60 * 1000, maxAttempts: 3 },
 } as const satisfies Record<string, PersistentRateLimitOptions>;
 
 export interface PersistentRateLimitResult {

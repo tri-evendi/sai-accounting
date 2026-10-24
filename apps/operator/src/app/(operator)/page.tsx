@@ -57,6 +57,7 @@ import {
   CloseCircleOutlined,
   ExclamationCircleOutlined,
   FieldTimeOutlined,
+  InboxOutlined,
   LockOutlined,
   TeamOutlined,
   WarningOutlined,
@@ -109,6 +110,7 @@ const ATTENTION_ICON: Record<AttentionItem["key"], React.ReactNode> = {
   schedulerFailing: <WarningOutlined aria-hidden="true" />,
   trialsExpired: <FieldTimeOutlined aria-hidden="true" />,
   activationRequests: <ExclamationCircleOutlined aria-hidden="true" />,
+  leadsNew: <InboxOutlined aria-hidden="true" />,
   invoicesOverdue: <ExclamationCircleOutlined aria-hidden="true" />,
   tenantsPastDue: <ExclamationCircleOutlined aria-hidden="true" />,
   tenantsSuspended: <LockOutlined aria-hidden="true" />,
@@ -146,6 +148,10 @@ const ATTENTION_TEXT: Record<
   activationRequests: {
     label: "operator.attention.activationRequests",
     why: "operator.attention.activationRequestsWhy",
+  },
+  leadsNew: {
+    label: "operator.attention.leadsNew",
+    why: "operator.attention.leadsNewWhy",
   },
   invoicesOverdue: {
     label: "operator.attention.invoicesOverdue",

@@ -155,6 +155,10 @@ function isPublicPath(pathname: string): boolean {
   // tanpa sesi. JALUR PERSIS, bukan prefix; kredensialnya tanda tangan
   // SHA-512 yang diverifikasi di route-nya (fail-closed tanpa kunci).
   if (pathname === "/api/billing/webhook") return true;
+  // Formulir penawaran/demo publik (migration platform 0016): pengirimnya
+  // calon customer tanpa akun. JALUR PERSIS; pagarnya (JSON saja, pembatas
+  // laju persisten per sidik IP & per nomor, honeypot) ada di route-nya.
+  if (pathname === "/api/leads") return true;
   if (pathname.startsWith("/api/auth/")) {
     return !pathname.startsWith("/api/auth/change-password");
   }

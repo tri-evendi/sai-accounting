@@ -103,6 +103,14 @@ export interface OperatorShellNavItem {
    *  dibuka dulu menyembunyikan halaman yang jarang dibuka justru pada hari
    *  halaman itu dibutuhkan. */
   group?: string;
+  /**
+   * Angka yang MENUNGGU tindakan (mis. penawaran masuk berstatus baru).
+   * 0/undefined = tanpa lencana — nol tidak punya lencana, aturan yang sama
+   * dengan daftar "perlu ditangani".
+   */
+  badge?: number;
+  /** Teks pembaca layar untuk lencana — "3 baru", bukan sekadar "3". */
+  badgeLabel?: string;
 }
 
 export interface OperatorShellLabels {
@@ -198,7 +206,17 @@ function MenuKonsol({
           {item.icon}
         </span>
       ),
-      label: <span style={TRUNCATE}>{item.label}</span>,
+      label:
+        item.badge && item.badge > 0 ? (
+          <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <span style={TRUNCATE}>{item.label}</span>
+            <Badge variant="warning" aria-label={item.badgeLabel} style={{ marginInlineEnd: 0, flexShrink: 0 }}>
+              {item.badge > 99 ? "99+" : item.badge}
+            </Badge>
+          </span>
+        ) : (
+          <span style={TRUNCATE}>{item.label}</span>
+        ),
     });
   }
 

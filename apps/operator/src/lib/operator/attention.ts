@@ -57,6 +57,7 @@ export interface AttentionItem {
     | "schedulerFailing"
     | "trialsExpired"
     | "activationRequests"
+    | "leadsNew"
     | "invoicesOverdue"
     | "tenantsPastDue"
     | "tenantsSuspended"
@@ -81,6 +82,8 @@ export interface AttentionInput {
     overdueInvoices: number;
     /** Permintaan aktivasi terbuka (alur demo-first); tak ada = 0. */
     openActivationRequests?: number;
+    /** Penawaran masuk berstatus `baru` (migration platform 0016); tak ada = 0. */
+    newLeads?: number;
   } | null;
 }
 
@@ -153,6 +156,16 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
   const minta = platform?.openActivationRequests ?? 0;
   if (minta > 0) {
     out.push({ key: "activationRequests", count: minta, tone: "warning", href: "/tenants?status=activation" });
+  }
+
+  /* ── 2c. Penawaran masuk yang BELUM dihubungi (migration platform 0016) ─
+     Prospek yang mengisi formulir di halaman publik — di bawah permintaan
+     aktivasi, sebab yang itu sudah punya akun dan selangkah lebih dekat ke
+     kontrak; di atas tagihan, sebab prospek dingin lebih cepat daripada
+     tagihan menua. */
+  const leadBaru = platform?.newLeads ?? 0;
+  if (leadBaru > 0) {
+    out.push({ key: "leadsNew", count: leadBaru, tone: "warning", href: "/leads" });
   }
 
   /* ── 3. Tagihan lewat jatuh tempo ──────────────────────────────────────── */

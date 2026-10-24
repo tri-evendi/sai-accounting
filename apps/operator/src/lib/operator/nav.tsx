@@ -14,7 +14,7 @@
  *
  * ══ TUJUH KELOMPOK, MENURUT PEKERJAAN (bukan menurut tabel) ═══════════════
  * Ringkasan · Pelanggan (tenant, lisensi, penghapusan) · Penjualan & tagihan
- * (katalog paket, e-Faktur, rekonsiliasi) · Halaman publik (isi, logo) ·
+ * (penawaran masuk, katalog paket, e-Faktur, rekonsiliasi) · Halaman publik (isi, logo) ·
  * Komunikasi (pengumuman status, surel) · Sistem (penjadwal, cadangan,
  * kesesuaian data) · Administrasi (pengaturan, akun operator, jejak audit).
  * Sebelumnya penagihan menumpang kelompok "Customer" (kata Inggris di UI
@@ -44,6 +44,7 @@ import {
   SettingOutlined,
   TeamOutlined,
   FileSearchOutlined,
+  InboxOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
 
@@ -51,11 +52,20 @@ import type { OperatorShellNavItem } from "@op/components/operator/operator-shel
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /** Bentuk seminimal yang dibutuhkan — `getT()` maupun `useT()` keduanya cocok. */
-type TerjemahFn = (key: DictionaryKey) => string;
+type TerjemahFn = (key: DictionaryKey, values?: Record<string, string | number>) => string;
+
+/**
+ * Angka lencana menu. Dibaca LAYOUT (bukan di sini) dan boleh `null` — bacaan
+ * yang gagal berarti tanpa lencana, bukan lencana "0" yang berbohong.
+ */
+export interface OperatorNavCounts {
+  /** Penawaran masuk berstatus `baru` (`lead_requests`, migration platform 0016). */
+  newLeads?: number | null;
+}
 
 const UKURAN_IKON = { fontSize: 16 } as const;
 
-export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
+export function operatorNav(t: TerjemahFn, counts: OperatorNavCounts = {}): OperatorShellNavItem[] {
   const ringkasan = t("operator.nav.groupSummary");
   const pelanggan = t("operator.nav.groupCustomers");
   const penjualan = t("operator.nav.groupSales");
@@ -91,6 +101,16 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       label: t("operator.nav.deletions"),
       icon: <DeleteOutlined style={UKURAN_IKON} />,
       group: pelanggan,
+    },
+    {
+      /* Penawaran masuk dari formulir halaman publik (migration platform
+         0016) — butir PERTAMA kelompok penjualan: corongnya mulai di sini. */
+      href: "/leads",
+      label: t("operator.nav.leads"),
+      icon: <InboxOutlined style={UKURAN_IKON} />,
+      group: penjualan,
+      badge: counts.newLeads ?? undefined,
+      badgeLabel: counts.newLeads ? t("operator.nav.leadsBadge", { count: counts.newLeads }) : undefined,
     },
     {
       href: "/plans",

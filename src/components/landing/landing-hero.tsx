@@ -33,6 +33,8 @@ import {
 } from "@/components/landing/landing-scale";
 import { LandingStats } from "@/components/landing/landing-stats";
 import { ButtonLink } from "@sai/ui/button";
+import { LandingAskButton } from "@/components/landing/landing-ask-button";
+import { landingSettings } from "@sai/platform/landing-settings";
 import { getT } from "@sai/platform/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS } from "@sai/core/registration";
@@ -43,6 +45,7 @@ export async function LandingHero() {
   /* Apa yang boleh dijanjikan tombol di bawah — uji coba, atau penawaran.
      Satu keputusan, satu tempat (`lib/landing-ask.ts`). */
   const ask = landingAsk(await resolveSelfServeSignupOpen());
+  const { demoBookingUrl } = await landingSettings();
 
   return (
     <section
@@ -167,9 +170,12 @@ export async function LandingHero() {
                   yang diulang, dijaga `tests/button-emphasis.test.ts`. Yang
                   berubah hanya BUNYINYA, dan saat pendaftaran ditutup halaman
                   itulah yang menjelaskan jalan penawarannya. */}
-              <ButtonLink href="/register" size="lg" variant="primary">
+              {/* "Jadwalkan demo" boleh menuju tautan pemesanan demo yang
+                  disetel di konsol `/landing` — keputusannya di
+                  `LandingAskButton`, satu untuk pahlawan dan bilah atas. */}
+              <LandingAskButton ask={ask} slot="heroCta" demoBookingUrl={demoBookingUrl} size="lg">
                 {t(ask.heroCta, askValues(ask, TRIAL_DAYS))}
-              </ButtonLink>
+              </LandingAskButton>
               <ButtonLink href="/login" size="lg" variant="outline">
                 {t("landing.heroSecondary")}
               </ButtonLink>

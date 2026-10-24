@@ -27,6 +27,7 @@
  * (`LocaleToggle`, `ThemeToggle`) dirender sebagai daun, tidak menarik apa pun
  * di atasnya.
  */
+import { LandingAnnouncement } from "@/components/landing/landing-announcement";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LANDING_STYLE } from "@/components/landing/landing-scale";
@@ -62,6 +63,11 @@ export async function LandingShell({
       <a href="#isi" data-landing-skip="">
         {t("landing.skipToContent")}
       </a>
+
+      {/* Bilah pengumuman (konsol `/landing`) — `null` bila tidak ada yang
+          aktif atau pengunjung sudah menutupnya. DI ATAS bilah navigasi dan
+          tidak menempel: ia ikut tergulung, bilah navigasi tetap menempel. */}
+      <LandingAnnouncement />
 
       <LandingNav />
 

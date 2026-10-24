@@ -37,6 +37,7 @@ import {
   FileTextOutlined,
   HistoryOutlined,
   KeyOutlined,
+  LayoutOutlined,
   MailOutlined,
   PictureOutlined,
   SettingOutlined,
@@ -112,6 +113,14 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/content",
       label: t("operator.nav.content"),
       icon: <FileTextOutlined style={UKURAN_IKON} />,
+      group: halamanPublik,
+    },
+    {
+      /* Tampilan halaman depan: seksi, pengumuman, demo, FAQ (migration
+         platform 0014) — halaman sendiri, bukan tab `/settings`. */
+      href: "/landing",
+      label: t("operator.nav.landing"),
+      icon: <LayoutOutlined style={UKURAN_IKON} />,
       group: halamanPublik,
     },
     {

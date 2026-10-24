@@ -66,6 +66,8 @@ import { LandingTrust } from "@/components/landing/landing-trust";
 import { auth } from "@/lib/auth";
 import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
+import { landingSettings } from "@sai/platform/landing-settings";
+import { isSectionVisible } from "@sai/core/landing-settings";
 import { publicAppUrl } from "@/lib/public-url";
 import { resolvePublicPricingVisible } from "@sai/platform/site-settings";
 
@@ -129,6 +131,14 @@ export default async function Home() {
      dan halaman ini `force-dynamic` — tidak ada ISR yang menahan keadaan lama. */
   const hargaTampil = await resolvePublicPricingVisible();
 
+  /* Seksi yang disembunyikan operator (konsol `/landing`) TIDAK dirender sama
+     sekali — bukan `display:none`: jangkarnya ikut hilang, dan tautan bilah
+     atas/kaki yang menunjuknya dicabut di komponennya masing-masing dari
+     setelan yang SAMA. Pahlawan dan ajakan penutup selalu tampil. Platform
+     tak terjangkau = semua tampil (gagal-lunak). */
+  const setelan = await landingSettings();
+  const tampil = (seksi: Parameters<typeof isSectionVisible>[1]) => isSectionVisible(setelan, seksi);
+
   return (
     <LandingShell>
       <LandingHero />
@@ -137,8 +147,8 @@ export default async function Home() {
           dalamnya", dan baru sesudah itu harga. Menaruh harga sebelum jawaban
           itu memaksa orang menimbang angka untuk sesuatu yang belum ia tahu
           isinya. */}
-      <LandingFeatures />
-      <LandingModules />
+      {tampil("features") && <LandingFeatures />}
+      {tampil("modules") && <LandingModules />}
       {/* "Untuk siapa" SESUDAH daftar modul, bukan sesudah manfaat (#398):
           kartunya menyebut modul lewat NAMANYA, jadi ia rujukan ke sesuatu
           yang baru saja dibaca — "dari sepuluh itu, mana yang untuk saya".
@@ -146,14 +156,14 @@ export default async function Home() {
           seksi polos berkartu nada (untuk siapa, kepercayaan): tanpa pita
           itu halaman memajang tiga kisi kartu bernada berturut-turut. Alasan
           lengkapnya di kepala kedua berkas komponennya. */}
-      <LandingAudience />
-      <LandingIntegrations />
+      {tampil("audience") && <LandingAudience />}
+      {tampil("integrations") && <LandingIntegrations />}
       {/* Bukti SEBELUM harga, dan itu urutan yang disengaja: dua keberatan
           terbesar pada pembukuan multi-PT — "apakah data saya bisa tercampur"
           dan "apakah saya bisa keluar lagi" — muncul saat orang membayangkan
           memakainya, bukan saat ia melihat angkanya. Menjawabnya sesudah harga
           berarti menjawabnya kepada orang yang sudah pergi. */}
-      <LandingTrust />
+      {tampil("trust") && <LandingTrust />}
       {/* Tidak dirender sama sekali saat disembunyikan — termasuk penawaran
           JSON-LD-nya, yang diterbitkan dari dalam komponen ini. */}
       {hargaTampil && <LandingPricing />}
@@ -161,7 +171,7 @@ export default async function Home() {
           melihat angkanya dan sedang mencari alasan untuk tidak melanjutkan.
           Menaruhnya sebelum harga berarti menjawab pertanyaan yang belum
           ditanyakan siapa pun. */}
-      <LandingFaq />
+      {tampil("faq") && <LandingFaq />}
       <LandingClosingCta />
     </LandingShell>
   );

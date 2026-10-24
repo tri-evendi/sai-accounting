@@ -121,10 +121,17 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
 - **Tiga tampilan di URL** (`?view=edit|review|history`, `?section=`,
   `?show=`, `?q=`), chip tampilan `secondary`/`ghost`. Satu aksi utama per
   tampilan: "Simpan draf" (Sunting) dan "Terbitkan" (Tinjau).
-- **Ketiga bahasa berdampingan.** Status berteks per isian (Bawaan / Diganti /
-  Draf), penghitung karakter terhadap batas yang diturunkan dari kamus
-  (`contentFieldSpec`), dan peringatan "terjemahan tertinggal" bila sebuah
-  kunci diganti di sebagian bahasa saja.
+- **Bahasa Indonesia saja di alur biasa.** Sunting menampilkan isian `id`
+  (`SITE_CONTENT_PRIMARY_LOCALE`); English & 中文 terlipat per kunci di
+  `<details>` "Bahasa lain (opsional)" yang tertutup bawaannya, dengan catatan
+  bila bahasa itu sudah punya draf, dan terbuka sendiri bila server menolak
+  isiannya. Penyimpanan, draf, terbit, dan riwayat tetap per bahasa; suntingan
+  `id` saja tidak membuat draf `en`/`zh` (nilai yang sama dengan yang tayang
+  bukan draf). Tinjau & Riwayat mendahulukan `id` dan hanya memuat bahasa lain
+  bila memang ada draf/perubahan. Peringatan "terjemahan tertinggal" dicabut
+  dari layar (pemilik tidak mengelola terjemahan di sini). Status berteks per
+  isian (Bawaan / Diganti / Draf) dan penghitung karakter terhadap batas yang
+  diturunkan dari kamus (`contentFieldSpec`) tetap.
 - **Teks biasa.** Tag HTML, karakter kendali, dan penanda `{…}` yang berbeda
   dari bawaan ditolak di editor dan di server dengan aturan yang sama
   (`contentValueProblem`).

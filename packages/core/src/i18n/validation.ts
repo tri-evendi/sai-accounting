@@ -374,4 +374,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   // Retensi uji coba beku (alur demo-first, migration platform 0012).
   "validation.retentionDaysRange": "Masa retensi 30–3650 hari, atau 0 untuk mengikuti pengaturan server.",
   "validation.retentionConfirmRequired": "Ketik HAPUS untuk menyalakan penghapusan otomatis.",
+  // Tampilan halaman depan (konsol `/landing`, migration platform 0014).
+  "validation.landingHttpsUrl": "Tautan harus diawali https:// dan menuju alamat publik.",
+  "validation.landingLinkInvalid": "Tautan harus diawali https:// atau berupa jalur di situs ini, mis. /pricing.",
+  "validation.landingIndonesianRequired": "Teks bahasa Indonesia wajib diisi; bahasa lain yang kosong memakai teks ini.",
 };

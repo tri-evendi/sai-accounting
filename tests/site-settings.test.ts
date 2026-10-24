@@ -60,15 +60,20 @@ describe("pengaturan BENAR-BENAR dipakai permukaan yang membutuhkannya", () => {
     /* Penjaga ini ada karena satu env telanjang yang tertinggal membuat satu
        permukaan memajang nomor LAMA sementara yang lain sudah berganti — dan
        perbedaan itu hanya terlihat oleh orang yang membuka keduanya. */
-    const pembaca: [string, string[]][] = [
-      ["landing-faq", ["src", "components", "landing", "landing-faq.tsx"]],
-      ["landing-whatsapp", ["src", "components", "landing", "landing-whatsapp.tsx"]],
-      ["landing-pricing", ["src", "components", "landing", "landing-pricing.tsx"]],
-      ["register", ["src", "app", "(app)", "(auth)", "register", "page.tsx"]],
+    /* Tombol WhatsApp melayang memakai `resolveLandingWhatsappUrl` (kalimat
+       pembuka dari konsol `/landing`), yang sendiri membangun di atas
+       `resolveContactChannels` — jadi yang diperiksa untuknya adalah resolver
+       pendaratan, dan resolver itu diperiksa memakai resolver kanal. */
+    const pembaca: [string, string[], string][] = [
+      ["landing-faq", ["src", "components", "landing", "landing-faq.tsx"], "resolveContactChannels("],
+      ["landing-whatsapp", ["src", "components", "landing", "landing-whatsapp.tsx"], "resolveLandingWhatsappUrl("],
+      ["landing-settings", ["packages", "platform", "src", "landing-settings.ts"], "resolveContactChannels("],
+      ["landing-pricing", ["src", "components", "landing", "landing-pricing.tsx"], "resolveContactChannels("],
+      ["register", ["src", "app", "(app)", "(auth)", "register", "page.tsx"], "resolveContactChannels("],
     ];
-    for (const [nama, jalur] of pembaca) {
+    for (const [nama, jalur, resolver] of pembaca) {
       const src = baca(...jalur);
-      expect(src, `${nama} memakai resolver`).toContain("resolveContactChannels");
+      expect(src, `${nama} memakai resolver`).toContain(resolver);
       expect(src, `${nama} tidak membaca env kontak langsung`).not.toContain(
         "process.env.PLATFORM_CONTACT"
       );

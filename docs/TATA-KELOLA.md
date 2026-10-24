@@ -1,7 +1,9 @@
-# Tata Kelola — DRAF untuk diputuskan pemilik
+# Tata Kelola
 
-> **Status: DRAF, 23 Okt 2026.** Setiap angka di bawah adalah **usulan** yang
-> ditandai 🔶 sampai pemilik mengesahkannya. Dokumen ini menjawab tabel
+> **Status: SEBAGIAN DISAHKAN, 24 Okt 2026.** Butir bertanda ✅ disahkan pemilik
+> 24 Okt 2026 (SLO, tingkat insiden, deprecation, retensi, on-premise). Butir yang
+> masih 🔶 menunggu: definisi GA, kontak insiden & keamanan, salinan cadangan
+> bulanan (butuh penyimpanan luar-server), dan DPA (butuh penasihat hukum). Dokumen ini menjawab tabel
 > "Hilang" di [`arsitektur/09-RANCANGAN-LAYANAN.md` §12](./arsitektur/09-RANCANGAN-LAYANAN.md):
 > delapan butir yang berupa **kebijakan, bukan kode**. Kode sudah menyediakan
 > alatnya (semver + tag image, expand/contract, alarm tiga denyut, jejak
@@ -28,7 +30,7 @@
 Pengukurannya sudah ada (alarm tiga denyut, `runtime_samples`, histogram antrean
 di `/scheduler`); yang diusulkan di sini adalah sasarannya.
 
-| Permukaan | SLI | 🔶 Sasaran (30 hari bergulir) | *Error budget* |
+| Permukaan | SLI | ✅ 24 Okt 2026 — Sasaran (30 hari bergulir) | *Error budget* |
 |---|---|---|---|
 | Aplikasi customer | `/api/health` = ok dari luar, per menit | 99,5% | ±3 jam 36 menit / 30 hari |
 | Posting jurnal | permintaan posting yang berhasil / semua (di luar galat validasi) | 99,9% | — |
@@ -41,7 +43,7 @@ hanya rilis perbaikan dan keamanan yang lolos.
 
 ## 3. Insiden
 
-| 🔶 Tingkat | Contoh | Respons pertama | Kabar ke customer |
+| ✅ 24 Okt 2026 — Tingkat | Contoh | Respons pertama | Kabar ke customer |
 |---|---|---|---|
 | **Sev-1** | aplikasi mati untuk semua tenant; data satu PT tertulis ke PT lain; kebocoran data; cadangan rusak saat dibutuhkan | 30 menit, kapan pun | dalam 2 jam, lalu tiap 4 jam |
 | **Sev-2** | satu fitur inti mati (posting, ekspor, login) untuk sebagian tenant; cadangan gagal 2 hari berturut-turut | 4 jam kerja | dalam 1 hari kerja |
@@ -60,11 +62,11 @@ risiko yang belum terjadi, Sev menilai kejadian yang sedang berlangsung.
 Sudah ada: `SECURITY.md`. Yang wajib diisi pemilik di sana:
 
 - 🔶 alamat surel keamanan (usul: alamat khusus, bukan surel pribadi);
-- 🔶 tanda terima laporan: **2 hari kerja**; penilaian awal: **5 hari kerja**.
+- ✅ 24 Okt 2026: tanda terima laporan **2 hari kerja**; penilaian awal **5 hari kerja**.
 
 ## 5. Deprecation
 
-- 🔶 Fitur, endpoint `/api/v1`, opsi env, atau format berkas yang akan dicabut
+- ✅ 24 Okt 2026: fitur, endpoint `/api/v1`, opsi env, atau format berkas yang akan dicabut
   **ditandai di satu rilis MINOR** (catatan rilis + peringatan di log/antarmuka),
   dan **dicabut paling cepat di MINOR berikutnya yang berjarak ≥ 30 hari**.
 - On-premise: jendela tadi dihitung dari tanggal rilis yang **dipasang**
@@ -77,12 +79,12 @@ Sudah ada: `SECURITY.md`. Yang wajib diisi pemilik di sana:
 | Jenis data | Retensi | Dasar |
 |---|---|---|
 | Buku besar & dokumen pembukuan | **10 tahun** sejak entri jurnal termuda (sudah di kode: `retention_until`) | kewajiban penyimpanan dokumen — lihat `COMPLIANCE.md` §1 |
-| Akun pengguna setelah tenant berhenti | 🔶 tenggang 30 hari, lalu dinonaktifkan; data pribadi dihapus atas permintaan sesuai UU PDP kecuali yang wajib disimpan bersama buku | UU PDP No. 27/2022 |
+| Akun pengguna setelah tenant berhenti | ✅ 24 Okt 2026: tenggang 30 hari, lalu dinonaktifkan; data pribadi dihapus atas permintaan sesuai UU PDP kecuali yang wajib disimpan bersama buku | UU PDP No. 27/2022 |
 | Jejak audit tenant | sama dengan bukunya | — |
-| Jejak audit operator | 🔶 5 tahun | — |
+| Jejak audit operator | ✅ 24 Okt 2026: 5 tahun | — |
 | Cadangan harian | berlaku hari ini: **30 hari** (`BACKUP_RETENTION_DAYS`, bawaan di `tenantlane/runner.go`). 🔶 usul tambahan: 12 salinan bulanan di penyimpanan luar-server | butuh S3 dulu (P0-1) |
 | Baris antrean `jobs` selesai | 14 hari (`done_retention_days`, `contract/kinds.yaml`) | operasional |
-| Berkas ekspor (`hasil`) | 🔶 7 hari — ⚠ periksa nilai yang berlaku di kode sebelum disahkan | operasional |
+| Berkas ekspor (`hasil`) | ✅ 24 Okt 2026: 7 hari. ⚠ Per 24 Okt 2026 kode belum memangkas berkas `hasil` (hanya baris `jobs` setelah 14 hari) — pemangkasannya sedang dibangun | operasional |
 
 - 🔶 **Perjanjian pengolahan data (DPA):** templat untuk customer SaaS — SAI
   sebagai pemroses, customer sebagai pengendali; sub-pemroses yang disebut:
@@ -92,7 +94,7 @@ Sudah ada: `SECURITY.md`. Yang wajib diisi pemilik di sana:
 
 ## 7. On-premise
 
-| Butir | 🔶 Usulan |
+| Butir | ✅ 24 Okt 2026 |
 |---|---|
 | Jendela dukungan | versi MINOR didukung **12 bulan** sejak rilis, atau selama `supportEndsAt` lisensi — mana yang lebih pendek |
 | Backport | hanya perbaikan **keamanan dan integritas data** (Sev-1/Sev-2) ke MINOR yang masih didukung; fitur tidak di-backport |

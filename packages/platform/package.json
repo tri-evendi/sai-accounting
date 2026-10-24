@@ -15,6 +15,7 @@
     "./job-metrics": "./src/job-metrics.ts",
     "./job-queue": "./src/job-queue.ts",
     "./job-result-store": "./src/job-result-store.ts",
+    "./landing-settings": "./src/landing-settings.ts",
     "./licence-register-store": "./src/licence-register-store.ts",
     "./licence-signing": "./src/licence-signing.ts",
     "./licence-signing-key-store": "./src/licence-signing-key-store.ts",

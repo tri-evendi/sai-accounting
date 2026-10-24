@@ -136,7 +136,7 @@ model Subscription {
   planId Int  @map("plan_id")
   plan   Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
 
-  /// trialing | active | past_due | suspended | cancelled
+  /// trialing | active | past_due | suspended | cancelled | trial_ended
   /// String + z.enum (`src/lib/platform-constants.ts`) — konvensi docs/DATABASE.md.
   status String @db.VarChar(20)
 
@@ -172,6 +172,11 @@ model Subscription {
   pastDueSince DateTime? @map("past_due_since")
   cancelledAt  DateTime? @map("cancelled_at")
 
+  /// Kapan uji coba ini BEKU (`trialing` → `trial_ended`, migration platform
+  /// 0011, alur demo-first). Jangkar retensi uji coba beku; dikosongkan saat
+  /// langganan keluar dari `trial_ended` (aktivasi / perpanjangan uji coba).
+  trialEndedAt DateTime? @map("trial_ended_at")
+
   /// Penanda "langganan PERTAMA tenant ini" (issue #152) — kunci idempotensi
   /// KELAHIRAN langganan. Diisi `tenant_id` oleh setiap jalur yang melahirkan
   /// langganan pertama sebuah tenant (verifikasi email, putaran adopsi
@@ -194,6 +199,7 @@ model Subscription {
   @@index([currentPeriodEnd])
   @@index([billingMode])
   @@index([planId])
+  @@index([trialEndedAt])
   @@map("subscriptions")
 }
 
@@ -1037,3 +1043,91 @@ model CacheSignal {
   @@map("cache_signals")
 }
 
+/// PERMINTAAN AKTIVASI dari customer (migration platform 0011, alur demo-first).
+///
+/// Tombol "Minta aktivasi" menggantikan "Bayar" selama uji coba, saat uji coba
+/// sudah beku, dan saat tidak ada satu pun rel pembayaran — tombol bayar yang
+/// berakhir tanpa nomor rekening adalah jalan buntu (`docs/KOMERSIALISASI.md`
+/// §11). Barisnya dibaca konsol operator sebagai daftar kerja: siapa yang
+/// menunggu dihubungi.
+///
+/// `tenant_id` / `requested_by_user_id` Int biasa TANPA FK (pola #137: id
+/// lintas basis data). Satu permintaan TERBUKA per tenant — indeks unik parsial
+/// di migration (Prisma tidak bisa memodelkannya); klik kedua menjawab "sudah
+/// tercatat", bukan baris kembar.
+model ActivationRequest {
+  id Int @id @default(autoincrement())
+
+  tenantId Int @map("tenant_id")
+
+  /// Pengguna (owner) yang menekan tombol — id global basis data kendali.
+  requestedByUserId Int     @map("requested_by_user_id")
+  /// Nama/surel saat itu, DISALIN: baris ini harus terbaca sesudah penggunanya
+  /// dianonimkan atau tenantnya dihapus.
+  requestedByName   String? @map("requested_by_name") @db.VarChar(191)
+
+  /// Status tenant SAAT meminta (trialing | trial_ended | …) — konteks untuk
+  /// operator, bukan keadaan yang dijaga.
+  tenantStatus String @map("tenant_status") @db.VarChar(30)
+
+  /// Pesan bebas dari customer (opsional).
+  note String? @db.Text
+
+  /// open | handled — CHECK di migration.
+  status String @default("open") @db.VarChar(20)
+
+  /// Nama akun operator yang menandai ditangani + kapan.
+  handledBy String?   @map("handled_by") @db.VarChar(100)
+  handledAt DateTime? @map("handled_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([status, createdAt])
+  @@map("activation_requests")
+}
+
+/// AKTIVASI DARI PENAWARAN (migration platform 0011) — catatan hak pakai yang
+/// dibayar DI LUAR sistem (faktur di buku PT penyedia, `docs/KOMERSIALISASI.md`
+/// §3.4), PENGGANTI tagihan Rp 0 bertanda `-K`.
+///
+/// Sampai tabel ini ada, "Aktifkan dari penawaran" menerbitkan tagihan `comped`
+/// Rp 0 sebagai kunci idempotensi perpanjangan — padahal aktivasi penawaran
+/// BUKAN kompensasi: customer-nya membayar, hanya saja bukan lewat
+/// `platform_invoices`. Mencatatnya sebagai "diberi gratis" mencampur penjualan
+/// dengan hadiah di tabel yang sama (§6.4, §11). Di sini nomor penawaran
+/// adalah kunci idempotensinya (UNIQUE), dan bukti transfernya ikut tersimpan.
+///
+/// TIDAK PERNAH dihitung sebagai pendapatan platform: uangnya tercatat di buku
+/// PT penyedia, dan menghitungnya dua kali adalah kesalahan yang lebih buruk
+/// daripada tidak menghitungnya di sini.
+model QuoteActivation {
+  id Int @id @default(autoincrement())
+
+  tenantId       Int @map("tenant_id")
+  subscriptionId Int @map("subscription_id")
+
+  /// Nomor penawaran / kontrak — UNIK: satu penawaran mengaktifkan satu kali.
+  quoteRef String @unique @map("quote_ref") @db.VarChar(60)
+
+  /// Referensi bukti transfer: berita/nomor referensi rekening koran atau URL
+  /// dokumen bukti. Teks, bukan berkas.
+  transferProof String @map("transfer_proof") @db.VarChar(500)
+
+  planKey      String   @map("plan_key") @db.VarChar(30)
+  billingCycle String   @map("billing_cycle") @db.VarChar(10)
+  periods      Int
+  periodStart  DateTime @map("period_start")
+  periodEnd    DateTime @map("period_end")
+
+  /// `operator:<nama>`.
+  actor String @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([subscriptionId])
+  @@map("quote_activations")
+}

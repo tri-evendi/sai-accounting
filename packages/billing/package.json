@@ -10,7 +10,8 @@
     "./plan-stacking": "./src/plan-stacking.ts",
     "./platform-constants": "./src/platform-constants.ts",
     "./platform-revenue": "./src/platform-revenue.ts",
-    "./subscription-lifecycle": "./src/subscription-lifecycle.ts"
+    "./subscription-lifecycle": "./src/subscription-lifecycle.ts",
+    "./trial-notice": "./src/trial-notice.ts"
   },
   "dependencies": {
     "@sai/core": "workspace:*"

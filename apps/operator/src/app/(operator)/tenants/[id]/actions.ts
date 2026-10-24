@@ -40,6 +40,7 @@ import {
   type OperatorActor,
   activateQuoteEntitlement,
 } from "@op/lib/operator/writes";
+import { extendTrial, setTenantPartner } from "@op/lib/operator/trial-writes";
 import {
   changePlanSchema,
   deletionExecuteSchema,
@@ -48,6 +49,8 @@ import {
   extendSubscriptionSchema,
   billingModeActionSchema,
   quoteActivationSchema,
+  extendTrialSchema,
+  partnerSchema,
 } from "@op/lib/validations/operator";
 import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@sai/billing/platform-constants";
 import { invalidateTenantState } from "@sai/platform/tenant-state";
@@ -246,7 +249,7 @@ export async function operatorExtendSubscription(
         ok: true,
         message: t("operator.actions.extend.success", {
           to: businessISODate(result.to),
-          invoice: result.invoiceNumber,
+          invoice: result.invoiceNumber ?? "—",
         }),
       };
     case "duplicate":
@@ -413,7 +416,7 @@ export async function operatorActivateQuote(input: unknown): Promise<OperatorAct
 
   const parsed = quoteActivationSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: t("operator.quote.errInput") };
-  const { tenantId, planKey, cycle, periods, quoteRef, reason } = parsed.data;
+  const { tenantId, planKey, cycle, periods, quoteRef, transferProof, reason } = parsed.data;
 
   const result = await activateQuoteEntitlement(deps(), {
     tenantId,
@@ -421,6 +424,7 @@ export async function operatorActivateQuote(input: unknown): Promise<OperatorAct
     cycle,
     periods,
     quoteRef,
+    transferProof,
     actor: { operator: actorName, reason },
   });
   felt(tenantId);
@@ -429,4 +433,83 @@ export async function operatorActivateQuote(input: unknown): Promise<OperatorAct
   return result.ok
     ? { ok: true, message: t("operator.quote.done", { quote: quoteRef }), warning: null }
     : { ok: false, message: t("operator.quote.partial", { steps: ringkas }) };
+}
+
+/* ── 8. Perpanjang uji coba (termasuk mencairkan yang beku) ──────────────── */
+
+/**
+ * Uji coba prospek diperpanjang dari SEKARANG sejumlah hari. `trial_ended`
+ * (beku) kembali ke `trialing`; buku kembali bisa ditulis begitu cache status
+ * jatuh (`felt`). Izin `tenant.billing`: memberi hak pakai tanpa bayar adalah
+ * keputusan komersial, sama dengan perpanjangan kompensasi.
+ */
+export async function operatorExtendTrial(input: unknown): Promise<OperatorActionResult> {
+  const gate = await guardAndTranslate("tenant.billing");
+  if (!gate.ok) return gate.result;
+  const { t, actorName } = gate;
+
+  const parsed = extendTrialSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t("validation.invalidInput") };
+
+  const result = await extendTrial(deps(), {
+    tenantId: parsed.data.tenantId,
+    days: parsed.data.days,
+    actor: { operator: actorName, reason: parsed.data.reason },
+  });
+
+  switch (result.outcome) {
+    case "extended":
+      felt(parsed.data.tenantId);
+      return {
+        ok: true,
+        message: t("operator.trial.extendDone", { date: businessISODate(result.trialEndsAt) }),
+      };
+    case "no_subscription":
+      return { ok: false, message: t("operator.actions.suspension.errNoSubscription") };
+    case "not_applicable":
+      return {
+        ok: false,
+        message: t("operator.trial.extendNotApplicable", {
+          status: t(`tenantSettings.status.${result.status}` as DictionaryKey),
+        }),
+      };
+    default:
+      return { ok: false, message: t("operator.tenant.notFound") };
+  }
+}
+
+/* ── 9. Atribusi mitra ─────────────────────────────────────────────────────── */
+
+export async function operatorSetPartner(input: unknown): Promise<OperatorActionResult> {
+  const gate = await guardAndTranslate("tenant.billing");
+  if (!gate.ok) return gate.result;
+  const { t, actorName } = gate;
+
+  const parsed = partnerSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t("validation.invalidInput") };
+
+  const result = await setTenantPartner(
+    { control: controlDb },
+    {
+      tenantId: parsed.data.tenantId,
+      partner: parsed.data.partner,
+      actor: { operator: actorName, reason: parsed.data.reason },
+    }
+  );
+
+  switch (result.outcome) {
+    case "changed":
+      revalidatePath(`/tenants/${parsed.data.tenantId}`);
+      revalidatePath("/tenants");
+      return {
+        ok: true,
+        message: result.to
+          ? t("operator.partner.saved", { partner: result.to })
+          : t("operator.partner.cleared"),
+      };
+    case "not_applicable":
+      return { ok: false, message: t("operator.partner.unchanged") };
+    default:
+      return { ok: false, message: t("operator.tenant.notFound") };
+  }
 }

@@ -598,11 +598,15 @@ export type ExtendSubscriptionResult =
       outcome: "extended";
       from: Date;
       to: Date;
-      invoiceNumber: string;
+      /** Nomor tagihan kompensasi `-K`; `null` pada aktivasi PENAWARAN, yang
+       *  tidak menerbitkan tagihan apa pun (lihat `quote` di input). */
+      invoiceNumber: string | null;
       status: string;
     }
   /** Nomor tagihan kompensasi untuk periode ini sudah ada — perpanjangan yang
-   *  sama tidak pernah dijalankan dua kali (pola idempotensi penagihan). */
+   *  sama tidak pernah dijalankan dua kali (pola idempotensi penagihan). Pada
+   *  aktivasi penawaran, `invoiceNumber` berisi NOMOR PENAWARAN yang sudah
+   *  pernah dipakai. */
   | { outcome: "duplicate"; invoiceNumber: string }
   | { outcome: "tenant_not_found" }
   | { outcome: "no_subscription" }
@@ -660,6 +664,14 @@ export async function extendSubscription(
     /** Berapa periode. 1 tahunan = satu tahun; 3 bulanan = tiga bulan. */
     periods: number;
     actor: OperatorActor;
+    /**
+     * Diisi HANYA oleh aktivasi dari penawaran (`activateQuoteEntitlement`):
+     * periodenya DIBAYAR di luar sistem, bukan diberikan gratis. Saat terisi,
+     * TIDAK ADA tagihan Rp 0 `-K` — yang dicatat adalah baris
+     * `quote_activations` dengan nomor penawaran sebagai kunci idempotensinya
+     * (`docs/KOMERSIALISASI.md` §6.4/§11; migration platform 0011).
+     */
+    quote?: { quoteRef: string; transferProof: string; planKey: string };
   },
   now: Date = new Date()
 ): Promise<ExtendSubscriptionResult> {
@@ -722,43 +734,79 @@ export async function extendSubscription(
 
   const from = extensionStart(subscription.currentPeriodEnd, now);
   const to = extendPeriod(from, input.cycle, input.periods);
-  const invoiceNumber = compedInvoiceNumber(subscription.id, from);
+  const invoiceNumber = input.quote ? null : compedInvoiceNumber(subscription.id, from);
 
   /* ── 1. PLATFORM dulu ──────────────────────────────────────────────────── */
-  try {
-    await deps.platform.platformInvoice.create({
-      data: {
-        tenantId: tenant.id,
-        subscriptionId: subscription.id,
-        number: invoiceNumber,
-        /*
-         * `comped`, BUKAN `paid`. Tidak ada yang terutang, jadi tidak ada yang
-         * bisa dilunasi — dan baris pembayaran pun tidak dibuat, sebab
-         * pembayaran nol adalah dokumen yang menyatakan sesuatu yang tidak
-         * pernah terjadi.
-         *
-         * Dulu baris ini `paid`, dan akibatnya terukur: lima dari lima tagihan
-         * "lunas" di produksi bernilai Rp 0, sehingga pendapatan tidak bisa
-         * dibaca dari tabel mana pun tanpa tahu lebih dulu bahwa sebagian
-         * "lunas" bukan uang. Alasan penuh di `platform-constants.ts`
-         * (`PLATFORM_INVOICE_STATUSES`).
-         */
-        status: "comped",
-        issueDate: now,
-        dueDate: now,
-        amount: "0",
-        taxAmount: "0",
-        total: "0",
-        currency: subscription.currency,
-      },
-    });
-  } catch (error) {
-    /* Nomor bertanda itu UNIK — perpanjangan yang sama, dijalankan dua kali,
-       menabrak constraint alih-alih memberi periode kedua. */
-    if ((error as { code?: string }).code === "P2002") {
-      return { outcome: "duplicate", invoiceNumber };
+  if (input.quote) {
+    /*
+     * AKTIVASI PENAWARAN — tanpa tagihan Rp 0 (alur demo-first, 24 Okt 2026).
+     *
+     * Periode ini dibayar customer lewat faktur di buku PT penyedia (§3.4).
+     * Menerbitkan tagihan `comped` untuknya berarti mencatat penjualan sebagai
+     * HADIAH di tabel yang sama dengan kompensasi sungguhan — persis campuran
+     * yang §6.4 minta dihentikan. Yang dicatat di sini: nomor penawaran (UNIK
+     * = kunci idempotensi, peran yang dulu dipikul nomor `-K`) + referensi
+     * bukti transfer. Baris ini TIDAK PERNAH dihitung sebagai pendapatan
+     * platform; uangnya sudah tercatat di buku penyedia.
+     */
+    try {
+      await deps.platform.quoteActivation.create({
+        data: {
+          tenantId: tenant.id,
+          subscriptionId: subscription.id,
+          quoteRef: input.quote.quoteRef,
+          transferProof: input.quote.transferProof,
+          planKey: input.quote.planKey,
+          billingCycle: input.cycle,
+          periods: Math.max(1, Math.trunc(input.periods)),
+          periodStart: from,
+          periodEnd: to,
+          actor: auditActor(input.actor).username,
+        },
+      });
+    } catch (error) {
+      if ((error as { code?: string }).code === "P2002") {
+        return { outcome: "duplicate", invoiceNumber: input.quote.quoteRef };
+      }
+      throw error;
     }
-    throw error;
+  } else {
+    const compedNumber = compedInvoiceNumber(subscription.id, from);
+    try {
+      await deps.platform.platformInvoice.create({
+        data: {
+          tenantId: tenant.id,
+          subscriptionId: subscription.id,
+          number: compedNumber,
+          /*
+           * `comped`, BUKAN `paid`. Tidak ada yang terutang, jadi tidak ada yang
+           * bisa dilunasi — dan baris pembayaran pun tidak dibuat, sebab
+           * pembayaran nol adalah dokumen yang menyatakan sesuatu yang tidak
+           * pernah terjadi.
+           *
+           * Dulu baris ini `paid`, dan akibatnya terukur: lima dari lima tagihan
+           * "lunas" di produksi bernilai Rp 0, sehingga pendapatan tidak bisa
+           * dibaca dari tabel mana pun tanpa tahu lebih dulu bahwa sebagian
+           * "lunas" bukan uang. Alasan penuh di `platform-constants.ts`
+           * (`PLATFORM_INVOICE_STATUSES`).
+           */
+          status: "comped",
+          issueDate: now,
+          dueDate: now,
+          amount: "0",
+          taxAmount: "0",
+          total: "0",
+          currency: subscription.currency,
+        },
+      });
+    } catch (error) {
+      /* Nomor bertanda itu UNIK — perpanjangan yang sama, dijalankan dua kali,
+         menabrak constraint alih-alih memberi periode kedua. */
+      if ((error as { code?: string }).code === "P2002") {
+        return { outcome: "duplicate", invoiceNumber: compedNumber };
+      }
+      throw error;
+    }
   }
 
   await deps.platform.subscription.update({
@@ -774,9 +822,12 @@ export async function extendSubscription(
       currentPeriodStart: from,
       currentPeriodEnd: to,
       /* Trial selesai — ia sudah digantikan periode berbayar. Membiarkannya
-         terisi membuat penjadwal menagih "trial habis" atas periode yang baru
-         saja dibayar. */
+         terisi membuat penjadwal membekukan "trial habis" atas periode yang
+         baru saja dibayar. */
       trialEndsAt: null,
+      /* Keluar dari beku uji coba (bila memang dari sana): jangkar retensi
+         tidak boleh tertinggal di langganan yang kini aktif. */
+      trialEndedAt: null,
       pastDueSince: null,
     },
   });
@@ -797,7 +848,11 @@ export async function extendSubscription(
       currency: subscription.currency,
       details: {
         reason: input.actor.reason,
-        compensation: true,
+        /* Aktivasi penawaran BUKAN kompensasi — ia dibayar di luar sistem. */
+        compensation: !input.quote,
+        ...(input.quote
+          ? { quoteRef: input.quote.quoteRef, transferProof: input.quote.transferProof }
+          : {}),
         cycleFrom: subscription.billingCycle,
         cycleTo: input.cycle,
         periods: input.periods,
@@ -826,6 +881,9 @@ export async function extendSubscription(
       from: from.toISOString(),
       to: to.toISOString(),
       invoiceNumber,
+      ...(input.quote
+        ? { quoteRef: input.quote.quoteRef, transferProof: input.quote.transferProof }
+        : {}),
       fromStatus: subscription.status,
       /* Harga yang berubah adalah perubahan UANG — ia harus terbaca di jejak,
          bukan hanya di baris basis datanya. */
@@ -899,9 +957,11 @@ export interface QuoteActivationResult {
  * keadaan setengah jadi DINYATAKAN, tidak disembunyikan, dan operator bisa
  * melanjutkan langkah yang tersisa dengan tombolnya masing-masing.
  *
- * ⚠ Perpanjangan menerbitkan tagihan Rp 0 bertanda `-K` (§6.4) — sama dengan
- * menekan "perpanjang" dengan tangan. Faktur yang sebenarnya hidup di buku PT
- * penyedia; menghilangkan tagihan Rp 0 itu adalah keputusan tersendiri.
+ * Sejak alur demo-first (24 Okt 2026) perpanjangannya TIDAK lagi menerbitkan
+ * tagihan Rp 0 bertanda `-K`: periode ini dibayar lewat faktur di buku PT
+ * penyedia, jadi yang dicatat adalah baris `quote_activations` (nomor
+ * penawaran + referensi bukti transfer), bukan "hadiah" `comped` (§6.4/§11).
+ * Tenant yang sedang `trial_ended` (uji coba beku) ikut aktif kembali di sini.
  */
 export async function activateQuoteEntitlement(
   deps: OperatorWriteDeps,
@@ -911,6 +971,8 @@ export async function activateQuoteEntitlement(
     cycle: "monthly" | "yearly";
     periods: number;
     quoteRef: string;
+    /** Referensi bukti transfer (berita/nomor rekening koran atau URL). */
+    transferProof: string;
     actor: OperatorActor;
   },
   now: Date = new Date()
@@ -937,7 +999,13 @@ export async function activateQuoteEntitlement(
 
   const ext = await extendSubscription(
     deps,
-    { tenantRef: { id: input.tenantId }, cycle: input.cycle, periods: input.periods, actor },
+    {
+      tenantRef: { id: input.tenantId },
+      cycle: input.cycle,
+      periods: input.periods,
+      actor,
+      quote: { quoteRef: input.quoteRef, transferProof: input.transferProof, planKey: input.planKey },
+    },
     now
   );
   steps.push({ step: "extend", outcome: ext.outcome, ...(ext.outcome === "extended" ? { to: ext.to } : {}) });

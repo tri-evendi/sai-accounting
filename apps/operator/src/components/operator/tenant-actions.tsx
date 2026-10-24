@@ -100,6 +100,11 @@ import {
   type SlugRenameFormInput,
   quoteActivationSchema,
   type QuoteActivationFormInput,
+  extendTrialSchema,
+  type ExtendTrialFormInput,
+  partnerSchema,
+  type PartnerFormInput,
+  TRIAL_DAYS_MAX,
 } from "@op/lib/validations/operator";
 import type { OperatorActionResult } from "@op/app/(operator)/tenants/[id]/actions";
 import { operatorRenameTenantSlug } from "@op/app/(operator)/tenants/[id]/slug-actions";
@@ -111,6 +116,8 @@ import {
   operatorExtendSubscription,
   operatorSetBillingMode,
   operatorActivateQuote,
+  operatorExtendTrial,
+  operatorSetPartner,
 } from "@op/app/(operator)/tenants/[id]/actions";
 
 /* ── Bentuk data dari halaman server (serial, tanggal sudah terformat) ────── */
@@ -169,6 +176,10 @@ export interface TenantActionsProps {
    * mengajari orang bahwa konsol ini rusak.
    */
   allowed: { billing: boolean; lifecycle: boolean; delete: boolean };
+  /** Mitra yang membawa tenant ini (migration kendali 0013). */
+  referredByPartner: string | null;
+  /** Bawaan isian "perpanjang uji coba" (`TRIAL_DAYS`). */
+  defaultTrialDays: number;
 }
 
 /* ── Bingkai panel + pesan hasil yang seragam ─────────────────────────────── */
@@ -1353,7 +1364,15 @@ function QuotePanel({
 
   const form = useForm<QuoteActivationFormInput>({
     resolver: zodResolver(quoteActivationSchema) as Resolver<QuoteActivationFormInput>,
-    defaultValues: { tenantId, planKey: currentPlanKey, cycle: "yearly", periods: 1, quoteRef: "", reason: "" },
+    defaultValues: {
+      tenantId,
+      planKey: currentPlanKey,
+      cycle: "yearly",
+      periods: 1,
+      quoteRef: "",
+      transferProof: "",
+      reason: "",
+    },
   });
 
   async function runAction(values: QuoteActivationFormInput) {
@@ -1394,6 +1413,22 @@ function QuotePanel({
                 <FormControl>
                   <TextInput autoComplete="off" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {/* Bukti transfer — teks/URL, bukan unggahan. Ia menggantikan tagihan
+              Rp 0 `-K` sebagai dokumen yang menjelaskan KENAPA tenant ini aktif. */}
+          <FormField
+            control={form.control}
+            name="transferProof"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.quote.proofLabel")}</FormLabel>
+                <FormControl>
+                  <TextInput autoComplete="off" {...field} />
+                </FormControl>
+                <FormDescription>{t("operator.quote.proofHint")}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -1468,6 +1503,7 @@ function QuotePanel({
                   quote: confirming.quoteRef,
                   plan: confirming.planKey,
                   periods: confirming.periods,
+                  proof: confirming.transferProof,
                 })
               : ""
           }
@@ -1477,6 +1513,193 @@ function QuotePanel({
             if (confirming) await runAction(confirming);
           }}
         />
+      </form>
+    </Form>
+  );
+}
+
+/* ══ 3e. Perpanjang UJI COBA (alur demo-first) ═════════════════════════════ */
+
+/**
+ * Prospek yang masih menimbang mendapat tanggal akhir baru — dihitung dari
+ * HARI INI. Uji coba yang sudah BEKU (`trial_ended`) dicairkan kembali ke
+ * `trialing`, dan bukunya bisa ditulis lagi. Hak pakai tanpa bayar, jadi
+ * izinnya `tenant.billing` dan alasannya wajib.
+ */
+function ExtendTrialPanel({
+  tenantId,
+  tenantName,
+  subscriptionStatus,
+  defaultDays,
+}: {
+  tenantId: number;
+  tenantName: string;
+  subscriptionStatus: string | null;
+  defaultDays: number;
+}) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState<ExtendTrialFormInput | null>(null);
+  const [result, setResult] = useState<OperatorActionResult | null>(null);
+
+  const form = useForm<ExtendTrialFormInput>({
+    resolver: zodResolver(extendTrialSchema) as Resolver<ExtendTrialFormInput>,
+    defaultValues: { tenantId, days: defaultDays, reason: "" },
+  });
+
+  const applicable = subscriptionStatus === "trialing" || subscriptionStatus === "trial_ended";
+
+  async function runAction(values: ExtendTrialFormInput) {
+    const res = await operatorExtendTrial(values);
+    setConfirming(null);
+    if (!res.ok) {
+      form.setError("root", { message: res.message });
+      return;
+    }
+    setResult(res);
+    setOpen(false);
+    router.refresh();
+  }
+
+  if (!open) {
+    return (
+      <Flex vertical gap={token.marginXS}>
+        <ResultNotice result={result} />
+        {!applicable && (
+          <p style={{ margin: 0, color: token.colorTextSecondary }}>{t("operator.trial.extendOnlyTrial")}</p>
+        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          style={{ alignSelf: "flex-start" }}
+          disabled={!applicable}
+          onClick={() => setOpen(true)}
+        >
+          {t("operator.trial.extendOpen")}
+        </Button>
+      </Flex>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit((values) => setConfirming(values))} noValidate>
+        <Flex vertical gap={token.marginSM}>
+          <p style={noticeBox(token)}>{t("operator.trial.extendExplain")}</p>
+          <FormField
+            control={form.control}
+            name="days"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.trial.trialDays")}</FormLabel>
+                <FormControl>
+                  <TextInput type="number" min={1} max={TRIAL_DAYS_MAX} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <ReasonField control={form.control} />
+          <RootError message={form.formState.errors.root?.message} />
+          <Flex gap={token.marginXS}>
+            <Button type="submit" variant="primary" size="sm">
+              {t("operator.trial.extendSubmit")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+          </Flex>
+        </Flex>
+        <ConfirmDialog
+          open={confirming !== null}
+          onOpenChange={(next) => {
+            if (!next) setConfirming(null);
+          }}
+          title={t("operator.trial.extendTitle")}
+          message={
+            confirming ? t("operator.trial.extendConfirm", { tenant: tenantName, days: confirming.days }) : ""
+          }
+          confirmVariant="primary"
+          confirmLabel={t("operator.trial.extendSubmit")}
+          onConfirm={async () => {
+            if (confirming) await runAction(confirming);
+          }}
+        />
+      </form>
+    </Form>
+  );
+}
+
+/* ══ 3f. Atribusi mitra ════════════════════════════════════════════════════ */
+
+function PartnerPanel({ tenantId, partner }: { tenantId: number; partner: string | null }) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<OperatorActionResult | null>(null);
+
+  const form = useForm<PartnerFormInput>({
+    resolver: zodResolver(partnerSchema) as Resolver<PartnerFormInput>,
+    defaultValues: { tenantId, partner: partner ?? "", reason: "" },
+  });
+
+  async function onSubmit(values: PartnerFormInput) {
+    const res = await operatorSetPartner(values);
+    if (!res.ok) {
+      form.setError("root", { message: res.message });
+      return;
+    }
+    setResult(res);
+    setOpen(false);
+    router.refresh();
+  }
+
+  if (!open) {
+    return (
+      <Flex vertical gap={token.marginXS}>
+        <ResultNotice result={result} />
+        <p style={{ margin: 0, color: token.colorText }}>
+          {partner ? t("operator.partner.current", { partner }) : t("operator.partner.none")}
+        </p>
+        <Button variant="secondary" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => setOpen(true)}>
+          {t("operator.partner.edit")}
+        </Button>
+      </Flex>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+        <Flex vertical gap={token.marginSM}>
+          <FormField
+            control={form.control}
+            name="partner"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.partner.label")}</FormLabel>
+                <FormControl>
+                  <TextInput autoComplete="off" {...field} />
+                </FormControl>
+                <FormDescription>{t("operator.partner.hintEdit")}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <ReasonField control={form.control} />
+          <RootError message={form.formState.errors.root?.message} />
+          <Flex gap={token.marginXS}>
+            <Button type="submit" variant="primary" size="sm">
+              {t("operator.partner.save")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+          </Flex>
+        </Flex>
       </form>
     </Form>
   );
@@ -1599,6 +1822,31 @@ export function TenantActions(props: TenantActionsProps) {
               currentPlanKey={props.currentPlanKey}
               plans={props.plans}
             />
+          </ActionPanel>
+        )}
+
+        {props.billingAvailable && props.allowed.billing && (
+          <ActionPanel
+            icon={<PlayCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.trial.extendTitle")}
+            description={t("operator.trial.extendDescription")}
+          >
+            <ExtendTrialPanel
+              tenantId={props.tenantId}
+              tenantName={props.tenantName}
+              subscriptionStatus={props.subscriptionStatus}
+              defaultDays={props.defaultTrialDays}
+            />
+          </ActionPanel>
+        )}
+
+        {props.allowed.billing && (
+          <ActionPanel
+            icon={<SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.partner.title")}
+            description={t("operator.partner.description")}
+          >
+            <PartnerPanel tenantId={props.tenantId} partner={props.referredByPartner} />
           </ActionPanel>
         )}
 

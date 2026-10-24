@@ -60,7 +60,11 @@ import {
 import { paymentRailConfigured } from "@sai/billing/payment-gateway";
 import { requireOperatorPage } from "@op/lib/operator/guard";
 import { operatorCan } from "@op/lib/operator/roles";
+import { ActivationRequests } from "@op/components/operator/activation-requests";
+import { operatorMarkActivationHandled } from "../actions";
+import { TRIAL_DAYS } from "@sai/core/registration";
 import {
+  activationRequestsForOperator,
   listPlansForOperator,
   tenantDetailForOperator,
   tenantHealthForOperator,
@@ -181,7 +185,7 @@ export default async function OperatorTenantDetailPage({
   /* Jejak SATU tenant, 20 terbaru — bacaan lengkap & saringannya di
      `/audit/tenants?tenant=<slug>`. Sampai panel ini ada, alasan yang
      diwajibkan setiap aksi di bawah tidak pernah terbaca kembali. */
-  const [trail, people, health] = await Promise.all([
+  const [trail, people, health, activation] = await Promise.all([
     /* Per `tenantId`, bukan slug: entri sebelum slug berganti tetap terbaca. */
     readTenantAuditFeed({ tenantId: tenant.id }, { limit: JEJAK_DI_RINCIAN }),
     tenantUsersForOperator({ control: controlDb }, tenant.id),
@@ -191,6 +195,8 @@ export default async function OperatorTenantDetailPage({
       maxUsers: tenant.maxUsers,
       usage,
     }),
+    /* Permintaan aktivasi tenant ini (terbuka maupun sudah ditangani). */
+    activationRequestsForOperator({ tenantId: tenant.id, limit: 10 }),
   ]);
 
   /* Bahan panel tindakan (#155). Paket hanya dibaca bila penagihan hidup —
@@ -337,11 +343,14 @@ export default async function OperatorTenantDetailPage({
         title={tenant.name}
         description={tenant.slug}
         badge={
-          <Badge
-            variant={tenantStatusVariant(tenant.status)}
-          >
-            {statusLabel(tenant.status)}
-          </Badge>
+          <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+            <Badge
+              variant={tenantStatusVariant(tenant.status)}
+            >
+              {statusLabel(tenant.status)}
+            </Badge>
+            {tenant.isDemo && <Badge variant="outline">{t("operator.trial.demoBadge")}</Badge>}
+          </span>
         }
       />
 
@@ -361,7 +370,11 @@ export default async function OperatorTenantDetailPage({
             label={t("operator.tenant.usageUsers")}
             value={t("operator.tenant.usageOf", { used: usage.users, max: tenant.maxUsers })}
           />
+          <Fact label={t("operator.partner.column")} value={tenant.referredByPartner ?? "—"} />
         </dl>
+        {tenant.status === "trial_ended" && (
+          <p style={MUTED}>{t("operator.trial.endedNote")}</p>
+        )}
         {tenant.trialEndsAt && (
           <p style={MUTED}>
             {t("operator.tenant.trialEndsAt")}: {formatDate(tenant.trialEndsAt)}
@@ -481,6 +494,29 @@ export default async function OperatorTenantDetailPage({
         )}
       </ConsolePanel>
 
+      {/* ── Permintaan aktivasi (alur demo-first) — hanya bila pernah ada ── */}
+      {activation !== null && activation.length > 0 && (
+        <ConsolePanel title={t("operator.activation.heading")}>
+          <ActivationRequests
+            showTenant={false}
+            canAct={operatorCan(operator.role, "tenant.billing")}
+            markHandled={operatorMarkActivationHandled}
+            rows={activation.map((r) => ({
+              id: r.id,
+              tenantId: r.tenantId,
+              tenantName: r.tenantName,
+              referredByPartner: r.referredByPartner,
+              requestedByName: r.requestedByName,
+              tenantStatus: r.tenantStatus,
+              note: r.note,
+              createdLabel: formatDate(r.createdAt),
+              status: r.status,
+              handledLabel: r.handledAt ? formatDate(r.handledAt) : null,
+            }))}
+          />
+        </ConsolePanel>
+      )}
+
       {/* ── Registry PT — kendali; bukunya TIDAK PERNAH dibuka dari sini ─── */}
       <ConsolePanel
         title={t("operator.tenant.companiesHeading")}
@@ -581,6 +617,8 @@ export default async function OperatorTenantDetailPage({
           delete: operatorCan(operator.role, "tenant.delete"),
         }}
         usage={usage}
+        referredByPartner={tenant.referredByPartner}
+        defaultTrialDays={TRIAL_DAYS}
         currentPlanKey={tenant.planKey}
         billingAvailable={billing !== null}
         issuedInvoices={(billing?.invoices ?? [])

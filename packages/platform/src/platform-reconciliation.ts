@@ -96,7 +96,7 @@ export async function runReconciliation(
     //    (jalankan `bun run db:seed:plans`), atau status `suspended` yang
     //    memang tidak diadopsi mesin: melahirkan langganan langsung mati
     //    adalah keputusan uang yang harus diambil orang (change-plan).
-    const PAID_TENANT_STATUSES = new Set(["trialing", "active", "past_due", "suspended"]);
+    const PAID_TENANT_STATUSES = new Set(["trialing", "active", "past_due", "suspended", "trial_ended"]);
     for (const tenant of tenants) {
       if (PAID_TENANT_STATUSES.has(tenant.status) && !subsByTenant.has(tenant.id)) {
         findings.push({

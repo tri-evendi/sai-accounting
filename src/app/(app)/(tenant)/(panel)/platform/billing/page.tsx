@@ -86,7 +86,7 @@ export default async function PlatformBillingPage() {
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        <SubscriptionSection overview={overview} />
+        <SubscriptionSection overview={overview} tenantSlug={tenant.tenantSlug} />
 
         {/* Jalan keluar dari halaman ini menuju pertanyaan yang paling sering
             menyusul setelah membaca tagihan: "kalau saya butuh lebih?" —

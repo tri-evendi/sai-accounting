@@ -20,9 +20,21 @@
  *   trialing/active/past_due ──(operator_suspend)──> suspended
  *   suspended/past_due ──(operator_restore)──> active
  *
- * "Trial habis → active" bukan hadiah: aktif berarti SIKLUS TAGIH DIMULAI —
- * tagihan pertama terbit pada saat itu juga, dan bila tidak dibayar, jalur
- * gagal-bayar yang biasa (past_due → suspended) yang bekerja.
+ * ══ UJI COBA HABIS = BEKU, BUKAN TAGIHAN (keputusan pemilik 24 Okt 2026) ════
+ * Sampai keputusan ini, "trial habis → active" berarti SIKLUS TAGIH DIMULAI:
+ * tagihan pertama terbit seketika, lalu dunning, lalu penangguhan — untuk akun
+ * yang tidak pernah memberi satu pun cara membayar (`docs/KOMERSIALISASI.md`
+ * §1.2: "gabungan terburuk dari dua praktik baku"). Kini:
+ *
+ *   trialing ──(trial habis)──> trial_ended   [HANYA-BACA, ekspor tetap jalan,
+ *                                              TANPA tagihan, TANPA dunning]
+ *   trial_ended ──(aktivasi manual / bayar)──> active
+ *   trial_ended ──(operator perpanjang uji coba)──> trialing
+ *
+ * Berlaku untuk SEMUA mode penagihan, termasuk `auto`: tagihan pertama lahir
+ * dari persetujuan manusia (penawaran yang disetujui, atau checkout swalayan
+ * Fase C yang mengambil metode bayar di muka), TIDAK PERNAH dari berakhirnya
+ * waktu (§1.2, K-3).
  *
  * ══ suspended = HANYA-BACA, dan kenapa ══════════════════════════════════════
  * Pelanggan yang berhenti membayar TETAP wajib menyimpan pembukuannya (UU KUP,
@@ -50,6 +62,10 @@ export const SUBSCRIPTION_EVENTS = [
    * diketik operator dan tercatat di jejak audit tenant (aturan #155). */
   "operator_suspend",
   "operator_restore",
+  /* Operator memperpanjang uji coba (alur demo-first): prospek yang masih
+   * menimbang mendapat tanggal akhir baru — dari `trialing` (tetap) atau dari
+   * `trial_ended` (dicairkan kembali ke uji coba). Beralasan dan berjejak. */
+  "operator_extend_trial",
 ] as const;
 export type SubscriptionEvent = (typeof SUBSCRIPTION_EVENTS)[number];
 
@@ -65,9 +81,10 @@ const TRANSITIONS: Record<
 > = {
   trialing: {
     payment_received: "active",
-    /* Trial habis = siklus tagih dimulai; tagihan pertama terbit bersamanya. */
-    trial_expired: "active",
+    /* Trial habis = BEKU hanya-baca, TANPA tagihan (lihat kepala berkas). */
+    trial_expired: "trial_ended",
     operator_suspend: "suspended",
+    operator_extend_trial: "trialing",
   },
   active: {
     /* Pembayaran perpanjangan — keadaan tidak berubah, tapi SAH (bukan null):
@@ -110,6 +127,18 @@ const TRANSITIONS: Record<
      * bayar adalah keputusan operator — alasannya wajib dan tercatat. */
     operator_restore: "active",
   },
+  /*
+   * Uji coba yang habis. BUKAN tunggakan: tidak ada yang terutang, jadi tidak
+   * ada `payment_failed`/`grace_expired` dari sini. Jalan keluarnya hanya
+   * tindakan manusia — pembayaran yang dicatat, perpanjangan uji coba oleh
+   * operator, atau pembatalan. Aktivasi dari penawaran (`extendSubscription`)
+   * menulis `active` langsung, sama seperti dari keadaan lain mana pun.
+   */
+  trial_ended: {
+    payment_received: "active",
+    operator_extend_trial: "trialing",
+    cancel: "cancelled",
+  },
   /* Keadaan akhir. TIDAK ADA jalan keluar — dan TIDAK ADA penghapusan data. */
   cancelled: {},
 };
@@ -142,8 +171,9 @@ export function tenantStatusForSubscription(status: SubscriptionStatus): string 
  */
 const READ_ACTIONS: ReadonlySet<string> = new Set(["read", "view", "export"]);
 
-/** Status tenant yang membuat bukunya HANYA-BACA. */
-export const READ_ONLY_TENANT_STATUSES: readonly string[] = ["suspended", "cancelled"];
+/** Status tenant yang membuat bukunya HANYA-BACA. `trial_ended` ikut: uji coba
+ *  yang habis beku hanya-baca, dengan ekspor tetap terbuka (UU PDP §2). */
+export const READ_ONLY_TENANT_STATUSES: readonly string[] = ["suspended", "cancelled", "trial_ended"];
 
 export function isReadOnlyTenantStatus(status: string | null | undefined): boolean {
   return status != null && READ_ONLY_TENANT_STATUSES.includes(status);
@@ -165,9 +195,21 @@ export function isWritePermission(permission: string): boolean {
 export function readOnlyRefusal(
   tenantStatus: string | null | undefined,
   permission: string
-): { code: "tenant_suspended"; message: string } | null {
+): { code: "tenant_suspended" | "trial_ended"; message: string } | null {
   if (!isReadOnlyTenantStatus(tenantStatus)) return null;
   if (!isWritePermission(permission)) return null;
+  /* Dua keadaan, dua kalimat — pola yang sama dengan `demoWriteRefusal` di
+     bawah. "Selesaikan tagihan" pada uji coba yang habis mengirim orang
+     mengejar tagihan yang TIDAK ADA; yang benar adalah meminta aktivasi. */
+  if (tenantStatus === "trial_ended") {
+    return {
+      code: "trial_ended",
+      message:
+        "Masa uji coba sudah berakhir — buku besar berstatus HANYA-BACA. " +
+        "Membaca dan mengekspor tetap bisa. Untuk melanjutkan, minta aktivasi " +
+        "lewat menu Langganan atau hubungi kami. Data Anda tidak dihapus.",
+    };
+  }
   return {
     code: "tenant_suspended",
     message:
@@ -243,13 +285,17 @@ function dateKey(d: Date): string {
 export function pendingReminder(
   target: Date,
   now: Date,
-  sentKeys: ReadonlySet<string>
+  sentKeys: ReadonlySet<string>,
+  /** Awalan kunci. `H` = pengingat lama; `F` = pemberitahuan BEKU uji coba
+   *  (`pendingTrialNotice`) — awalan berbeda supaya jejak lama tidak pernah
+   *  terhitung sebagai pemberitahuan aturan baru. */
+  prefix: string = "H"
 ): { sendKey: string; markKeys: string[] } | null {
   if (now.getTime() >= target.getTime()) return null; // sudah lewat — bukan urusan pengingat
 
   const dueKeys = REMINDER_OFFSETS_DAYS.filter(
     (offset) => now.getTime() >= target.getTime() - offset * DAY_MS
-  ).map((offset) => `H-${offset}:${dateKey(target)}`);
+  ).map((offset) => `${prefix}-${offset}:${dateKey(target)}`);
 
   const unsent = dueKeys.filter((key) => !sentKeys.has(key));
   if (unsent.length === 0) return null;
@@ -417,10 +463,12 @@ export function planOrphanSubscriptionAdoptions(
 }
 
 /*
- * ══ GERBANG MODE PENAGIHAN — berdiri di TIGA perencana sekaligus ═══════════
+ * ══ GERBANG MODE PENAGIHAN — berdiri di perencana dunning & tenggang ═══════
  *
- * Ketiga fungsi di bawah adalah satu-satunya tempat penjadwal memutuskan
- * SIAPA yang ditagih, didorong ke `past_due`, dan ditangguhkan. Sampai gerbang
+ * Sejak 24 Okt 2026 uji coba yang habis tidak lagi MENAGIH siapa pun
+ * (`planTrialFreezes` membekukan, tidak menerbitkan), jadi yang tersisa
+ * memutuskan siapa didorong ke `past_due` dan ditangguhkan adalah
+ * `planDunning` dan `planGraceExpiries`. Sampai gerbang
  * ini ada, jawabannya "semua yang keadaannya cocok" — dan itu menagih sembilan
  * akun uji coba lalu menangguhkan lima buku (`docs/KOMERSIALISASI.md` §1.1).
  *
@@ -447,19 +495,105 @@ export interface PlannableSubscription {
   billingMode: string;
 }
 
-/** Langganan trialing yang trial-nya sudah habis → mulai siklus tagih. */
-export function planTrialExpiries(
+/* ══ BEKU UJI COBA — dengan pemberitahuan yang TERBUKTI terkirim ════════════
+ *
+ * Uji coba yang habis berpindah ke `trial_ended` (hanya-baca), tetapi HANYA
+ * setelah pemiliknya diberi tahu sedikitnya `FREEZE_NOTICE_DAYS` hari lebih
+ * dulu — dan "diberi tahu" berarti ada baris `reminder_logs` berawalan `F-`
+ * untuk TANGGAL AKHIR yang berlaku sekarang.
+ *
+ * Kenapa pemberitahuan menjadi SYARAT, bukan sekadar kebiasaan:
+ *
+ *   • Akun lama. Sebelum aturan ini, uji coba bermode `none`/`manual` yang
+ *     habis tidak disentuh siapa pun — ada yang `trialing` dengan tanggal akhir
+ *     berbulan-bulan lalu. Membekukannya pada putaran pertama sesudah rilis
+ *     berarti buku orang tiba-tiba hanya-baca tanpa satu kalimat pun. Dengan
+ *     syarat ini, putaran pertama hanya MENGIRIM pemberitahuan (`F-0`), dan
+ *     bekunya baru terjadi tujuh hari kemudian.
+ *   • Jejak `H-` lama tidak dihitung. Surel `trial_ending` lama berbunyi
+ *     "tagihan pertama terbit otomatis" — itu bukan pemberitahuan beku, dan
+ *     awalan yang berbeda membuatnya mustahil terhitung.
+ *   • Tanggal akhir yang diperpanjang operator mengganti kuncinya
+ *     (`F-…:<tanggal-baru>`), jadi pemberitahuan atas tanggal lama tidak bisa
+ *     dipakai untuk membekukan uji coba yang sudah diperpanjang.
+ *
+ * Uji coba baru menerima F-7/F-3/F-1 sebelum tanggal akhirnya, jadi bekunya
+ * jatuh TEPAT di tanggal akhir. Penjadwal yang sempat mati hanya MENUNDA beku
+ * (arah murah hati), tidak pernah memajukannya.
+ */
+
+/** Jarak minimum antara pemberitahuan beku pertama dan beku itu sendiri. */
+export const FREEZE_NOTICE_DAYS = 7;
+
+/** Awalan `reminder_logs.due_key` untuk pemberitahuan beku uji coba. */
+export const TRIAL_NOTICE_PREFIX = "F";
+
+/** Akhiran kunci untuk SATU tanggal akhir uji coba — `:<YYYY-MM-DD>` (UTC). */
+export function trialNoticeSuffix(trialEndsAt: Date): string {
+  return `:${dateKey(trialEndsAt)}`;
+}
+
+/**
+ * Pemberitahuan beku yang harus dikirim sekarang, atau `null`.
+ *
+ * Sebelum tanggal akhir: F-7/F-3/F-1 (aturan `pendingReminder`). Sesudahnya,
+ * bila BELUM ADA satu pun pemberitahuan `F-` untuk tanggal itu (akun lama,
+ * atau penjadwal yang mati sepanjang jendela pengingat): satu `F-0` —
+ * pemberitahuan TERLAMBAT yang menjadi jangkar tujuh hari sebelum beku.
+ */
+export function pendingTrialNotice(
+  trialEndsAt: Date,
+  now: Date,
+  sentKeys: ReadonlySet<string>
+): { sendKey: string; markKeys: string[]; late: boolean } | null {
+  if (now.getTime() < trialEndsAt.getTime()) {
+    const due = pendingReminder(trialEndsAt, now, sentKeys, TRIAL_NOTICE_PREFIX);
+    return due ? { ...due, late: false } : null;
+  }
+  const suffix = trialNoticeSuffix(trialEndsAt);
+  const anyNotice = [...sentKeys].some(
+    (k) => k.startsWith(`${TRIAL_NOTICE_PREFIX}-`) && k.endsWith(suffix)
+  );
+  if (anyNotice) return null;
+  const key = `${TRIAL_NOTICE_PREFIX}-0${suffix}`;
+  return { sendKey: key, markKeys: [key], late: true };
+}
+
+/**
+ * Kapan sebuah uji coba BOLEH dibekukan: yang terjauh antara tanggal akhirnya
+ * dan pemberitahuan pertama + `FREEZE_NOTICE_DAYS`. `null` = belum pernah
+ * diberi tahu → belum boleh dibekukan sama sekali.
+ */
+export function trialFreezeAt(trialEndsAt: Date, firstNoticeAt: Date | null): Date | null {
+  if (!firstNoticeAt) return null;
+  const afterNotice = firstNoticeAt.getTime() + FREEZE_NOTICE_DAYS * DAY_MS;
+  return new Date(Math.max(trialEndsAt.getTime(), afterNotice));
+}
+
+/**
+ * Langganan `trialing` yang harus BEKU sekarang → `trial_ended`.
+ *
+ * `firstNoticeAt` memetakan id langganan → waktu pemberitahuan `F-` PERTAMA
+ * untuk tanggal akhirnya yang berlaku (lihat kepala blok). Langganan tanpa
+ * entri belum pernah diberi tahu dan TIDAK dibekukan.
+ *
+ * Mode penagihan TIDAK diperiksa, dan itu disengaja: uji coba habis tidak
+ * pernah menagih siapa pun lagi, jadi tidak ada mode yang perlu dilindungi
+ * darinya. `billingMode` tetap bagian tipe karena `planDunning` dan
+ * `planGraceExpiries` di bawah menuntutnya.
+ */
+export function planTrialFreezes(
   subscriptions: readonly PlannableSubscription[],
+  firstNoticeAt: ReadonlyMap<number, Date>,
   now: Date
 ): number[] {
   return subscriptions
-    .filter(
-      (s) =>
-        billingModeIsAutomatic(s.billingMode) &&
-        s.status === "trialing" &&
-        s.trialEndsAt !== null &&
-        s.trialEndsAt.getTime() <= now.getTime()
-    )
+    .filter((s) => {
+      if (s.status !== "trialing" || s.trialEndsAt === null) return false;
+      if (s.trialEndsAt.getTime() > now.getTime()) return false;
+      const freezeAt = trialFreezeAt(s.trialEndsAt, firstNoticeAt.get(s.id) ?? null);
+      return freezeAt !== null && freezeAt.getTime() <= now.getTime();
+    })
     .map((s) => s.id);
 }
 

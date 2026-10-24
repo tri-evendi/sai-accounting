@@ -53,7 +53,7 @@ describe("tangga harga #404 — seed, migration, dan docs memuat angka yang sama
       expect(blok).toContain(`priceYearly: "${plan.yearly}.00"`);
       expect(blok).toContain(`maxCompanies: ${plan.companies},`);
       expect(blok).toContain(`maxUsers: ${plan.users},`);
-      expect(blok).toContain("trialDays: 14");
+      expect(blok).toContain("trialDays: 30");
       expect(blok).toContain("isPublic: true");
     });
   }

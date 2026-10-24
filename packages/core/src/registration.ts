@@ -38,8 +38,15 @@ export const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
  * yang mendaftar lewat pintu berbeda mendapat masa uji coba berbeda — dan
  * tidak ada yang berbunyi. `scripts/seed-plans.ts` memegang sisi basis
  * datanya.
+ *
+ * 30 hari, bukan 14 (keputusan pemilik 24 Okt 2026, K-3 di
+ * `docs/KOMERSIALISASI.md`): nilai pertama perangkat pembukuan baru terasa
+ * setelah SATU SIKLUS TUTUP BULAN — COA, saldo awal, transaksi sebulan,
+ * laporan. Uji coba yang habis sebelum itu mengukur ketekunan pengguna, bukan
+ * nilai produk (§1.2). Angka ini juga bawaan formulir "Buat uji coba" di konsol
+ * operator.
  */
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 30;
 
 /**
  * Paket tempat pendaftar baru MENDARAT — dan sejak keputusan ini, itu paket
@@ -55,9 +62,10 @@ export const TRIAL_DAYS = 14;
  * mencicipi apa yang dijual.
  *
  * Uji coba kini benar-benar UJI COBA PAKET PRO: langganannya lahir di `pro`
- * dengan status `trialing`, kuota Pro, dan pada hari ke-{TRIAL_DAYS} tagihan
- * pertamanya adalah harga Pro yang sebenarnya. Tidak dibayar → menunggak →
- * ditangguhkan (hanya-baca, buku tetap bisa diunduh).
+ * dengan status `trialing` dan kuota Pro. Sejak alur demo-first (24 Okt 2026)
+ * hari ke-{TRIAL_DAYS} TIDAK lagi menerbitkan tagihan: uji coba yang habis
+ * BEKU hanya-baca (`trial_ended`, buku tetap bisa diunduh) sampai owner
+ * meminta aktivasi dan operator mengaktifkannya.
  *
  * ⚠ KUOTA DI SINI ADALAH SNAPSHOT, sama seperti `TRIAL_DAYS`. Pendaftaran
  * sengaja TIDAK membaca `sai_platform` (pendaftaran harus tetap bekerja saat

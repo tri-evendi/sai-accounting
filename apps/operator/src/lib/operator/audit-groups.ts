@@ -24,4 +24,7 @@ export const TENANT_AUDIT_GROUPS = [
   "tenant.export",
   "tenant.deletion.",
   "tenant.onprem.",
+  "tenant.trial.",
+  "tenant.activation_request",
+  "tenant.partner",
 ] as const;

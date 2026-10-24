@@ -369,4 +369,6 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.licencePassphraseMismatch": "Kedua frasa sandi tidak sama.",
   "validation.nikInvalid": "NIK harus 16 digit",
   "validation.nitkuInvalid": "NITKU harus 22 digit",
+  // Aktivasi dari penawaran — bukti transfer (alur demo-first, 24 Okt 2026).
+  "validation.transferProofRequired": "Referensi bukti transfer wajib diisi (minimal 3 karakter).",
 };

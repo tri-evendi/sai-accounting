@@ -65,7 +65,9 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 # menolak yang lebih tua, dan bun (beda dari npm) tidak menyuntikkan Node-nya
 # sendiri ke depan PATH untuk skrip lifecycle.
 FROM base AS bunbase
-COPY --from=oven/bun:1.3 /usr/local/bin/bun /usr/local/bin/bun
+# Versi bun DIPATOK: <= 1.4.3 membawa Brotli 1.2.0 yang rentan CVE-2026-111497
+# (RCE lewat dekompresi Brotli, GHSA-663w-cv8g-jj2p). Jangan kembali ke tag mengambang.
+COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
 # `bunx` adalah bun yang dipanggil dengan nama lain — di image oven/bun ia
 # TAUTAN, bukan biner tersendiri, jadi menyalin `bun` saja tidak membawanya.
 # Tanpa baris ini setiap `bunx …` di tahap build mati dengan `bunx: not found`

@@ -17,6 +17,15 @@ describe("csvValue", () => {
     expect(csvValue(new Date("2026-08-01T10:00:00Z"))).toBe("2026-08-01T10:00:00.000Z");
   });
 
+  it("bytea → base64, juga untuk `Uint8Array` polos dari adapter-pg", () => {
+    /* adapter-pg memulangkan `Uint8Array`, bukan `Buffer`; `String()` atasnya
+       adalah "0,255,16" — bentuk yang dulu terekspor untuk setiap logo. */
+    expect(csvValue(new Uint8Array([0, 255, 16]))).toBe("AP8Q");
+    expect(csvValue(Buffer.from([0, 255, 16]))).toBe("AP8Q");
+    const tengah = new Uint8Array([9, 0, 255, 16, 9]).subarray(1, 4);
+    expect(csvValue(tengah)).toBe("AP8Q");
+  });
+
   it("Decimal Prisma lewat toString — teks desimal, bukan float", () => {
     const decimalLike = { toString: () => "12345678.90" };
     expect(csvValue(decimalLike)).toBe("12345678.90");

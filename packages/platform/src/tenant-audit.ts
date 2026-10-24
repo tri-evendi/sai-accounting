@@ -99,6 +99,10 @@ export type TenantAuditAction =
   | "tenant.status.change"
   /** Ekspor data mandiri (#142) — hak akses UU PDP; siapa & kapan tercatat. */
   | "tenant.export"
+  /** Berkas ekspor yang disiapkan jalur `bulk` DIUNDUH (sejak `runner: go`
+   *  kind `tenant.data_export`): permintaan dan unduhannya dua peristiwa,
+   *  dan yang kedua bisa terjadi berhari-hari kemudian oleh owner lain. */
+  | "tenant.export.download"
   /** Siklus permintaan penghapusan (#142). */
   | "tenant.deletion.request"
   | "tenant.deletion.cancel"

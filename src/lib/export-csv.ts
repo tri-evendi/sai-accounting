@@ -14,7 +14,16 @@ export function csvValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "boolean") return value ? "1" : "0";
-  if (Buffer.isBuffer(value)) return value.toString("base64");
+  /* `Uint8Array`, BUKAN hanya `Buffer`: `@prisma/adapter-pg` memulangkan
+     `bytea` sebagai `Uint8Array` polos (diukur 23 Okt 2026), dan
+     `Buffer.isBuffer` menolaknya — sampai saat itu setiap logo perusahaan
+     (`company_logos.content`) terekspor sebagai daftar desimal
+     "137,80,78,…" alih-alih base64 yang dijanjikan baris ini. `Buffer`
+     sendiri turunan `Uint8Array`, jadi keduanya tertangkap. Padanan Go:
+     `byteaBase64` di `internal/tenantexport`. */
+  if (value instanceof Uint8Array) {
+    return Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString("base64");
+  }
   return String(value);
 }
 

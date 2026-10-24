@@ -34,12 +34,22 @@
  * melainkan pembuka aliran. Jumlah tabel & baris tetap DIKETAHUI sebelum
  * aliran dimulai (CSV-nya sudah disusun saat itu), jadi jejak audit tenant
  * tetap bisa ditulis sebelum satu byte pun terkirim.
+ *
+ * ══ PADANAN GO (jalur `bulk`, 23 Okt 2026) ═════════════════════════════════
+ * `services/integrator/internal/tenantexport` menulis arsip yang SAMA — isi
+ * setiap berkas byte demi byte — sebagai pekerjaan `tenant.data_export`.
+ * Sakelarnya `runner:` kind itu di `contract/kinds.yaml`; selama `node`, modul
+ * INI yang melayani `GET /api/tenant/export`. Mengubah bentuk apa pun di sini
+ * (nama berkas, kolom, teks BACA-SAYA, bentuk nilai di `export-csv.ts`) berarti
+ * mengubah sisi Go juga — `bun run parity:tenant-export` yang menyebut
+ * selisihnya, `tests/tenant-export-job.test.ts` menjaga teks pengantarnya.
  */
 
 import "server-only";
 import { businessISODate } from "@sai/core/business-date";
 
 import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
 import { stat } from "node:fs/promises";
 
 import JSZip from "jszip";
@@ -219,15 +229,22 @@ export interface TenantExportResult {
    * byte pertama terkirim tidak ada lagi kesempatan menjawab galat dengan
    * status HTTP.
    */
-  openStream: () => NodeJS.ReadableStream;
+  openStream: () => Readable;
   companies: number;
   tables: number;
   rows: number;
 }
 
 /** Bangun arsip ekspor untuk sebuah tenant. Pemanggil (route) yang menjaga
- *  izin dan menulis jejak auditnya. */
-export async function buildTenantExport(tenantId: number): Promise<TenantExportResult> {
+ *  izin dan menulis jejak auditnya.
+ *
+ *  `now` hanya untuk `bun run parity:tenant-export`: ia memaku stempel
+ *  "Dibuat" di `tenant.json`/`BACA-SAYA.txt` supaya arsip TS dan arsip Go
+ *  (`internal/tenantexport`) bisa dibandingkan byte demi byte. */
+export async function buildTenantExport(
+  tenantId: number,
+  options: { now?: Date } = {}
+): Promise<TenantExportResult> {
   const tenant = await controlDb.tenant.findUnique({
     where: { id: tenantId },
     select: { slug: true, name: true, status: true, planKey: true, createdAt: true },
@@ -241,7 +258,7 @@ export async function buildTenantExport(tenantId: number): Promise<TenantExportR
   });
 
   const zip = new JSZip();
-  const generatedAt = new Date();
+  const generatedAt = options.now ?? new Date();
 
   let tables = 0;
   let rows = 0;
@@ -294,12 +311,23 @@ export async function buildTenantExport(tenantId: number): Promise<TenantExportR
   const stamp = businessISODate(generatedAt);
   return {
     filename: `ekspor-${tenant.slug}-${stamp}.zip`,
+    /*
+     * DIBUNGKUS `Readable` Node sungguhan. `generateNodeStream` memulangkan
+     * `Readable` dari `readable-stream@2` (dependensi JSZip), yang TIDAK punya
+     * `Symbol.asyncIterator` — dan `Readable.from()` di rute menolaknya
+     * ("The \"iterable\" argument must be an instance of Iterable"), SESUDAH
+     * jejak auditnya ditulis. Ditemukan 23 Okt 2026 saat skrip paritas
+     * `parity:tenant-export` pertama kali memanggil fungsi ini di luar mock.
+     * `wrap()` adalah jembatan resmi aliran lama → aliran Node.
+     */
     openStream: () =>
-      zip.generateNodeStream({
-        type: "nodebuffer",
-        compression: "DEFLATE",
-        compressionOptions: { level: 6 },
-      }),
+      new Readable().wrap(
+        zip.generateNodeStream({
+          type: "nodebuffer",
+          compression: "DEFLATE",
+          compressionOptions: { level: 6 },
+        })
+      ),
     companies: companies.length,
     tables,
     rows,

@@ -46,6 +46,7 @@ import { ArrowLeftOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Link } from "@sai/ui/app-link";
 import { Button } from "@sai/ui/button";
 import { SetupWizard } from "./setup-wizard";
+import { getCompanyLegalForm } from "@/lib/legal-form-server";
 import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -240,7 +241,7 @@ export default async function SetupPage({
   }
 
   // ── First run → the wizard ──
-  const [identity, coaCount, cashAccounts, customers, suppliers, items] = await Promise.all([
+  const [identity, coaCount, cashAccounts, customers, suppliers, items, legalForm, partners] = await Promise.all([
     getCompanyIdentity(),
     prisma.account.count({ where: { isActive: true } }),
     prisma.account.findMany({
@@ -257,6 +258,13 @@ export default async function SetupPage({
       where: { isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    /* Bentuk usaha (24 Okt 2026): dipilih saat perusahaan dibuat, boleh
+       diganti di wisaya selama bagan akun belum disemai. */
+    getCompanyLegalForm(),
+    prisma.companyPartner.findMany({
+      select: { name: true, role: true, shareBp: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     }),
   ]);
 
@@ -277,6 +285,8 @@ export default async function SetupPage({
         }}
         currencies={[...CURRENCIES]}
         coaCount={coaCount}
+        legalForm={legalForm}
+        savedPartners={partners}
         cashAccounts={cashAccounts}
         customers={customers}
         suppliers={suppliers}

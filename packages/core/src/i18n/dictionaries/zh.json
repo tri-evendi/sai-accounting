@@ -6428,5 +6428,88 @@
       "monitoring": "{component} 故障的修复已部署；我们正在监控结果。",
       "resolved": "始于 {from} 的 {component} 故障已解决。"
     }
+  },
+  "legalForm": {
+    "label": "企业形式",
+    "createHelp": "决定要准备的权益科目：PT 使用股本和留存收益，CV/Firma 为每位合伙人设资本和提款科目，个人独资企业设业主资本和业主提款。在创建会计科目表之前，可在设置向导中更改。",
+    "options": {
+      "pt": "有限责任公司（PT）",
+      "pt_perorangan": "一人有限公司（PT Perorangan）",
+      "cv": "有限合伙（CV）",
+      "firma": "普通合伙（Firma）",
+      "perorangan": "个人独资企业（UD）",
+      "lainnya": "其他"
+    },
+    "equityHint": {
+      "retained_earnings": "权益：资本和留存收益。年末结账将利润转入留存收益。",
+      "partners": "权益：每位合伙人各有资本和提款科目。年末结账按份额将利润分配到各合伙人资本，并将各自的提款结转到其资本。",
+      "sole_owner": "权益：业主资本和业主提款。年末结账将利润转入业主资本，并将提款结转到资本。"
+    },
+    "setupLocked": "本企业的会计科目表已经创建，因此企业形式和合伙人在此处已锁定。之后请在 设置 → 企业形式 中更改。",
+    "ownerName": "业主姓名",
+    "ownerHelp": "用作报表中业主资本和业主提款科目的名称。可留空，将显示为“业主”。",
+    "partnersHelpCv": "按照章程填写每位合伙人、其角色和利润份额。CV 至少需要一名普通（执行）合伙人和一名有限合伙人；份额合计必须为 100%。",
+    "partnersHelpFirma": "按照章程填写每位合伙人及其利润份额。Firma 至少需要两名合伙人；份额合计必须为 100%。",
+    "partnerName": "业主 / 合伙人",
+    "partnerNameN": "合伙人 {n} 姓名",
+    "partnerRole": "角色",
+    "partnerShare": "利润份额（%）",
+    "roleOption": {
+      "aktif": "普通（执行）合伙人",
+      "komanditer": "有限合伙人"
+    },
+    "roleLabel": {
+      "aktif": "普通合伙人",
+      "komanditer": "有限合伙人"
+    },
+    "partnerInactive": "已停用",
+    "addPartner": "添加合伙人",
+    "removePartner": "删除合伙人 {name}",
+    "shareTotal": "份额合计：{total}%",
+    "yearIntroPartners": "利润按份额分配到每位业主/合伙人的资本（精确到分；舍入余额归份额最大者），随后将各自的提款结转到其资本。",
+    "yearNetIncomePartners": "分配到业主/合伙人资本的利润/亏损：",
+    "profitShare": "利润/亏损份额",
+    "drawingsClosed": "已结转提款",
+    "partnerTableTitle": "按业主列示的资本",
+    "colOpeningCapital": "期初资本",
+    "colContributions": "投入",
+    "colDrawings": "提款",
+    "colClosingCapital": "期末资本",
+    "panelTitle": "企业形式",
+    "panelIntro": "企业形式决定年末结账时利润的去向，以及权益变动表的明细方式。",
+    "change": "更改企业形式",
+    "confirmTitle": "更改企业形式？",
+    "changeWarning": "现有凭证和会计科目不会被更改。只改变今后的处理：下一次年末结账和权益变动表的明细。对于 CV/Firma/个人独资企业，请随后填写业主/合伙人及其份额。",
+    "partnersTitle": "合伙人与利润份额",
+    "ownerTitle": "业主",
+    "noPartnersYet": "尚无业主/合伙人。填写此列表之前无法执行年末结账。",
+    "accountsNote": "资本 / 提款科目：{list}。新合伙人会自动获得自己的资本和提款科目。",
+    "inactiveList": "已停用的合伙人（历史仍保留在报表中）：{list}。",
+    "sharesForwardNote": "更改后的份额从下一次年末结账起生效；已结账的年度不变。",
+    "savePartners": "保存合伙人",
+    "saved": "企业形式已更新。",
+    "partnersSaved": "合伙人已保存。",
+    "loadFailed": "无法加载企业形式。",
+    "saveFailed": "无法保存更改。",
+    "errors": {
+      "partnersRequired": "请先填写业主/合伙人。",
+      "partnersMinTwo": "合伙企业至少需要两名合伙人。",
+      "soleOwnerExactlyOne": "个人独资企业只能有一名业主。",
+      "partnerNameRequired": "每位合伙人都需要填写姓名。",
+      "partnerNameDuplicate": "合伙人姓名不能重复。",
+      "partnerShareInvalid": "利润份额必须是 0 到 100% 之间的数字。",
+      "partnerSharesNot100": "所有合伙人的利润份额合计必须正好为 100%。",
+      "cvNeedsActive": "CV 至少需要一名普通（执行）合伙人。",
+      "cvNeedsLimited": "CV 至少需要一名有限合伙人。",
+      "partnerRoleNotAllowed": "普通/有限合伙人角色仅适用于 CV。",
+      "lockedAfterSeed": "会计科目表已经创建，无法在向导中更改企业形式。请在 设置 → 企业形式 中更改。",
+      "closeNoPartners": "没有可接收利润的在用业主/合伙人。请在年末结账前于 设置 → 企业形式 中填写。",
+      "closeSharesNot100": "在用合伙人的利润份额合计不是 100%。请在年末结账前于 设置 → 企业形式 中修正。",
+      "ackRequired": "更改企业形式前，请阅读并接受警告。",
+      "partnersNotForThisForm": "此企业形式不使用合伙人列表。",
+      "partnerUnknown": "找不到要更改的合伙人。请重新加载页面。",
+      "partnersIncomplete": "合伙人列表不完整。请重新加载页面后再保存。",
+      "parentCodeTaken": "科目代码 3110/3120 已被非权益科目使用。请在会计科目表中设置合伙人资本科目。"
+    }
   }
 }

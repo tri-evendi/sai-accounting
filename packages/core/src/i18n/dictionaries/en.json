@@ -6428,5 +6428,88 @@
       "monitoring": "A fix for the disruption to {component} has been applied; we are monitoring the result.",
       "resolved": "The disruption to {component} that began {from} has been resolved."
     }
+  },
+  "legalForm": {
+    "label": "Legal form",
+    "createHelp": "Decides the equity accounts that are prepared: share capital and retained earnings for a PT, capital and drawings per partner for a CV/Firma, owner's capital and drawings for a sole proprietorship. It can be changed in the setup wizard before the chart of accounts is created.",
+    "options": {
+      "pt": "Limited liability company (PT)",
+      "pt_perorangan": "Single-person PT (PT Perorangan)",
+      "cv": "Limited partnership (CV)",
+      "firma": "General partnership (Firma)",
+      "perorangan": "Sole proprietorship (UD)",
+      "lainnya": "Other"
+    },
+    "equityHint": {
+      "retained_earnings": "Equity: capital and retained earnings. The year-end close moves profit to retained earnings.",
+      "partners": "Equity: a capital and a drawings account for each partner. The year-end close splits profit into the partners' capital by their shares and closes each partner's drawings to their capital.",
+      "sole_owner": "Equity: owner's capital and owner's drawings. The year-end close moves profit to owner's capital and closes drawings to capital."
+    },
+    "setupLocked": "This company's chart of accounts already exists, so the legal form and partners are locked here. Change them later in Settings → Legal form.",
+    "ownerName": "Owner name",
+    "ownerHelp": "Used to name the owner's capital and drawings accounts in reports. Leave empty to use \"Owner\".",
+    "partnersHelpCv": "Enter each partner, their role, and their profit share as in the deed. A CV needs at least one active and one limited partner; shares must total 100%.",
+    "partnersHelpFirma": "Enter each partner and their profit share as in the deed. A Firma needs at least two partners; shares must total 100%.",
+    "partnerName": "Owner / partner",
+    "partnerNameN": "Partner {n} name",
+    "partnerRole": "Role",
+    "partnerShare": "Profit share (%)",
+    "roleOption": {
+      "aktif": "Active partner",
+      "komanditer": "Limited partner"
+    },
+    "roleLabel": {
+      "aktif": "active partner",
+      "komanditer": "limited partner"
+    },
+    "partnerInactive": "inactive",
+    "addPartner": "Add partner",
+    "removePartner": "Remove partner {name}",
+    "shareTotal": "Total share: {total}%",
+    "yearIntroPartners": "Profit is split into each owner's/partner's capital by share (computed to the cent; the rounding remainder goes to the largest share), then each partner's drawings are closed to their capital.",
+    "yearNetIncomePartners": "Profit/loss split into owners'/partners' capital:",
+    "profitShare": "Share of profit/loss",
+    "drawingsClosed": "Drawings closed",
+    "partnerTableTitle": "Capital by owner",
+    "colOpeningCapital": "Opening capital",
+    "colContributions": "Contributions",
+    "colDrawings": "Drawings",
+    "colClosingCapital": "Closing capital",
+    "panelTitle": "Legal form",
+    "panelIntro": "The legal form decides where profit goes at the year-end close and how the statement of changes in equity is broken down.",
+    "change": "Change legal form",
+    "confirmTitle": "Change the legal form?",
+    "changeWarning": "Existing journals and accounts are NOT changed. Only future treatment changes: the next year-end close and the equity statement breakdown. For a CV/Firma/sole proprietorship, enter the owners/partners and their shares afterwards.",
+    "partnersTitle": "Partners and profit shares",
+    "ownerTitle": "Owner",
+    "noPartnersYet": "No owners/partners yet. The year-end close cannot run until this list is filled in.",
+    "accountsNote": "Capital / drawings accounts: {list}. A new partner automatically gets their own capital and drawings accounts.",
+    "inactiveList": "Inactive partners (their history stays in reports): {list}.",
+    "sharesForwardNote": "Changed shares apply from the next year-end close; years already closed do not change.",
+    "savePartners": "Save partners",
+    "saved": "Legal form updated.",
+    "partnersSaved": "Partners saved.",
+    "loadFailed": "The legal form could not be loaded.",
+    "saveFailed": "The change could not be saved.",
+    "errors": {
+      "partnersRequired": "Enter the owner/partners first.",
+      "partnersMinTwo": "A partnership needs at least two partners.",
+      "soleOwnerExactlyOne": "A sole proprietorship has exactly one owner.",
+      "partnerNameRequired": "Every partner needs a name.",
+      "partnerNameDuplicate": "Partner names must be different.",
+      "partnerShareInvalid": "A profit share must be a number between 0 and 100%.",
+      "partnerSharesNot100": "The partners' profit shares must total exactly 100%.",
+      "cvNeedsActive": "A CV needs at least one active partner.",
+      "cvNeedsLimited": "A CV needs at least one limited partner.",
+      "partnerRoleNotAllowed": "Active/limited roles apply to a CV only.",
+      "lockedAfterSeed": "The chart of accounts already exists, so the legal form cannot be changed from the wizard. Change it in Settings → Legal form.",
+      "closeNoPartners": "There is no active owner/partner to receive the profit. Fill them in at Settings → Legal form before closing the year.",
+      "closeSharesNot100": "The active partners' profit shares do not total 100%. Fix them in Settings → Legal form before closing the year.",
+      "ackRequired": "Read and accept the warning before changing the legal form.",
+      "partnersNotForThisForm": "This legal form does not use a partner list.",
+      "partnerUnknown": "The partner being changed was not found. Reload the page.",
+      "partnersIncomplete": "The partner list is incomplete. Reload the page and save again.",
+      "parentCodeTaken": "Account code 3110/3120 is used by a non-equity account. Set up the partners' capital accounts in the chart of accounts."
+    }
   }
 }

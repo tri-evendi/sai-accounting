@@ -84,6 +84,7 @@ export async function provisionCompanyJob(ctx: JobContext): Promise<string | nul
         slug: p.slug,
         name: p.name,
         databaseName: p.databaseName,
+        legalForm: p.legalForm,
         createdByUserId: p.createdByUserId,
         /*
          * Pembuatnya menjadi ADMINISTRATOR SISTEM di PT yang baru lahir — bukan
@@ -123,7 +124,7 @@ export async function provisionCompanyJob(ctx: JobContext): Promise<string | nul
   }
 
   const { companyId, databaseName, dbInstance } = hasil;
-  const details = { slug: p.slug, name: p.name, databaseName };
+  const details = { slug: p.slug, name: p.name, databaseName, legalForm: p.legalForm ?? "pt" };
 
   /*
    * Dicatat DUA KALI dengan sengaja (issue #142): "siapa yang membuat PT ini"

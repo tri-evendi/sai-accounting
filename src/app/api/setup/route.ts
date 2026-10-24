@@ -37,6 +37,9 @@ import {
   type BusinessModule,
 } from "@/lib/business-modules";
 import { invalidateEnabledModules } from "@/lib/authz-effective";
+import { setupEquitySchema } from "@/lib/validations/legal-form";
+import { resolveSetupEquity } from "@/lib/setup-equity";
+import { LEGAL_FORM_ERROR_KEYS } from "@/lib/legal-form-messages";
 
 export async function GET() {
   const result = await requireApiPermission("setup.manage");
@@ -108,6 +111,34 @@ export async function POST(request: Request) {
   }
 
   const { company, cash, receivables, payables, inventory, fixedAssets } = parsed.data;
+
+  /* Bentuk usaha + pemilik/sekutu (24 Okt 2026) — `equity` di samping skema
+     wisaya, sama dengan `/api/setup/coa`. Jaring pengaman: wisaya biasanya
+     sudah menyemai ekuitasnya di langkah modul. */
+  const equityRaw = (body as { equity?: unknown } | null)?.equity;
+  const equityParsed = equityRaw === undefined ? null : setupEquitySchema.safeParse(equityRaw);
+  if (equityParsed && !equityParsed.success) {
+    const { dictionary, t } = await getRequestI18n();
+    return NextResponse.json(
+      { error: t("validation.invalidInput"), details: translateFieldErrors(equityParsed.error, dictionary) },
+      { status: 400 }
+    );
+  }
+  const equity = await resolveSetupEquity(
+    equityParsed?.data,
+    {
+      userId: result.session.user.id,
+      username: result.session.user.name ?? result.session.user.email ?? result.session.user.id,
+    },
+    request
+  );
+  if (!equity.ok) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json(
+      { error: equity.issues.map((k) => t(LEGAL_FORM_ERROR_KEYS[k])).join(" "), errors: equity.issues },
+      { status: equity.status }
+    );
+  }
 
   /*
    * Modul per kategori usaha (issue #99). Wizard boleh menyertakan himpunan
@@ -328,7 +359,7 @@ export async function POST(request: Request) {
      * idempoten — akun yang kodenya sudah ada tidak disentuh sama sekali, jadi
      * pemasangan lama yang bagan akunnya sudah disesuaikan tidak berubah.
      */
-    const seeded = await seedCoaForModules(prisma, moduleSet);
+    const seeded = await seedCoaForModules(prisma, moduleSet, equity.equity);
 
     const applied = await applyOpeningBalances(input);
 
@@ -392,6 +423,8 @@ export async function POST(request: Request) {
         equityPlug: applied.equityPlug,
         fiscalYearStart: company.fiscalYearStart,
         businessCategory: company.businessCategory ?? null,
+        legalForm: equity.equity.legalForm,
+        partners: equity.equity.partners,
         // NULL di sini berarti "semua modul aktif" — jejaknya sengaja jujur.
         enabledModules,
         /* Data contoh masuk ke jejak audit: seseorang yang kelak bertanya

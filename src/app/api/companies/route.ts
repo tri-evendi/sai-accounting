@@ -85,6 +85,7 @@ export async function POST(request: Request) {
     slug: parsed.data.slug,
     name: parsed.data.name,
     databaseName: parsed.data.databaseName,
+    legalForm: parsed.data.legalForm,
     createdByUserId: userId,
     actor: {
       userId: session.user.id,

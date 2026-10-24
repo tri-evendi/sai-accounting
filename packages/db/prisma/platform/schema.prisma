@@ -1148,3 +1148,43 @@ model QuoteActivation {
   @@index([subscriptionId])
   @@map("quote_activations")
 }
+
+/// TAMPILAN HALAMAN DEPAN yang diatur operator (konsol `/landing`, migration
+/// platform 0014). Satu baris (`singleton = 1`); tidak ada baris / kolom NULL
+/// = halaman tampil seperti sebelum tabel ini ada.
+///
+/// Kolom `*_json` berisi TEKS JSON (pola `payload_json`), divalidasi kode di
+/// kedua arah oleh `@sai/core/landing-settings`. Nilai yang tidak lolos saat
+/// dibaca = tidak diatur, bukan galat.
+///
+/// Sengaja TERPISAH dari `SiteSetting`: baris itu memikul gerbang uang yang
+/// dibaca penjadwal, dan menyimpan tampilan tidak boleh ikut menulis ulangnya.
+model LandingSetting {
+  id Int @id @default(autoincrement())
+
+  singleton Int @unique @default(1)
+
+  /// Larik kunci seksi yang DISEMBUNYIKAN. NULL = semua tampil.
+  hiddenSectionsJson String? @map("hidden_sections_json") @db.Text
+
+  /// Tautan pemesanan demo (https saja — CHECK + validasi kode). NULL = tombol
+  /// "Jadwalkan demo" tetap menuju `/register`.
+  demoBookingUrl String? @map("demo_booking_url") @db.VarChar(500)
+
+  /// Kalimat pembuka WhatsApp per bahasa. NULL = tanpa kalimat pembuka.
+  whatsappMessageJson String? @map("whatsapp_message_json") @db.Text
+
+  /// Bilah pengumuman. NULL = tidak ada bilah.
+  announcementJson String? @map("announcement_json") @db.Text
+
+  /// Daftar tanya-jawab. NULL = daftar bawaan dari kamus.
+  faqItemsJson String? @map("faq_items_json") @db.Text
+
+  /// Nama akun operator yang terakhir menyimpan.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("landing_settings")
+}

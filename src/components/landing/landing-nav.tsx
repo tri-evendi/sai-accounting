@@ -66,6 +66,9 @@ import {
   resolvePublicPricingVisible,
   resolveSelfServeSignupOpen,
 } from "@sai/platform/site-settings";
+import { landingSettings } from "@sai/platform/landing-settings";
+import { isSectionVisible } from "@sai/core/landing-settings";
+import { LandingAskButton } from "@/components/landing/landing-ask-button";
 
 /**
  * Tautan seksi: warna sekunder, penuh + bergaris saat hover (aturan hover ada
@@ -154,15 +157,22 @@ export async function LandingNav() {
      Operator bisa menyembunyikan harga publik (alur demo-first). Saat itu
      "Harga" menjadi "Minta penawaran" menuju halaman kontak
      (`quoteContactHref`) — bukan dihapus: slotnya tetap jalan ke langkah
-     berikutnya, dan `/pricing` sendiri ikut dialihkan ke tujuan yang sama. */
+     berikutnya, dan `/pricing` sendiri ikut dialihkan ke tujuan yang sama.
+
+     ══ SEKSI TERSEMBUNYI (konsol `/landing`, migration platform 0014) ═════
+     Seksi yang disembunyikan kehilangan jangkarnya, jadi tautannya ikut
+     dicabut di sini — dari setelan yang SAMA yang memutuskan seksinya tidak
+     dirender. */
+  const setelan = await landingSettings();
   const signupOpen = await resolveSelfServeSignupOpen();
+  const ask = landingAsk(await resolveSelfServeSignupOpen());
   const hargaTampil = await resolvePublicPricingVisible();
   const links: NavLinkItem[] = [
-    { href: "/#modul", label: t("landing.navModules") },
+    ...(isSectionVisible(setelan, "modules") ? [{ href: "/#modul", label: t("landing.navModules") }] : []),
     hargaTampil
       ? { href: "/pricing", label: t("landing.navPricing"), internal: true }
       : { href: quoteContactHref(signupOpen), label: t("landing.quoteCta"), internal: true },
-    { href: "/#tanya", label: t("landing.navFaq") },
+    ...(isSectionVisible(setelan, "faq") ? [{ href: "/#tanya", label: t("landing.navFaq") }] : []),
     { href: "/docs", label: t("landing.navDocs"), internal: true },
   ];
 
@@ -285,11 +295,12 @@ export async function LandingNav() {
             {t("landing.signIn")}
           </ButtonLink>
           {/* Label mengikuti gerbang pendaftaran (`landingAsk`): tertutup =
-              "Jadwalkan demo" (alur demo-first). Tujuannya tetap `/register`,
-              yang saat tertutup menjadi halaman kontak. */}
-          <ButtonLink href="/register" variant="primary">
-            {t(landingAsk(await resolveSelfServeSignupOpen()).navCta)}
-          </ButtonLink>
+              "Jadwalkan demo" (alur demo-first). Tujuannya `/register`, yang
+              saat tertutup menjadi halaman kontak — kecuali operator menyetel
+              tautan pemesanan demo (`LandingAskButton`). */}
+          <LandingAskButton ask={ask} slot="navCta" demoBookingUrl={setelan.demoBookingUrl}>
+            {t(ask.navCta)}
+          </LandingAskButton>
 
           {/* ══ MENU PONSEL — `<details>`, tanpa JavaScript ══════════════════
               Disembunyikan mulai `LANDING_NAV_LINKS_BREAKPOINT` (tautan seksi

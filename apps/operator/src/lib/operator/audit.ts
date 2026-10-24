@@ -82,6 +82,16 @@ export type OperatorAuditAction =
    */
   | "operator.plans.visibility"
   /**
+   * TAMPILAN HALAMAN DEPAN (konsol `/landing`, migration platform 0014).
+   * `details` memuat nilai LAMA dan BARU: seksi tersembunyi, tautan demo +
+   * kalimat WhatsApp, pengumuman utuh (teks pendek, tautan, jendela). Untuk FAQ
+   * hanya kunci, pertanyaan bahasa Indonesia, dan panjang jawabannya.
+   */
+  | "operator.landing.sections"
+  | "operator.landing.contact"
+  | "operator.landing.announcement"
+  | "operator.landing.faq"
+  /**
    * AKUN OPERATOR (migration kendali 0004). `details` memuat nama akun
    * sasaran, peran sebelum/sesudah, dan aktif sebelum/sesudah — TIDAK PERNAH
    * kata sandi atau rahasia TOTP yang diterbitkan (keduanya hanya tampil

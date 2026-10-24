@@ -81,7 +81,9 @@ import {
   CATEGORY_META,
 } from "@/lib/business-modules";
 import { resolveContactChannels } from "@sai/platform/site-settings";
-import { getT } from "@sai/platform/i18n/server";
+import { getLocale, getT } from "@sai/platform/i18n/server";
+import { landingSettings } from "@sai/platform/landing-settings";
+import { localizedText } from "@sai/core/landing-settings";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS } from "@sai/core/registration";
 import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
@@ -109,43 +111,63 @@ export async function LandingFaq() {
     .map((c) => t(CATEGORY_META[c].labelKey))
     .join(", ");
 
-  const items = [
-    {
-      q: t("landing.faqTrialQ"),
-      /* Pertanyaannya tetap sah ditanyakan saat pendaftaran mandiri ditutup —
-         yang berubah JAWABANNYA, bukan ada-tidaknya pertanyaan. Menghapus
-         butirnya hanya membuat orang menebak. */
-      a: t(ask.faqTrialAnswer, askValues(ask, TRIAL_DAYS)),
-    },
-    { q: t("landing.faqAfterTrialQ"), a: t("landing.faqAfterTrialA") },
-    { q: t("landing.faqQuotaQ"), a: t("landing.faqQuotaA") },
-    {
-      q: t("landing.faqTaxQ"),
-      a: t("landing.faqTaxA", { rate: DEFAULT_TAX_RATE }),
-    },
-    { q: t("landing.faqIsolationQ"), a: t("landing.faqIsolationA") },
-    { q: t("landing.faqExportQ"), a: t("landing.faqExportA") },
-    /* Lima pertanyaan pembeli (#397) — urutannya mengikuti urutan orang
-       menanyakannya: cocok untuk saya? → data lama saya? → akuntan saya? →
-       kalau macet? → data saya di mana? Sumber tiap jawaban di kepala berkas. */
-    {
-      q: t("landing.faqFitQ"),
-      a: t("landing.faqFitA", {
-        categories: kategori,
-        modules: BUSINESS_MODULES.length,
-      }),
-    },
-    { q: t("landing.faqImportQ"), a: t("landing.faqImportA") },
-    { q: t("landing.faqAccountantQ"), a: t("landing.faqAccountantA") },
-    {
-      q: t("landing.faqSupportQ"),
-      a:
-        surelKontak !== undefined
-          ? t("landing.faqSupportA", { email: surelKontak })
-          : t("landing.faqSupportADocsOnly"),
-    },
-    { q: t("landing.faqDataQ"), a: t("landing.faqDataA") },
-  ];
+  /* ══ DAFTAR DARI KONSOL, ATAU DARI KAMUS ═══════════════════════════════
+     Sejak konsol `/landing` operator bisa menyusun daftarnya sendiri
+     (tambah, sunting, hapus, urutkan). Selama daftar itu TIDAK ADA, yang
+     tampil daftar bawaan di bawah — persis perilaku sebelumnya; begitu ada,
+     daftar itulah yang tampil, utuh, dalam bahasa pembaca (bahasa yang tidak
+     diisi jatuh ke Indonesia). Tidak dicampur: dua sumber yang digabung
+     membuat urutan yang disusun operator tidak bisa ditebak. */
+  const [setelan, locale] = await Promise.all([landingSettings(), getLocale()]);
+  const items = setelan.faqItems
+    ? setelan.faqItems.map((item) => ({
+        key: item.key,
+        q: localizedText(item.question, locale),
+        a: localizedText(item.answer, locale),
+      }))
+    : defaultItems();
+
+  /* Daftar bawaan dari kamus — kuncinya teks pertanyaannya, seperti dulu. */
+  function defaultItems(): { key: string; q: string; a: string }[] {
+    const bawaan: { q: string; a: string }[] = [
+      {
+        q: t("landing.faqTrialQ"),
+        /* Pertanyaannya tetap sah ditanyakan saat pendaftaran mandiri ditutup —
+           yang berubah JAWABANNYA, bukan ada-tidaknya pertanyaan. Menghapus
+           butirnya hanya membuat orang menebak. */
+        a: t(ask.faqTrialAnswer, askValues(ask, TRIAL_DAYS)),
+      },
+      { q: t("landing.faqAfterTrialQ"), a: t("landing.faqAfterTrialA") },
+      { q: t("landing.faqQuotaQ"), a: t("landing.faqQuotaA") },
+      {
+        q: t("landing.faqTaxQ"),
+        a: t("landing.faqTaxA", { rate: DEFAULT_TAX_RATE }),
+      },
+      { q: t("landing.faqIsolationQ"), a: t("landing.faqIsolationA") },
+      { q: t("landing.faqExportQ"), a: t("landing.faqExportA") },
+      /* Lima pertanyaan pembeli (#397) — urutannya mengikuti urutan orang
+         menanyakannya: cocok untuk saya? → data lama saya? → akuntan saya? →
+         kalau macet? → data saya di mana? Sumber tiap jawaban di kepala berkas. */
+      {
+        q: t("landing.faqFitQ"),
+        a: t("landing.faqFitA", {
+          categories: kategori,
+          modules: BUSINESS_MODULES.length,
+        }),
+      },
+      { q: t("landing.faqImportQ"), a: t("landing.faqImportA") },
+      { q: t("landing.faqAccountantQ"), a: t("landing.faqAccountantA") },
+      {
+        q: t("landing.faqSupportQ"),
+        a:
+          surelKontak !== undefined
+            ? t("landing.faqSupportA", { email: surelKontak })
+            : t("landing.faqSupportADocsOnly"),
+      },
+      { q: t("landing.faqDataQ"), a: t("landing.faqDataA") },
+    ];
+    return bawaan.map((item) => ({ key: item.q, ...item }));
+  }
 
   return (
     /* ⚠ `width` DIBIARKAN LEBAR, dan kolom bacanya dipasang pada `<dl>` saja.
@@ -206,7 +228,7 @@ export async function LandingFaq() {
       >
         {items.map((item, index) => (
           <div
-            key={item.q}
+            key={item.key}
             style={
               index === 0
                 ? undefined

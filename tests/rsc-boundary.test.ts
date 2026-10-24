@@ -354,8 +354,17 @@ import { join } from "node:path";
  *   + `components/operator/plan-visibility-toggle` — sakelar tampil/tersembunyi
  *     per paket dengan alasan wajib + konfirmasi akibat. Halaman `/plans` tetap
  *     server; katalognya dibaca di sana dan dioper per baris.
+ * 213 → 218 (24 Okt 2026, tampilan halaman depan — konsol `/landing`):
+ *   + `components/operator/landing-sections-form`, `-contact-form`,
+ *     `-announcement-form`, `-faq-form` — empat formulir RHF + zod (penyunting
+ *     FAQ memakai `useFieldArray` untuk tambah/hapus/urutkan). Halaman
+ *     `/landing` tetap server; setelannya dibaca di sana.
+ *   + `components/landing/landing-announcement-dismiss` — SATU tombol tutup
+ *     bilah pengumuman (menulis cookie + menyembunyikan bilah). Bilahnya
+ *     sendiri tetap server component; pendaratan tetap tanpa pulau client
+ *     lain selain sakelar bahasa/tema.
  */
-const AMBANG_KLIEN = 213;
+const AMBANG_KLIEN = 218;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -534,6 +543,11 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/components/operator/content-publish-controls.tsx",
   /* Buat tenant uji coba (alur demo-first) — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/create-trial-form.tsx",
+  /* Tampilan halaman depan (konsol `/landing`) — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/landing-announcement-form.tsx",
+  "apps/operator/src/components/operator/landing-contact-form.tsx",
+  "apps/operator/src/components/operator/landing-faq-form.tsx",
+  "apps/operator/src/components/operator/landing-sections-form.tsx",
   /* Register lisensi on-premise — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/licence-register-panel.tsx",
   /* Kunci penanda lisensi (migration platform 0007) — lihat `AMBANG_KLIEN`. */
@@ -568,6 +582,9 @@ const KLIEN_TERSAHKAN = [
   "components/auth/signed-in-as.tsx",
   "components/dashboard/dashboard-export-actions.tsx",
   "components/help/guided-tour.tsx",
+  /* Tombol tutup bilah pengumuman — satu-satunya daun client baru di
+     pendaratan; lihat `AMBANG_KLIEN`. */
+  "components/landing/landing-announcement-dismiss.tsx",
   "components/layout/accountant-mode-toggle.tsx",
   "components/layout/approval-badge.tsx",
   "components/layout/command-palette.tsx",

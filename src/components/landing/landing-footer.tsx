@@ -44,6 +44,8 @@ import {
   resolvePublicPricingVisible,
   resolveSelfServeSignupOpen,
 } from "@sai/platform/site-settings";
+import { landingSettings } from "@sai/platform/landing-settings";
+import { isSectionVisible } from "@sai/core/landing-settings";
 
 /** Tautan kaki: warna sekunder, penuh + bergaris saat hover. */
 const FOOTER_LINK: React.CSSProperties = {
@@ -84,6 +86,8 @@ export async function LandingFooter() {
   const hargaTampil = await resolvePublicPricingVisible();
   const kontakPenawaran = hargaTampil ? null : quoteContactHref(await resolveSelfServeSignupOpen());
   const year = new Date().getFullYear();
+  const setelan = await landingSettings();
+  const tampil = (seksi: "modules" | "faq") => isSectionVisible(setelan, seksi);
 
   return (
     <footer
@@ -128,9 +132,14 @@ export async function LandingFooter() {
               dan tautan seksi di bilah atas disembunyikan di layar sempit. */}
           <nav aria-label={t("landing.footerProduct")} style={COLUMN}>
             <p style={COLUMN_TITLE}>{t("landing.footerProduct")}</p>
-            <Link href="/#modul" data-landing-link="" style={FOOTER_LINK}>
-              {t("landing.navModules")}
-            </Link>
+            {/* Jangkar ke seksi yang disembunyikan di konsol `/landing` ikut
+                dicabut — tautan ke `#modul` yang tidak ada hanya menggulung
+                ke puncak halaman tanpa penjelasan. */}
+            {tampil("modules") && (
+              <Link href="/#modul" data-landing-link="" style={FOOTER_LINK}>
+                {t("landing.navModules")}
+              </Link>
+            )}
             {kontakPenawaran === null ? (
               <Link href="/pricing" data-landing-link="" style={FOOTER_LINK}>
                 {t("landing.navPricing")}
@@ -140,9 +149,11 @@ export async function LandingFooter() {
                 {t("landing.quoteCta")}
               </Link>
             )}
-            <Link href="/#tanya" data-landing-link="" style={FOOTER_LINK}>
-              {t("landing.navFaq")}
-            </Link>
+            {tampil("faq") && (
+              <Link href="/#tanya" data-landing-link="" style={FOOTER_LINK}>
+                {t("landing.navFaq")}
+              </Link>
+            )}
           </nav>
 
           <nav aria-label={t("landing.footerResources")} style={COLUMN}>

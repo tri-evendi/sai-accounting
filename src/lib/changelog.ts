@@ -73,8 +73,24 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.21.0",
+    tanggal: "2026-10-24",
+    ringkas: "Faktur yang baru diposting bisa dikirim otomatis ke surel pelanggan, dan unduhan data perusahaan diperbaiki.",
+    butir: [
+      {
+        jenis: "baru",
+        teks: "Pengaturan pengingat punya pilihan baru: kirim faktur ke surel pelanggan saat diposting, sebagai lampiran PDF dan sekali per faktur. Pilihan ini mati sampai dinyalakan untuk tiap perusahaan.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Unduhan data perusahaan di halaman Privasi tidak lagi gagal saat menyiapkan berkas zip, dan logo perusahaan di dalamnya kini tersimpan utuh.",
+      },
+    ],
+  },
+  {
     versi: "0.20.0",
     tanggal: "2026-10-24",
+    sha: "5bfe19a",
     ringkas: "Konsol operator kini menilai antrean tiap jalur dengan ambangnya sendiri; tidak ada perubahan pada tampilan aplikasi.",
     butir: [
       {

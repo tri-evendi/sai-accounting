@@ -36,8 +36,29 @@ import {
   type CompanyDatabaseTarget,
 } from "@sai/db/company-url";
 
-/** Berapa klien perusahaan boleh hidup bersamaan. */
+/** Berapa klien perusahaan boleh hidup bersamaan (bawaan; lihat `ensureCompanyClientCapacity`). */
 const POOL_MAX = Number(process.env.COMPANY_CLIENT_POOL_MAX) || 4;
+/** Plafon untuk `ensureCompanyClientCapacity` — tiap klien memesan `DB_CONNECTION_LIMIT` koneksi. */
+const POOL_CEILING = Number(process.env.COMPANY_CLIENT_POOL_CEILING) || 32;
+/** Batas yang berlaku; hanya bisa NAIK dari `POOL_MAX`, tidak pernah turun. */
+let poolMax = POOL_MAX;
+
+/**
+ * Naikkan batas kolam supaya `n` klien muat bersamaan (tidak pernah menurunkan;
+ * dibatasi `COMPANY_CLIENT_POOL_CEILING`, bawaan 32). Untuk proses yang MEMANG
+ * menyentuh setiap buku tiap putaran — relay outbox (`workers/outbox-relay.ts`).
+ *
+ * Tanpa ini, 17 buku di kolam 4 berarti klien dibuat-dibuang setiap putaran,
+ * dan setiap klien tergusur tetap hidup `POOL_DISCONNECT_GRACE_MS` (15 dtk)
+ * sebelum diputus: puluhan klien sekaligus, RSS relay 0,9–1,4 GB di produksi
+ * (24 Okt 2026). Proses lain tetap pada bawaan — aplikasi melayani perusahaan
+ * yang sedang dipakai orang, bukan semuanya.
+ */
+export function ensureCompanyClientCapacity(n: number): number {
+  const wanted = Math.min(Math.max(poolMax, Math.ceil(n)), Math.max(POOL_CEILING, POOL_MAX));
+  if (Number.isFinite(wanted)) poolMax = wanted;
+  return poolMax;
+}
 /** Koneksi per klien. Lebih kecil dari bawaan lama karena kini dibagi-bagi. */
 const CONNECTION_LIMIT = Number(process.env.DB_CONNECTION_LIMIT) || 2;
 /** Jeda sebelum klien tergusur benar-benar diputus. */
@@ -86,8 +107,8 @@ function scheduleDisconnect(entry: PoolEntry): void {
 }
 
 /** Buang yang paling depan (paling lama tak dipakai) sampai muat dalam batas. */
-function evictIfNeeded(target: Map<string, PoolEntry> = pool): void {
-  while (target.size > POOL_MAX) {
+function evictIfNeeded(target: Map<string, PoolEntry> = pool, max: number = poolMax): void {
+  while (target.size > max) {
     const oldestKey = target.keys().next().value;
     if (oldestKey === undefined) return;
     const evicted = target.get(oldestKey)!;
@@ -161,7 +182,7 @@ export function getCompanyReadClient(target: CompanyDatabaseTarget): PrismaClien
   }
   const client = createClient(target, base);
   readPool.set(key, { client });
-  evictIfNeeded(readPool);
+  evictIfNeeded(readPool, POOL_MAX);
   return client;
 }
 
@@ -212,5 +233,5 @@ export async function disconnectAllCompanyClients(): Promise<void> {
 /** Keadaan pool — untuk diagnosis & tes, bukan untuk logika aplikasi. */
 /** `databases` berisi kunci kolam: `<instans>/<basis data>`, instans bawaan kosong. */
 export function companyPoolStats(): { size: number; max: number; databases: string[] } {
-  return { size: pool.size, max: POOL_MAX, databases: [...pool.keys()] };
+  return { size: pool.size, max: poolMax, databases: [...pool.keys()] };
 }

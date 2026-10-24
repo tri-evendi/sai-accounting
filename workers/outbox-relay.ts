@@ -46,6 +46,7 @@ import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import type { SessionLock } from "@sai/db/session-lock";
 import { publishJob } from "@sai/platform/job-queue";
 
+import { ensureCompanyClientCapacity } from "../src/lib/company-clients";
 import { ambilPagarBernama } from "./runner";
 import { relayPass, type RelayBook, type RelayBookResult } from "../src/lib/outbox-relay";
 
@@ -185,6 +186,9 @@ async function main(): Promise<void> {
       try {
         buku = await bacaRegistry();
         registryDibaca = mulai;
+        /* Setiap buku disentuh tiap putaran: kolam harus memuat semuanya, atau
+           klien dibuat-dibuang terus (lihat `ensureCompanyClientCapacity`). */
+        ensureCompanyClientCapacity(buku.length + 1);
       } catch (e) {
         console.error("[outbox] registry kendali tak terbaca:", e instanceof Error ? e.message : e);
       }

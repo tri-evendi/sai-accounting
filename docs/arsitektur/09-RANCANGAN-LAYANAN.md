@@ -16,7 +16,7 @@ jumlah tenant.** Keempatnya hari ini berurutan dan terikat *wall-clock*:
 |---|---|---|
 | Migration | ✅ *bounded concurrency* (tahap 1b) — masih di gerbang pemblokir | gerbangnya yang jadi pembatas, bukan jumlah langkahnya; §6 |
 | Cadangan | ✅ satu objek `pg_dump -Fc` **per basis data** (tahap 1b) | satu objek per tenant per hari — ongkos penyimpanan tumbuh linear, dan itu memang ongkos yang benar |
-| Kesesuaian data | ✅ *bounded concurrency* + jejak per basis data (§6); ✅ kembaran Go di jalur `tenant` (23 Okt 2026), dipilih sakelar `runner:` — bawaan masih peran `conformance` di `svc-worker` | jendela mingguan menjadi pembatas bila konkurensinya tak lagi cukup; `runner: go` menunggu `parity:conformance` lulus di produksi |
+| Kesesuaian data | ✅ *bounded concurrency* + jejak per basis data (§6); ✅ kembaran Go di jalur `tenant` (23 Okt 2026), dipilih sakelar `runner:` — ✅ **`runner: go` sejak 23 Okt 2026** (0.19.1; `parity:conformance` produksi 34 setara, 0 berselisih), peran `conformance` di `svc-worker` tinggal menerbitkan | jendela mingguan menjadi pembatas bila konkurensinya tak lagi cukup |
 | Penjadwal | delapan langkah berurutan, tiap jam | satu putaran tidak muat dalam satu jam |
 
 Yang hilang dulu bukan hanya waktu, tapi satu kemampuan: **`pg_dumpall` berarti
@@ -189,8 +189,8 @@ satu commit, beberapa `command`.
 |---|---|---|---|---|---|---|
 | `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna; penyediaan PT baru (`company.provision`, Node, Okt 2026) | berapa pun | sisi Node: kredensial PEMILIK `PROVISION_DATABASE_URL` (06 §3.10) | pooler | tahap 1c |
 | `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan, **ekspor data mandiri tenant** | berapa pun | — | pooler | ✅ jalur Go di `svc-integrator` (`internal/bulklane`) sejak kind pertamanya, `tenant.data_export` (23 Okt 2026); pagar memori per pekerjaan di kontrak. Sakelar `runner:` **`go` sejak 24 Okt 2026** — paritas produksi lulus (11 tenant, 1.111 berkas identik per byte); rute sinkron TS menjawab 409 `export_async` |
-| `schedule` | **Go** | denyut penerbitan tiap jam — hanya MENERBITKAN | **satu** | — | pooler (pagar: **langsung**) | ✅ `svc-integrator` (Okt 2026) — penerbit per kind dipilih kontrak (`schedule.publisher`); **bawaan masih Node** (peran `scheduler`, `svc-worker`) |
-| `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node atau Go — sakelar `runner:`)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
+| `schedule` | **Go** | denyut penerbitan tiap jam — hanya MENERBITKAN | **satu** | — | pooler (pagar: **langsung**) | ✅ `svc-integrator` (Okt 2026) — penerbit per kind dipilih kontrak (`schedule.publisher`); ✅ **`go` untuk kedua kind berjadwal sejak 23 Okt 2026** (`tenant.backup`, lalu `ledger.recurring` di 0.16.2) — langkah Node di peran `scheduler` melewati dirinya |
+| `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Go sejak 23 Okt 2026 — sakelar `runner: go`; Node tinggal jalan mundur)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node — kini hanya menerbitkan `tenant.conformance`) |
 | `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate` (`db:migrate:release`): *bounded concurrency*, buku yang gagal tidak menahan rilis — §6 |
 | `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler (pagar: **langsung**) | ✅ peran `ledger` di `svc-worker` |
 
@@ -224,7 +224,7 @@ komponen `penerbit-go`.
 | Pertanyaan | Jawaban |
 |---|---|
 | Siapa penerbitnya? | `schedule.publisher` per kind di kontrak — `node` atau `go`, **tepat satu**. Kedua sisi membaca nilai dari commit yang sama; sisi yang bukan penerbit melewati langkahnya (Node: keluar 0; Go: memegang pagar dan diam) |
-| Bawaannya? | `node` untuk keduanya — perilaku produksi tidak berubah oleh rilis yang memuat jalur ini |
+| Bawaannya? | `node` untuk keduanya saat jalur ini dirilis — perilaku produksi tidak berubah oleh rilis yang memuatnya. ✅ **Kini `go` untuk keduanya** (23 Okt 2026): `tenant.backup` lebih dulu (keputusan pemilik), `ledger.recurring` menyusul sesudah denyut cadangan Go terbukti (0.16.2) |
 | Kenapa peralihan tidak menerbitkan dua kali? | butir & kunci **identik sampai ke byte-nya** di kedua bahasa (`@sai/core/schedule-due` · `schedulelane/due.go`), dibuktikan SATU fikstur bersama yang dibaca vitest dan `go test`. Di jendela gelar campuran versi, penerbit kedua menabrak `dedupe_key` milik yang pertama |
 | Zonanya? | **UTC**, bukan WIB — perilaku `recurring:publish`/`backup:publish` sejak lahir, dan mesin berulang menghitung batas hari di UTC. Menukarnya menggeser setiap butir tujuh jam: pada hari peralihan satu butir terbit di bawah dua kunci |
 | Yang menulis buku? | tetap jalur `ledger` **Node** — Go hanya menulis baris `jobs` (`ledger.recurring` diterbitkan, tidak pernah diklaim, oleh Go; I-2) |
@@ -243,7 +243,7 @@ Okt 2026).** Kontraknya: jalur jamak, satu pekerjaan per proses, dan **pagar
 memori per pekerjaan** (`memory_fence_mib: 512`, ditegakkan `jobs.Runner`):
 pekerjaan borongan yang membuat heap melewatinya dibatalkan dan digagalkan
 dengan sebab yang terbaca, SEBELUM OOM-killer membunuh seluruh `svc-integrator`
-beserta dump cadangan yang sedang berjalan (risiko 2 & 4 di bawah). Tiga kind
+beserta dump cadangan yang sedang berjalan (risiko 2 & 4 di bawah). Dua kind
 lamanya tetap di luar Go: `import.process` menulis buku (I-2), `mail.batch`
 menulis `invoice_sends` dan memegang SMTP tenant. `report.package` ✅ kind
 KEDUA jalur ini sejak 24 Okt 2026 (keputusan pemilik) — §5.
@@ -259,8 +259,9 @@ dulu menahannya, dan bagaimana masing-masing dipenuhi:
 | (3) paritas CSV byte demi byte | `bun run parity:tenant-export` — arsip TS (`buildTenantExport`) dan arsip Go (`internal/tenantexport`) atas tenant yang sama, dengan stempel "Dibuat" yang sama, dibandingkan SHA-256 SETIAP berkas di dalamnya (`cmd/parity zip-compare`) |
 
 Sakelarnya `runner:` kind itu di kontrak — pola `tenant.conformance`: `node`
-(bawaan) = `GET` sinkron TS melayani dan `POST` dijawab 409; `go` = sebaliknya,
-`GET` dijawab 409 `export_async`. Pekerjaan yang tiba di Go sementara nilainya
+= `GET` sinkron TS melayani dan `POST` dijawab 409; `go` = sebaliknya,
+`GET` dijawab 409 `export_async` — ✅ **`go` sejak 24 Okt 2026** (paritas
+produksi lulus, 0.21.0). Pekerjaan yang tiba di Go sementara nilainya
 `node` DIGAGALKAN dengan pesan yang terbaca (bukan dikerjakan, bukan
 diselesaikan tanpa berkas). Peralihan & jalan mundur: PRODUCTION.md §Ekspor
 data mandiri.
@@ -384,17 +385,17 @@ menahan sebagiannya.
 | Jalur | Bahasa | Keadaan |
 |---|---|---|
 | `tenant` — cadangan | **Go** | ✅ `svc-integrator` (jalur `tenant`), tahap 1b — [02 §5](./02-LAYANAN-INFRA.md) |
-| `tenant` — kesesuaian data | TypeScript **+ Go** | ✅ **implementasi Go 23 Okt 2026** (`internal/conformance`, jalur `tenant` di `svc-integrator`) — kesebelas pemeriksaan termasuk dua pagar materialitas (`akun-penampung`, `beban-tanpa-sifat`), ambangnya DIBANGKITKAN dari `contract/accounting.yaml` (§3.5). Pelaksana dipilih `runner:` di `contract/kinds.yaml`, **bawaan `node`**; beralih ke `go` setelah `bun run parity:conformance` lulus di produksi (PRODUCTION.md §Pelaksana kesesuaian data). Jejak `conformance_runs` ditulis Go sendiri — pengecualian kedua daftar-izin tulisan Go, alasannya di `tests/services-go.test.ts` |
+| `tenant` — kesesuaian data | **Go** (+ TypeScript sebagai jalan mundur) | ✅ **implementasi Go 23 Okt 2026** (`internal/conformance`, jalur `tenant` di `svc-integrator`) — kesebelas pemeriksaan termasuk dua pagar materialitas (`akun-penampung`, `beban-tanpa-sifat`), ambangnya DIBANGKITKAN dari `contract/accounting.yaml` (§3.5). Pelaksana dipilih `runner:` di `contract/kinds.yaml` — ✅ **`go` sejak 23 Okt 2026** (0.19.1), sesudah `bun run parity:conformance` lulus atas 17 buku produksi (34 setara, 0 berselisih); `node` tinggal jalan mundur (PRODUCTION.md §Pelaksana kesesuaian data). Jejak `conformance_runs` ditulis Go sendiri — pengecualian kedua daftar-izin tulisan Go, alasannya di `tests/services-go.test.ts` |
 | `schema` — migration | TypeScript | **tertahan** — Prisma pemilik pembukuan skema; §6 menahan asinkronisitasnya sampai *expand/contract* berlaku |
 | Integrasi luar (e-faktur, feed bank) | **Go** | e-Faktur: ✅ jalur `integration` dibangun Okt 2026 (`internal/integrationlane`, `svc-integrator`) — mengirim XML Coretax yang DIBANGUN TS, penyedia `mock` + kerangka `pjap` (menunggu pilihan PJAP); hasilnya kembali lewat `efaktur.record` yang diklaim Node, jadi e-Faktur tidak menambah satu tabel pun ke daftar-izin tulisan Go — [EFAKTUR.md](../EFAKTUR.md). Feed bank: belum dibangun (SFTP) |
-| `schedule` — penerbitan | **Go** | ✅ dibangun Okt 2026 (`internal/schedulelane`, `svc-integrator`) — hanya menerbitkan baris `jobs`. Penerbit per kind dipilih kontrak (`schedule.publisher`); **bawaannya tetap Node** (peran `scheduler`) sampai peralihannya dilakukan — §3.2 |
+| `schedule` — penerbitan | **Go** | ✅ dibangun Okt 2026 (`internal/schedulelane`, `svc-integrator`) — hanya menerbitkan baris `jobs`. Penerbit per kind dipilih kontrak (`schedule.publisher`); ✅ **peralihannya sudah dilakukan 23 Okt 2026** — `go` untuk `tenant.backup` dan `ledger.recurring` (peran `scheduler` Node melewati langkahnya) — §3.2 |
 | `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah. **Tahap 1d dimulai 22 Okt 2026**: Neraca Saldo punya implementasi Go (`internal/ledgerread`), paritas produksi lulus hari yang sama, dan ia kini `go` — lembar sebarnya dihasilkan jalur `interactive` Go di `svc-integrator` (`report.export_go`), jalur berkas TS-nya dicabut, layar dan PDF-nya tetap TS (§9) |
 | Pekerjaan yang MENULIS buku besar | **tetap Node** | ✅ jalur `ledger`, dan pintu posting satu-satunya alasan keberadaannya |
 
 ⚠ **Batas yang berlaku: Go berhenti sebelum perhitungan akuntansi, sampai ada
 pemicu.** Aturannya sendiri kini di [01 §10](./01-ARSITEKTUR.md) bersama dua
 pemindahan yang sudah ditahannya. Yang tinggal di sini ONGKOSNYA, sebab ia
-argumen tentang 1d — dan 1d belum dibangun:
+argumen tentang 1d — yang kini berjalan DI BAWAH syarat-syarat itu (✅ 22–23 Okt 2026: berkas Excel ke-14 laporan berberkas dari Go, paritas produksi per laporan — §9):
 
 | Ongkos | Bentuknya |
 |---|---|
@@ -722,7 +723,7 @@ Menutup §1, dan inilah pekerjaan yang paling menentukan kesiapan pasar.
 |---|---|---|---|
 | Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ **keluar dari gerbang pemblokir 23 Okt 2026** — buku yang gagal tidak lagi menahan rilis; buku itu sendiri yang ditutup. Masih TypeScript, masih langkah rilis (bukan antrean). Rinciannya di bawah |
 | **Cadangan** | `tenant` | `pg_dumpall` → **`pg_dump` per basis data** + satu `pg_dumpall --globals-only`. Satu tenant bisa dipulihkan tanpa menyentuh yang lain | ✅ [02 §5](./02-LAYANAN-INFRA.md) · celah on-premise #5 tertutup |
-| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. ✅ **23 Okt 2026**: kembaran Go di jalur `tenant` dengan batas & jejak yang sama; `tenant.conformance` diterbitkan langkah Node yang sama HANYA bila `runner: go` |
+| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. ✅ **23 Okt 2026**: kembaran Go di jalur `tenant` dengan batas & jejak yang sama; `tenant.conformance` diterbitkan langkah Node yang sama HANYA bila `runner: go` — dan itu nilainya sejak 0.19.1 |
 | Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 | sebagian: dua langkah sudah MENERBITKAN (`recurring:publish`, `backup:publish`), tapi penerbitnya masih langkah di peran `scheduler` (`svc-worker`), bukan jalur `schedule` tersendiri |
 
 ✅ **Bukti kelengkapan cadangan sudah diperluas**: setiap basis data terdaftar
@@ -989,7 +990,7 @@ menjadi tahap baru — mereka melipat ke pemicu yang sudah ada:
 
 | Tertahan | Ditahan oleh | Pemicunya |
 |---|---|---|
-| ~~Kesesuaian data (`tenant.conformance`) ke Go~~ | ✅ **dibangun 23 Okt 2026** (keputusan pemilik) dengan syarat 1d: ambangnya dibangkitkan (§3.5), paritasnya dibuktikan `parity:conformance`. Tinggal peralihan `runner: go` setelah paritas produksi lulus | — |
+| ~~Kesesuaian data (`tenant.conformance`) ke Go~~ | ✅ **dibangun 23 Okt 2026** (keputusan pemilik) dengan syarat 1d: ambangnya dibangkitkan (§3.5), paritasnya dibuktikan `parity:conformance`. ✅ **Dialihkan `runner: go` 23 Okt 2026** (0.19.1) — paritas produksi 17 buku: 34 setara, 0 berselisih | — |
 | Jalur `schema` lewat antrean | §6 — *expand/contract* "belum berlaku hari ini" | Migration di luar gerbang pemblokir berarti aplikasi melayani buku yang skemanya lebih tua daripada kodenya. §6 juga sudah mengukur harga menunggu: pada 17 perusahaan gerbang pemblokir masih murah |
 
 Yang §6 butuhkan dari jalur `schema` ada tiga, dan ketiganya kini ada **tanpa**
@@ -1013,7 +1014,7 @@ kehabisan waktu:
 |---|---|
 | **Outbox + relay** | ✅ **Dibangun 23 Okt 2026** (keputusan pemilik — pemicunya keputusan produk, persis seperti yang ditulis di sini): pengiriman faktur saat diposting, di belakang sakelar per PT yang bawaannya mati. Bentuknya §4 |
 | **`report.package`** | ✅ **Dibangun 24 Okt 2026** sebagai keputusan produk tersendiri (pemilik) — bukan "pindah ke server". Bentuknya §5 |
-| Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. ✅ **`bulk` berjalan sejak kind pertamanya** (23 Okt 2026): `tenant.data_export`, ekspor data mandiri #142 — pelari Go + pintu hasil tingkat tenant + paritas `parity:tenant-export` (lokal: setara). ✅ Sakelar `runner:` **`go` sejak 24 Okt 2026**: paritas produksi lulus (11 tenant × 1 ekspor, 0 berselisih) — §3.2, PRODUCTION.md §Ekspor data mandiri |
+| Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak — ✅ kedua kind berjadwal dialihkan ke `go` 23 Okt 2026 — §3.2. ✅ **`bulk` berjalan sejak kind pertamanya** (23 Okt 2026): `tenant.data_export`, ekspor data mandiri #142 — pelari Go + pintu hasil tingkat tenant + paritas `parity:tenant-export` (lokal: setara). ✅ Sakelar `runner:` **`go` sejak 24 Okt 2026**: paritas produksi lulus (11 tenant × 1 ekspor, 0 berselisih) — §3.2, PRODUCTION.md §Ekspor data mandiri |
 
 Tiga generator LAPORAN yang dulu tersisa (`finance-report`, `opname-sheet`,
 `stock-report`) sudah pindah: penggambarannya ke `/api/reports/pdf/<jenis>`
@@ -1907,21 +1908,22 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 
 | Bidang | Hilang |
 |---|---|
-| **Versi** | **definisi GA**. Semver + tag versi sudah ada (tahap 1a: setiap image juga ber-tag versi `package.json`, kini `0.10.0`) — yang belum adalah janji apa yang membuat sebuah versi "umum" |
+| **Versi** | **definisi GA** — 🔶 usulannya di [TATA-KELOLA §1](../TATA-KELOLA.md), belum disahkan. Semver + tag versi sudah ada (tahap 1a: setiap image juga ber-tag versi `package.json` — versi berjalan dibaca dari sana, bukan dari dokumen ini) — yang belum adalah janji apa yang membuat sebuah versi "umum" |
 | ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). ✅ Penerapannya keluar dari gerbang pemblokir **23 Okt 2026** (§6): gerbang per perusahaan + `db:migrate:release` |
-| **Insiden** | severity **insiden** (yang ada baru severity temuan P0–P3), siapa dihubungi |
-| **SLO** | satu sasaran per permukaan + ***error budget***-nya; tanpa itu metrik §11 hanya grafik |
-| ~~Keamanan~~ | ✅ `SECURITY.md` ada (22 Okt 2026) — **kontak & sasaran waktunya masih placeholder** yang wajib diisi pemilik |
-| Deprecation | jendela tertulis: ditandai satu rilis minor, dicabut sesudahnya |
-| Data | retensi tertulis per jenis data + perjanjian pengolahan data |
-| On-premise | jendela dukungan, kebijakan backport. Serah terima kunci ✅ sebagai templat: [`docs/ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) |
+| ~~Insiden~~ | ✅ **disahkan 24 Okt 2026** — tingkat Sev-1/2/3 beserta respons & kabar ke customer ([TATA-KELOLA §3](../TATA-KELOLA.md)). 🔶 Masih terbuka: **siapa dihubungi** (nama/nomor pemilik & cadangan) |
+| ~~SLO~~ | ✅ **disahkan 24 Okt 2026** — sasaran per permukaan + *error budget*-nya ([TATA-KELOLA §2](../TATA-KELOLA.md)) |
+| ~~Keamanan~~ | ✅ `SECURITY.md` ada (22 Okt 2026); sasaran waktunya ✅ disahkan 24 Okt 2026 di TATA-KELOLA §4 (tanda terima 2 hari kerja, penilaian awal 5 hari kerja) — `SECURITY.md` sendiri masih memuat `<N>` dan belum disalin. 🔶 **Alamat surel keamanan masih placeholder** yang wajib diisi pemilik |
+| ~~Deprecation~~ | ✅ **disahkan 24 Okt 2026** — ditandai di satu rilis MINOR, dicabut paling cepat di MINOR berikutnya yang berjarak ≥ 30 hari ([TATA-KELOLA §5](../TATA-KELOLA.md)) |
+| Data | ✅ **retensi per jenis data disahkan 24 Okt 2026** ([TATA-KELOLA §6](../TATA-KELOLA.md)). 🔶 Masih terbuka: **perjanjian pengolahan data (DPA)** — butuh penasihat hukum — dan **salinan cadangan bulanan** luar-server (butuh penyimpanan luar-server, P0-1) |
+| ~~On-premise~~ | ✅ **disahkan 24 Okt 2026** — jendela dukungan 12 bulan per MINOR, backport hanya keamanan & integritas data ([TATA-KELOLA §7](../TATA-KELOLA.md)). Serah terima kunci ✅ sebagai templat: [`docs/ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) |
 | ~~Kepemilikan kode~~ | ✅ `.github/CODEOWNERS` (P3-3), satu pemilik: `@tri-evendi` |
 
 Dua di antaranya memblokir komersialisasi, bukan sekadar kerapian: **disiplin
 versi** — tanpa artefak bernomor tidak ada yang bisa dijual atau didukung — dan
-**severity insiden**, tanpanya tidak ada SLA yang bisa dijanjikan.
+**severity insiden**, tanpanya tidak ada SLA yang bisa dijanjikan. ✅ Severity
+insiden disahkan 24 Okt 2026; 🔶 definisi GA belum.
 
-🔶 **Draf jawabannya ada (23 Okt 2026): [`docs/TATA-KELOLA.md`](../TATA-KELOLA.md)** — usulan angka per butir, menunggu pengesahan pemilik.
+✅ **Jawabannya SEBAGIAN DISAHKAN (24 Okt 2026): [`docs/TATA-KELOLA.md`](../TATA-KELOLA.md)** — draf 23 Okt 2026; disahkan pemilik 24 Okt 2026: SLO, tingkat insiden, deprecation, retensi, on-premise. 🔶 Masih menunggu: definisi GA, kontak insiden & surel keamanan, salinan cadangan bulanan luar-server, DPA.
 
 ⚠ **Delapan sisanya KEBIJAKAN, bukan kode — dan itu sebabnya ia tidak
 dikerjakan di sini.** Jendela dukungan, retensi data, severity insiden, sasaran

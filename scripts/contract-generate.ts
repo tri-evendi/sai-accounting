@@ -253,12 +253,28 @@ interface LaneAlarm {
  * adalah satu baris yang kebetulan, bukan sebaran (09 §11).
  */
 const ALARM_MIN_SAMPLES = 200;
+/**
+ * SLO durasi satu jalur — SASARAN yang DISAHKAN pemilik (docs/TATA-KELOLA.md
+ * §2), BUKAN ambang yang diturunkan dari data seperti `alarm:`. Karena itu ia
+ * tidak menuntut `samples`: janjinya ada sebelum datanya, dan justru datanya
+ * yang dinilai terhadap janji itu (09 §11). Hanya TypeScript yang membacanya —
+ * penilainya konsol operator; Go tidak menilai SLO.
+ */
+interface LaneSlo {
+  /** p95 `started_at → finished_at` jalur ini wajib di bawah angka ini. */
+  duration_p95_ms: number;
+  /** Jendela sasarannya (hari bergulir) seperti yang disahkan. */
+  window_days: number;
+  /** Tanggal pengesahan, `"YYYY-MM-DD"` (dikutip — js-yaml mengubah tanggal polos jadi `Date`). */
+  decided: string;
+}
 interface Lane {
   description: string;
   single_instance: boolean;
   /** Pagar memori per pekerjaan (MiB heap Go); tanpa kunci = tanpa pagar. */
   memory_fence_mib?: number;
   alarm?: LaneAlarm;
+  slo?: LaneSlo;
 }
 /** Butir kunci idempotensi denyut — SELALU UTC. */
 const SCHEDULE_GRAINS = ["hour", "day"] as const;
@@ -460,6 +476,17 @@ function baca(): Kontrak {
       }
       if (typeof a.window !== "string" || !/^\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}$/.test(a.window)) {
         salah.push(`jalur \`${nama}\`: alarm.window harus \`YYYY-MM-DD/YYYY-MM-DD\` (kini: ${String(a.window)})`);
+      }
+    }
+    const slo = lane.slo;
+    if (slo !== undefined) {
+      for (const kunci of ["duration_p95_ms", "window_days"] as const) {
+        if (!Number.isInteger(slo[kunci]) || slo[kunci] < 1) {
+          salah.push(`jalur \`${nama}\`: slo.${kunci} harus bilangan bulat ≥ 1 (kini: ${String(slo[kunci])})`);
+        }
+      }
+      if (typeof slo.decided !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(slo.decided)) {
+        salah.push(`jalur \`${nama}\`: slo.decided harus teks \`"YYYY-MM-DD"\` (dikutip) (kini: ${String(slo.decided)})`);
       }
     }
   }
@@ -680,7 +707,12 @@ function bangkitkan(k: Kontrak): string {
         `  ${nama}: {\n    singleInstance: ${d.single_instance === true},\n` +
         `    memoryFenceMiB: ${d.memory_fence_mib ?? 0},\n` +
         `    alarm: { queueAgeWarnSeconds: ${a.warn}, queueAgeLateSeconds: ${a.late}, ` +
-        `durationP95WarnMs: ${a.durasiMs ?? "null"}, measured: ${a.terukur}, samples: ${a.sampel} },\n  },`
+        `durationP95WarnMs: ${a.durasiMs ?? "null"}, measured: ${a.terukur}, samples: ${a.sampel} },\n` +
+        `    slo: ${
+          d.slo === undefined
+            ? "null"
+            : `{ durationP95Ms: ${d.slo.duration_p95_ms}, windowDays: ${d.slo.window_days}, decided: "${d.slo.decided}" }`
+        },\n  },`
       );
     })
     .join("\n");
@@ -742,12 +774,28 @@ export interface JobLaneAlarm {
   samples: number;
 }
 
+/**
+ * SLO durasi satu jalur (09 §11, TATA-KELOLA §2) — SASARAN yang disahkan,
+ * bukan ambang turunan data: tidak menuntut sampel untuk ADA, tetapi vonisnya
+ * menuntut sampel (\`sloVerdict\` di \`@sai/core/queue-health\`).
+ */
+export interface JobLaneSlo {
+  /** p95 \`started_at → finished_at\` wajib di bawah angka ini. */
+  durationP95Ms: number;
+  /** Jendela sasaran yang disahkan (hari bergulir). */
+  windowDays: number;
+  /** Tanggal pengesahan, YYYY-MM-DD. */
+  decided: string;
+}
+
 export interface JobLaneSpec {
   /** Lebih dari satu proses jalur ini adalah kesalahan konfigurasi. */
   singleInstance: boolean;
   /** Pagar memori per pekerjaan, MiB heap; 0 = tanpa pagar. */
   memoryFenceMiB: number;
   alarm: JobLaneAlarm;
+  /** SLO durasi yang disahkan pemilik (TATA-KELOLA §2); \`null\` = jalur tanpa janji. */
+  slo: JobLaneSlo | null;
 }
 
 export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {

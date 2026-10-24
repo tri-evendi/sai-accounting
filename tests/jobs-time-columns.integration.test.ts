@@ -48,6 +48,7 @@ jalan(`jam kolom jobs — sesi ${SESI}, proses ${process.env.TZ ?? "(bawaan)"}`,
   let db: Client;
   let q: typeof import("@sai/platform/job-queue");
   let m: typeof import("@sai/platform/job-metrics");
+  let dur: typeof import("@sai/platform/job-durations");
 
   beforeAll(async () => {
     const u = new URL(URL_UJI);
@@ -70,6 +71,7 @@ jalan(`jam kolom jobs — sesi ${SESI}, proses ${process.env.TZ ?? "(bawaan)"}`,
     process.env.CONTROL_DATABASE_URL = u.toString();
     q = await import("@sai/platform/job-queue");
     m = await import("@sai/platform/job-metrics");
+    dur = await import("@sai/platform/job-durations");
   }, 60_000);
 
   afterAll(async () => {
@@ -172,5 +174,95 @@ jalan(`jam kolom jobs — sesi ${SESI}, proses ${process.env.TZ ?? "(bawaan)"}`,
     await tanam("queued", "created_at", 2 * 3_600_000); // di luar jendela 15 menit
     const jalur = (await m.jobMetrics(15)).find((l) => l.lane === LANE)!;
     expect(jalur.publishedPerMin).toBeCloseTo(1 / 15, 2);
+  });
+
+  /* ── Durasi jalur Go (09 §11) ─────────────────────────────────────────────
+     SQL antrean Go diambil dari SUMBERNYA, `contract/jobs.sql` (yang
+     dibangkitkan `sqlc` ke `internal/controlsql`), lalu dijalankan apa adanya
+     dengan `sqlc.arg(x)` → `$n`. Yang dibuktikan: pekerjaan yang diklaim,
+     diperpanjang lease-nya, dan diselesaikan oleh SQL Go menghasilkan durasi
+     `started_at → finished_at` yang benar di `jobDurations` — bukan jarak dari
+     perpanjangan lease terakhir. */
+  const sqlGo = (nama: string, urutan: string[]): string => {
+    const isi = readFileSync(join(AKAR_REPO, "contract", "jobs.sql"), "utf8");
+    const awal = isi.indexOf(`-- name: ${nama} `);
+    const blok = isi.slice(awal, isi.indexOf(";", awal) + 1);
+    let teks = blok
+      .split("\n")
+      .filter((l) => !l.trimStart().startsWith("--"))
+      .join("\n");
+    urutan.forEach((arg, i) => {
+      teks = teks.replace(new RegExp(`sqlc\\.arg\\(${arg}\\)`, "g"), `$${i + 1}`);
+    });
+    return teks;
+  };
+  const tidur = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  it("jobDurations: pekerjaan yang diklaim & diselesaikan SQL Go terukur dari started_at", async () => {
+    await db.query(`TRUNCATE jobs RESTART IDENTITY`);
+    const KIND_GO = "report.export_go";
+    await db.query(`INSERT INTO jobs (kind, payload, status, updated_at) VALUES ($1, '{}'::jsonb, 'queued', now())`, [
+      KIND_GO,
+    ]);
+    const klaim = await db.query<{ id: number }>(sqlGo("ClaimJob", ["worker_id", "kinds"]), ["pekerja-go", [KIND_GO]]);
+    const id = klaim.rows[0]!.id;
+    await tidur(400);
+    /* Perpanjangan lease menggeser `claimed_at` — dan TIDAK boleh menyentuh `started_at`. */
+    expect((await db.query(sqlGo("RenewLease", ["id", "worker_id"]), [id, "pekerja-go"])).rowCount).toBe(1);
+    await tidur(200);
+    expect(
+      (await db.query(sqlGo("CompleteJob", ["result_ref", "id", "worker_id"]), ["hasil/x", id, "pekerja-go"])).rowCount
+    ).toBe(1);
+
+    const r = await db.query<{ dari_mulai: number; dari_klaim: number }>(
+      `SELECT EXTRACT(EPOCH FROM (finished_at - started_at)) * 1000 AS dari_mulai,
+              EXTRACT(EPOCH FROM (finished_at - claimed_at)) * 1000 AS dari_klaim
+         FROM jobs WHERE id = $1`,
+      [id]
+    );
+    expect(Number(r.rows[0]!.dari_mulai)).toBeGreaterThanOrEqual(550);
+    expect(Number(r.rows[0]!.dari_klaim)).toBeLessThan(450);
+
+    const { rows } = await dur.jobDurations();
+    const goKind = rows.find((d) => d.kind === KIND_GO)!;
+    expect(goKind.lane).toBe("interactive");
+    expect(goKind.samples).toBe(1);
+    expect(goKind.p95Ms!).toBeGreaterThanOrEqual(550);
+    expect(goKind.p95Ms!).toBeLessThan(5_000);
+    expect(goKind.maxMs).toBe(goKind.p95Ms);
+  });
+
+  it("jobDurations: p95 jalur atas GABUNGAN Node + Go, hitungan di atas SLO, dan jendela harian", async () => {
+    await db.query(`TRUNCATE jobs RESTART IDENTITY`);
+    const tanamDurasi = (kind: string, ms: number, selesaiMundurJam = 1) =>
+      db.query(
+        `INSERT INTO jobs (kind, payload, status, updated_at, started_at, finished_at)
+         VALUES ($1, '{}'::jsonb, 'done', now(),
+                 now() - $3::int * interval '1 hour' - $2::bigint * interval '1 millisecond',
+                 now() - $3::int * interval '1 hour')`,
+        [kind, ms, selesaiMundurJam]
+      );
+    for (let i = 0; i < 19; i++) await tanamDurasi("report.export", 1_000);
+    await tanamDurasi("report.export_go", 20_000);
+    /* Di luar retensi (15 hari) — tidak boleh ikut. */
+    await tanamDurasi("report.export_go", 90_000, 15 * 24);
+    /* Baris tanpa `started_at` (sebelum migration 0007) dibuang. */
+    await db.query(
+      `INSERT INTO jobs (kind, payload, status, updated_at, finished_at) VALUES ('report.export', '{}'::jsonb, 'done', now(), now())`
+    );
+
+    const hasil = await dur.jobDurations();
+    expect(hasil.windowDays).toBe(DONE_RETENTION_DAYS);
+    const gabungan = hasil.rows.find((d) => d.lane === "interactive" && d.kind === null)!;
+    expect(gabungan.samples).toBe(20);
+    expect(gabungan.maxMs).toBe(20_000);
+    expect(gabungan.overSlo).toBe(1);
+    /* percentile_cont(0,95) atas 19 × 1000 + 1 × 20000 = 1000 + 0,05 × 19000. */
+    expect(gabungan.p95Ms).toBe(1_950);
+    const go = hasil.rows.find((d) => d.kind === "report.export_go")!;
+    expect(go.samples).toBe(1);
+    expect(go.p95Ms).toBe(20_000);
+    /* Jalur yang tidak menjalankan apa pun tetap ada, tanpa angka karangan. */
+    expect(hasil.rows.find((d) => d.lane === "tenant" && d.kind === null)).toMatchObject({ samples: 0, p95Ms: null });
   });
 });

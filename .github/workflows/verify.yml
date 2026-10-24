@@ -39,13 +39,12 @@
 name: Verify
 
 on:
+  # Only on promotion PRs into `main` (owner decision, 24 Oct 2026): merges into
+  # `develop` no longer wait for CI, so the main session runs `bun run verify`
+  # (and the Go gates) before every release instead. `main` keeps `verify` as a
+  # required status check, so nothing reaches production images unchecked.
   pull_request:
-  push:
-    # `develop` supaya merge-ke-develop tetap terperiksa walau lewat jalur yang
-    # tidak membuka PR. `main` supaya promosi ikut terperiksa — ia memang
-    # sesudah merge, tapi sebuah kegagalan di sana adalah kabar yang tetap kita
-    # mau dengar (dan `publish-image.yml` berjalan di commit yang sama).
-    branches: [develop, main]
+    branches: [main]
 
 # Dorongan beruntun ke cabang yang sama membatalkan jalan yang masih berjalan.
 # Tanpa ini, lima commit dalam sepuluh menit memakai lima kali waktu runner

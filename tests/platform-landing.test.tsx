@@ -34,6 +34,7 @@ import { akarSumber, relSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
+import { tenantExportRunner } from "@/lib/tenant-export-job";
 
 import { LocaleProvider } from "@sai/core/i18n/client";
 import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
@@ -490,7 +491,9 @@ describe("owner — melihat kuota, perusahaan, langganan, paket, dan privasi", (
   it("halaman privasi membawa ekspor dan permintaan penghapusan", async () => {
     const html = await render(PrivacyPage);
     expect(html).toContain(T("tenantSettings.privacyHeading"));
-    expect(html).toContain(T("tenantSettings.exportButton"));
+    // The export button follows the `runner:` switch of `tenant.data_export`:
+    // `node` = direct sync download, `go` = request a job, then a download link.
+    expect(html).toContain(T(tenantExportRunner() === "go" ? "tenantSettings.exportRequestButton" : "tenantSettings.exportButton"));
     expect(html).toContain(T("tenantSettings.deletionRequestButton"));
   });
 

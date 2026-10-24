@@ -769,6 +769,8 @@ wait; the next release that has the relay publishes them.
 
 ### Ekspor data mandiri — switching the tenant data export from TS (sync) to Go (bulk lane) (Oct 2026)
 
+> **Switched to `go` on 24 Oct 2026** (0.21.1). Production parity on 0.21.0, read-only: 11 tenants × 1 export — 11 equal · 0 differing · 0 failed; 1,111 files identical byte for byte (largest: `pt-sai`, 194 files, 27,832 rows). Swap `svc-integrator` before `app-customer`, as below.
+
 The tenant self-service export (#142, UU PDP access right: one ZIP with a CSV
 per table of every company of the tenant + the uploaded documents) has two
 implementations: `src/lib/tenant-export.ts`, streamed synchronously by

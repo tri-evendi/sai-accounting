@@ -108,7 +108,7 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 	if len(o.Cacah.Hilang) > 0 {
 		return nil, fmt.Errorf(
 			"%d basis data TERDAFTAR tidak ada di server: %s — putaran dihentikan "+
-				"sebelum satu objek pun dikirim, sebab cadangan yang kehilangan satu PT "+
+				"sebelum satu objek pun dikirim, sebab cadangan yang kehilangan satu perusahaan "+
 				"adalah cadangan yang gagal untuk customer itu",
 			len(o.Cacah.Hilang), strings.Join(o.Cacah.Hilang, ", "))
 	}
@@ -152,7 +152,7 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 	putaran := NamaPutaran(o.Prefix, o.Saat)
 	o.catat("putaran %s → %s (%d basis data)", putaran, o.Tujuan.Nama(), len(dicadangkan))
 	for _, g := range gagal {
-		o.catat("✗ instans %s GAGAL (%d PT tanpa salinan putaran ini): %s", g.Kunci, len(g.Basis), g.Sebab)
+		o.catat("✗ instans %s GAGAL (%d perusahaan tanpa salinan putaran ini): %s", g.Kunci, len(g.Basis), g.Sebab)
 	}
 
 	kerja := filepath.Join(o.DirKerja, putaran)
@@ -509,7 +509,7 @@ type GalatInstans struct {
 func (g *GalatInstans) Error() string {
 	bagian := make([]string, 0, len(g.Gagal))
 	for _, x := range g.Gagal {
-		bagian = append(bagian, fmt.Sprintf("%s (%d PT: %s): %s",
+		bagian = append(bagian, fmt.Sprintf("%s (%d perusahaan: %s): %s",
 			x.Kunci, len(x.Basis), strings.Join(x.Basis, ", "), x.Sebab))
 	}
 	return fmt.Sprintf(

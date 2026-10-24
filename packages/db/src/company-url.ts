@@ -121,7 +121,7 @@ export function instanceTemplateUrl(instance: DbInstanceRef | null, env: Env = p
   if (!raw) {
     throw new DbInstanceResolutionError(
       `Instans basis data "${instance.key}" terdaftar, tetapi ${instance.urlEnvVar} ` +
-        "tidak diset di environment proses ini. Buku PT di instans itu TIDAK dibuka " +
+        "tidak diset di environment proses ini. Buku perusahaan di instans itu TIDAK dibuka " +
         "di server bawaan sebagai gantinya — di sana mungkin masih ada salinan lamanya."
     );
   }

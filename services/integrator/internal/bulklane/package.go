@@ -167,7 +167,7 @@ func tungguAnak(ctx context.Context, q pembacaAnak, id int64, companyID *int32, 
 			return "", fmt.Errorf("pekerjaan #%d berjenis %s, bukan %s", id, o.Kind, contract.KindReportPackagePdf)
 		}
 		if o.CompanyID == nil || companyID == nil || *o.CompanyID != *companyID {
-			return "", fmt.Errorf("pekerjaan #%d bukan milik PT paket ini", id)
+			return "", fmt.Errorf("pekerjaan #%d bukan milik perusahaan paket ini", id)
 		}
 		switch o.Status {
 		case contract.StatusDone:

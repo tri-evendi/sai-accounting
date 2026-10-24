@@ -149,7 +149,7 @@ func handlerEkspor(kolam *pgxpool.Pool, hasilRoot, dokumenRoot string, pelaksana
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("[bulk] #%d ekspor tenant %s: %d PT · %d tabel · %d baris · %d dokumen (%d tak ditemukan)",
+		log.Printf("[bulk] #%d ekspor tenant %s: %d perusahaan · %d tabel · %d baris · %d dokumen (%d tak ditemukan)",
 			c.Job.ID, tenant.Slug, sum.Companies, sum.Tables, sum.Rows, sum.Documents, sum.Missing)
 		_ = c.Progress(100)
 		return &ref, nil

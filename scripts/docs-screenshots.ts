@@ -57,7 +57,8 @@ const USER = process.env.DOCS_USER ?? "budi";
 const PASSWORD = process.env.DOCS_PASSWORD ?? "";
 const TENANT = process.env.DOCS_TENANT ?? "grup-sentosa";
 const COMPANY = process.env.DOCS_COMPANY ?? "niaga-sentosa";
-/** PT contoh berjenis manufaktur (demo-seed) — untuk layar produksi. */
+/** Perusahaan contoh ketiga (demo-seed): layar produksi, dan — sebagai CV —
+ *  layar bentuk usaha, modal per sekutu, dan PPh Final UMKM. */
 const COMPANY_PABRIK = process.env.DOCS_COMPANY_FACTORY ?? "bangun-karya";
 /** PT contoh kedua — dipakai untuk memotret layar "Buka buku" yang belum dibuka. */
 const COMPANY_KEDUA = process.env.DOCS_COMPANY_SECOND ?? "distribusi-nusantara";
@@ -109,6 +110,48 @@ async function klik(page: Page, nama: string | RegExp): Promise<void> {
   await page.getByRole("button", { name: nama }).first().click();
 }
 
+/** Pilih satu opsi di Select AntD (`@sai/ui/select`) yang ber-`id` itu. */
+async function pilihOpsi(page: Page, id: string, label: string): Promise<void> {
+  await page.locator(".ant-select").filter({ has: page.locator(`#${id}`) }).first().click();
+  await page
+    .locator(".ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option")
+    .filter({ hasText: label })
+    .first()
+    .click();
+}
+
+/** Gulir sampai elemen berada di atas viewport (di bawah bilah atas yang menempel). */
+async function gulirKe(page: Page, selector: string): Promise<void> {
+  await page.locator(selector).first().evaluate((el) => {
+    el.scrollIntoView({ block: "start" });
+    window.scrollBy(0, -88);
+  });
+}
+
+/**
+ * Profil usaha CV contoh: identitas legal FIKTIF + PPh Final menyala sejak
+ * 2023 (CV: batas 4 tahun pajak → 2026 tahun terakhir, jadi pengingatnya
+ * tampil). MENYIMPAN — resep laporan PPh Final sesudahnya membaca setelan ini.
+ */
+async function isiProfilUsaha(page: Page): Promise<void> {
+  await page.locator("#bp-nib").fill("9120301234567");
+  await page.locator("#bp-deed").fill("12");
+  await page.locator("#bp-decree").fill("AHU-0001234-AH.01.16 Tahun 2021");
+  await page.locator("#bp-established").fill("2021-03-03");
+  await klik(page, /Simpan identitas/);
+  await page.waitForTimeout(800);
+  await page.getByLabel(/Memakai PPh Final/).check();
+  await page.locator("#bp-pph-start").fill("2023");
+  await klik(page, /Simpan PPh Final/);
+  /* Tunggu kedua toast "Profil usaha disimpan." hilang sebelum memotret. */
+  await page
+    .getByText("Profil usaha disimpan.")
+    .first()
+    .waitFor({ state: "detached", timeout: 15_000 })
+    .catch(() => undefined);
+  await page.waitForTimeout(1500);
+}
+
 const RESEP: Resep[] = [
   /* ── 1. Autentikasi ─────────────────────────────────────────────────── */
   { nama: "auth/login", sesi: "anonim", buka: "/login" },
@@ -156,7 +199,8 @@ const RESEP: Resep[] = [
     sesi: "pemilik",
     buka: "/companies/new",
     siapkan: async (page) => {
-      await page.locator("input").first().fill("PT Sinar Contoh Abadi");
+      await page.locator("input").first().fill("CV Sinar Contoh Abadi");
+      await pilihOpsi(page, "company-legal-form", "Persekutuan Komanditer (CV)");
     },
   },
   { nama: "tenant/hanya-baca", sesi: "beku", buka: "/platform" },
@@ -185,6 +229,38 @@ const RESEP: Resep[] = [
   { nama: "perusahaan/pengaturan", sesi: "pemilik", buka: c("/settings") },
   { nama: "perusahaan/modul-usaha", sesi: "pemilik", buka: c("/modules") },
   { nama: "perusahaan/setup", sesi: "pemilik", buka: c("/setup", COMPANY_BARU) },
+  {
+    /* Bentuk usaha CV di langkah Identitas — hanya diisi di layar, tidak
+       disimpan: bentuk usaha baru diterapkan saat langkah berikutnya. */
+    nama: "perusahaan/setup-sekutu-cv",
+    sesi: "pemilik",
+    buka: c("/setup", COMPANY_BARU),
+    siapkan: async (page) => {
+      await pilihOpsi(page, "legal-form", "Persekutuan Komanditer (CV)");
+      await page.locator("#setup-partner-name-1").fill("Andi Pratama");
+      await page.locator("#setup-partner-share-1").fill("70");
+      await page.locator("#setup-partner-name-2").fill("Sari Wulandari");
+      await page.locator("#setup-partner-share-2").fill("30");
+      await gulirKe(page, "#npwp");
+    },
+  },
+  {
+    nama: "perusahaan/bentuk-usaha",
+    sesi: "pemilik",
+    buka: c("/settings", COMPANY_PABRIK),
+    siapkan: async (page) => {
+      await gulirKe(page, "#legal-form");
+    },
+  },
+  {
+    nama: "perusahaan/profil-usaha",
+    sesi: "pemilik",
+    buka: c("/settings", COMPANY_PABRIK),
+    siapkan: async (page) => {
+      await isiProfilUsaha(page);
+      await gulirKe(page, "#business-profile");
+    },
+  },
   { nama: "perusahaan/impor-data-awal", sesi: "pemilik", buka: c("/master/import") },
   { nama: "perusahaan/pengguna", sesi: "pemilik", buka: c("/users") },
   {
@@ -270,7 +346,22 @@ const RESEP: Resep[] = [
   { nama: "laporan/laba-rugi", sesi: "pemilik", buka: c("/reports/income-statement") },
   { nama: "laporan/neraca", sesi: "pemilik", buka: c("/reports/balance-sheet") },
   { nama: "laporan/anggaran", sesi: "pemilik", buka: c("/budget") },
+  {
+    /* Rincian per pemilik hanya ada di buku CV/Firma/perorangan. */
+    nama: "laporan/perubahan-ekuitas-pemilik",
+    sesi: "pemilik",
+    buka: c("/reports/equity-changes", COMPANY_PABRIK),
+    siapkan: async (page) => {
+      await gulirKe(page, "h2:has-text('Rincian Modal per Pemilik')");
+    },
+  },
   { nama: "pajak/efaktur", sesi: "pemilik", buka: c("/tax/efaktur") },
+  {
+    /* Sesudah `perusahaan/profil-usaha`, yang menyalakan PPh Final CV contoh. */
+    nama: "pajak/pph-final-umkm",
+    sesi: "pemilik",
+    buka: c("/tax/pph-final-umkm", COMPANY_PABRIK),
+  },
   { nama: "akuntansi/jurnal", sesi: "pemilik", buka: c("/journal") },
   { nama: "akuntansi/buku-besar", sesi: "pemilik", buka: c("/ledger") },
   { nama: "akuntansi/daftar-akun", sesi: "pemilik", buka: c("/accounts") },

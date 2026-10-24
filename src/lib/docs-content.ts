@@ -281,10 +281,37 @@ const PERIODE: readonly DocBlock[] = [
     butir: [
       "Bulan sebelumnya yang masih terbuka diberi peringatan: tutuplah berurutan.",
       "Buka Kembali Periode menuntut alasan (minimal lima karakter) dan tercatat di jejak audit.",
-      "Halaman yang sama memuat Revaluasi saldo valas (jurnal akhir bulan yang dibalik otomatis tanggal 1) dan Tutup buku tahunan, yang butuh akun Laba Ditahan sudah dipetakan.",
+      "Halaman yang sama memuat Revaluasi saldo valas (jurnal akhir bulan yang dibalik otomatis tanggal 1) dan Tutup buku tahunan.",
+    ],
+  },
+  { kind: "sub", judul: "Tutup buku tahunan: ke mana laba pergi" },
+  {
+    kind: "paragraf",
+    teks:
+      "Tutup buku tahunan menolkan setiap akun pendapatan dan beban dengan satu jurnal penutup bertanggal akhir tahun buku, lalu memindahkan laba (atau rugi) tahun itu ke ekuitas. Laba Rugi tahun itu tidak berubah karenanya. Tahun buku baru bisa ditutup sesudah tahun itu berakhir; sebelumnya, Lihat dampaknya tetap boleh dibaca sebagai laba sementara. Ke mana labanya pergi bergantung pada bentuk usaha perusahaan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "PT, PT Perorangan, dan Lainnya — seluruh laba ke akun yang dipetakan sebagai Laba Ditahan (biasanya 3102). Tanpa pemetaan itu, penutupan ditolak sampai Anda menunjuknya di Pengaturan → Pemetaan Akun.",
+      "CV, Firma, dan usaha perorangan — laba dibagi ke akun Modal setiap sekutu AKTIF menurut porsinya, lalu Prive setiap sekutu ditutup ke modalnya sendiri (debit Modal, kredit Prive), supaya tahun berikutnya mulai dari nol. Usaha perorangan adalah kasus satu pemilik dengan porsi 100%. Bagian laba dan penutupan prive ditulis sebagai baris terpisah di jurnal yang sama.",
+    ],
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Pembagiannya dihitung dalam sen bulat dan selalu berjumlah tepat sebesar laba: bagian tiap sekutu dipotong (bukan dibulatkan) ke sen, lalu sisa beberapa sen diberikan kepada sekutu berporsi TERBESAR — bila ada yang sama besar, kepada yang terdaftar paling awal. Contoh: laba Rp 1.000,01 dibagi dua sekutu 50% : 50% menjadi Rp 500,01 untuk sekutu pertama dan Rp 500,00 untuk sekutu kedua. Aturan yang sama berlaku untuk rugi, dengan tanda sebaliknya.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Pratinjau penutupan CV, Firma, dan usaha perorangan memuat tabel per pemilik/sekutu: porsi, bagian laba/rugi, dan prive yang ditutup — angka yang biasanya ditanyakan sekutu.",
+      "Penutupan ditolak bila belum ada pemilik/sekutu aktif, atau bila porsi sekutu aktif tidak berjumlah 100%. Perbaiki di Pengaturan → Bentuk usaha, lalu ulangi.",
+      "Porsi yang dipakai tercatat di jejak audit penutupan. Mengubah porsi sesudahnya hanya berlaku untuk tutup buku berikutnya.",
     ],
   },
     { kind: "istilah", kunci: ["tutup_periode", "saldo_awal"] },
+    { kind: "lihat-juga", slug: ["bentuk-usaha", "membaca-laporan"] },
   ];
 
 const PERSETUJUAN: readonly DocBlock[] = [
@@ -786,10 +813,10 @@ const SALDO_AWAL: readonly DocBlock[] = [
   {
     kind: "langkah",
     butir: [
-      "Identitas — nama, alamat, NPWP, dan apakah perusahaan PKP.",
+      "Identitas — nama, alamat, NPWP, bentuk usaha (beserta sekutu untuk CV/Firma atau nama pemilik untuk usaha perorangan), dan apakah perusahaan PKP.",
       "Modul Usaha — pilih kategori usaha.",
       "Mata Uang & Tahun Buku.",
-      "Bagan Akun — terima bagan bawaan atau sesuaikan.",
+      "Bagan Akun — terima bagan bawaan atau sesuaikan. Akun ekuitasnya mengikuti bentuk usaha, dan bagan akun sudah dibuat begitu Anda meninggalkan langkah Modul Usaha — sejak itu bentuk usaha di wisaya terkunci.",
       "Saldo Awal — kas & bank, piutang per pelanggan, persediaan per barang, utang per pemasok; aset tetap lewat berkas. Pilih Mulai tanpa saldo awal bila memang belum ada.",
       "Tinjau, lalu Simpan & Selesai: satu jurnal saldo awal yang seimbang lahir, dan Anda bisa langsung mulai bekerja.",
     ],
@@ -797,7 +824,12 @@ const SALDO_AWAL: readonly DocBlock[] = [
   {
     kind: "gambar",
     berkas: "perusahaan/setup",
-    alt: "Wisaya Setup Perusahaan & Saldo Awal langkah 1 dari 6, Identitas, dengan nama perusahaan contoh, alamat, NPWP, dan centang PKP.",
+    alt: "Wisaya Setup Perusahaan & Saldo Awal langkah 1 dari 6, Identitas, dengan nama perusahaan contoh, alamat, NPWP, dan Bentuk usaha Perseroan Terbatas (PT) beserta keterangan akun ekuitasnya.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Selisih saldo awal — aset dikurangi kewajiban — masuk ke akun modal: 3101 Modal untuk PT, 3101 Modal Pemilik untuk usaha perorangan, dan 3101 Modal Belum Dibagi untuk CV dan Firma, yang kemudian dibagi ke modal tiap sekutu dengan jurnal umum. Rinciannya di halaman Bentuk usaha dan modal pemilik.",
   },
   {
     kind: "paragraf",
@@ -810,7 +842,173 @@ const SALDO_AWAL: readonly DocBlock[] = [
     alt: "Halaman Impor Data Awal dengan langkah unduh templat Pelanggan dan langkah unggah berkas yang sudah diisi.",
   },
     { kind: "istilah", kunci: ["saldo_awal", "neraca"] },
+    { kind: "lihat-juga", slug: ["bentuk-usaha"] },
   ];
+
+const BENTUK_USAHA: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Bentuk usaha bukan sekadar label di kop surat. Ia menjawab satu pertanyaan akuntansi: laba ini MILIK SIAPA. Laba sebuah PT milik perseroan sampai dibagikan sebagai dividen, jadi ia ditahan di akun Laba Ditahan. Laba sebuah CV atau firma langsung milik para sekutunya menurut porsi di akta, jadi ia masuk ke modal masing-masing sekutu. Laba usaha perorangan milik satu orang, jadi ia menambah Modal Pemilik.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Karena itu bentuk usaha menentukan dua hal di aplikasi ini: akun ekuitas yang disiapkan saat bagan akun dibuat, dan ke mana tutup buku tahunan memindahkan laba. Penarikan pribadi pemilik — prive — juga dicatat terpisah per orang, sebab prive mengurangi modal pemiliknya, bukan beban perusahaan.",
+  },
+  { kind: "sub", judul: "Enam pilihan, tiga perlakuan ekuitas" },
+  {
+    kind: "poin",
+    butir: [
+      "Perseroan Terbatas (PT), PT Perorangan, dan Lainnya — akun 3101 Modal dan 3102 Laba Ditahan. Tutup buku tahunan memindahkan laba ke akun yang dipetakan sebagai Laba Ditahan. “Lainnya” (mis. koperasi atau yayasan) diperlakukan seperti PT; pemetaan akunnya tetap bisa Anda atur sendiri.",
+      "Persekutuan Komanditer (CV) dan Firma — akun 3101 Modal Belum Dibagi, induk 3110 Modal Sekutu dengan satu akun “Modal <nama>” per sekutu (311001, 311002, …), dan induk 3120 Prive Sekutu dengan satu akun “Prive <nama>” per sekutu (312001, 312002, …). Tidak ada Laba Ditahan.",
+      "Usaha Perorangan (UD) — akun 3101 Modal Pemilik dan 3103 Prive Pemilik. Tidak ada Laba Ditahan.",
+    ],
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Perusahaan yang sudah ada sebelum pilihan ini tersedia tercatat sebagai PT. Tidak ada satu angka pun di bukunya yang berubah.",
+  },
+  { kind: "sub", judul: "Memilih bentuk usaha dan mengisi sekutu" },
+  {
+    kind: "paragraf",
+    teks:
+      "Bentuk usaha dipilih di formulir Tambah Perusahaan (bawaannya PT) dan bisa diganti di langkah Identitas wisaya penyiapan. Di langkah yang sama, CV dan Firma mengisi daftar sekutu; usaha perorangan mengisi nama pemilik. Nama itu menjadi nama akun Modal dan Prive di laporan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "CV: sedikitnya satu sekutu aktif dan satu sekutu komanditer, masing-masing dengan porsi laba sesuai akta.",
+      "Firma: sedikitnya dua sekutu. Peran tidak dibedakan — semua sekutu firma adalah sekutu aktif.",
+      "Porsi laba seluruh sekutu harus tepat 100% (boleh dua desimal, mis. 33,33). Jumlahnya tampil langsung di bawah daftar, hijau bila sudah 100%.",
+      "Nama sekutu tidak boleh kosong atau sama.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/setup-sekutu-cv",
+    alt: "Langkah Identitas wisaya penyiapan dengan Bentuk usaha Persekutuan Komanditer (CV), dua sekutu contoh — Andi Pratama sekutu aktif 70% dan Sari Wulandari sekutu komanditer 30% — dan keterangan Jumlah porsi 100%.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Begitu Anda meninggalkan langkah Modul Usaha, bagan akun — termasuk akun ekuitasnya — dibuat, dan bentuk usaha serta daftar sekutu di wisaya TERKUNCI. Perubahan sesudahnya lewat Pengaturan → Bentuk usaha, yang tidak membuat ulang bagan akun.",
+    nada: "peringatan",
+  },
+  { kind: "sub", judul: "Modal Belum Dibagi pada saldo awal CV dan Firma" },
+  {
+    kind: "paragraf",
+    teks:
+      "Saldo awal selalu menyisakan selisih aset dikurangi kewajiban, dan selisih itu adalah modal pemilik. Pada CV dan Firma, aplikasi tidak tahu berapa bagian tiap sekutu dalam modal awal itu — porsi LABA di akta belum tentu sama dengan porsi setoran modal. Karena itu selisihnya diparkir terang-terangan di 3101 Modal Belum Dibagi.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Bagilah dengan satu jurnal umum oleh orang yang tahu angkanya: debit 3101 Modal Belum Dibagi, kredit Modal <nama> masing-masing sekutu. Selama belum dibagi, rincian modal per pemilik di Laporan Perubahan Ekuitas tidak memuat modal awal itu.",
+  },
+  { kind: "sub", judul: "Mengatur sekutu sesudah buku berjalan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Kartu Bentuk usaha di Pengaturan menampilkan bentuk usaha, daftar sekutu beserta peran dan porsinya, serta kode akun Modal dan Prive tiap sekutu. Kartu ini hanya tampil untuk peran yang berwenang mengatur perusahaan.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Buka Bantuan & Pengaturan → Pengaturan, lalu gulir ke kartu Bentuk usaha.",
+      "Ubah nama, peran, atau porsi; tekan Tambah sekutu untuk sekutu baru, atau ikon tempat sampah untuk mengeluarkan seorang sekutu.",
+      "Pastikan Jumlah porsi tepat 100%, lalu tekan Simpan sekutu. Seluruh daftar disimpan sekaligus.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/bentuk-usaha",
+    alt: "Kartu Bentuk usaha di Pengaturan untuk CV contoh: bentuk usaha Persekutuan Komanditer (CV), sekutu Hendra Wijaya sekutu aktif 60% dan Lestari Putri sekutu komanditer 40%, jumlah porsi 100%, kode akun modal dan prive 311001/312001 dan 311002/312002, serta tombol Simpan sekutu.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Sekutu baru otomatis mendapat akun Modal dan Prive sendiri, bernomor berikutnya di bawah 3110 dan 3120.",
+      "Sekutu yang dikeluarkan menjadi NONAKTIF, tidak dihapus: akun dan riwayatnya tetap ada dan tetap terbaca di laporan, dan kode akunnya tidak pernah dipakai ulang untuk orang lain. Sekutu nonaktif tidak ikut pembagian laba.",
+      "Porsi yang diubah berlaku untuk tutup buku BERIKUTNYA. Tahun yang sudah ditutup tidak berubah — porsi yang dipakai tercatat di jurnal penutup dan jejak audit penutupannya.",
+      "Setiap penambahan dan perubahan sekutu tercatat di jejak audit.",
+    ],
+  },
+  { kind: "sub", judul: "Mengganti bentuk usaha" },
+  {
+    kind: "paragraf",
+    teks:
+      "Usaha bisa berubah bentuk — CV yang menjadi PT, misalnya. Pilih bentuk baru di kartu Bentuk usaha lalu tekan Ganti bentuk usaha; dialog peringatan harus disetujui lebih dulu. Mengganti bentuk usaha TIDAK menulis ulang satu jurnal pun dan tidak mengubah bagan akun yang ada. Yang berubah hanya perlakuan ke depan: tutup buku tahunan berikutnya dan rincian Laporan Perubahan Ekuitas. Perubahannya tercatat di jejak audit, dari bentuk apa ke bentuk apa.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Batasan yang perlu Anda bereskan sendiri: saldo Modal dan Laba Ditahan yang sudah ada TIDAK dipindahkan ke akun sekutu atau pemilik. Sesudah mengganti PT menjadi CV, misalnya, isi daftar sekutu, lalu catat jurnal umum yang memindahkan saldo 3101 dan 3102 lama ke Modal <nama> masing-masing sekutu. Sebaliknya, buku yang lahir sebagai CV, Firma, atau usaha perorangan tidak punya 3102 Laba Ditahan — bila diganti menjadi PT, buat akunnya dan petakan di Pemetaan Akun sebelum menutup tahun buku.",
+    nada: "peringatan",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Sesudah berganti ke CV, Firma, atau usaha perorangan, isi daftar sekutu/pemilik. Sampai daftar itu diisi dan porsinya 100%, tutup buku tahunan menolak berjalan.",
+      "Sekutu atau pemilik yang ditambahkan lewat Pengaturan mendapat akun di bawah 3110 Modal Sekutu dan 3120 Prive Sekutu, apa pun bentuk usahanya.",
+      "Bila kode 3110 atau 3120 sudah dipakai akun yang bukan ekuitas, sekutu tidak bisa ditambahkan; atur akun modalnya lewat Daftar Akun.",
+    ],
+  },
+  { kind: "sub", judul: "Profil usaha: identitas legal" },
+  {
+    kind: "paragraf",
+    teks:
+      "Kartu Profil usaha di Pengaturan menyimpan identitas legal perusahaan: NIB (13 digit), nomor akta pendirian (untuk PT Perorangan: nomor pernyataan pendirian), nomor SK Kemenkumham, dan tanggal pendirian. Semuanya opsional dan disimpan dengan Simpan identitas.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Isian identitas legal saat ini hanya tersimpan di profil perusahaan. Dokumen cetak — faktur dan lainnya — masih memuat nama dan alamat perusahaan saja.",
+  },
+  {
+    kind: "gambar",
+    berkas: "perusahaan/profil-usaha",
+    alt: "Kartu Profil usaha di Pengaturan dengan NIB, nomor akta pendirian, nomor SK Kemenkumham, dan tanggal pendirian contoh, lalu bagian PPh Final UMKM yang dicentang dengan tahun pajak pertama 2023 dan pemberitahuan bahwa tahun pajak 2026 adalah tahun terakhir.",
+  },
+  { kind: "sub", judul: "Perkiraan PPh Final UMKM" },
+  {
+    kind: "paragraf",
+    teks:
+      "Usaha kecil boleh membayar PPh Final 0,5% dari peredaran bruto (PP 55/2022) selama peredaran brutonya tidak melebihi Rp 4,8 miliar setahun, dan hanya untuk beberapa tahun pajak. Aplikasi ini membantu MEMPERKIRAKAN angkanya per bulan dan mengingatkan batas waktunya. Ia tidak membuat jurnal, tidak menyetor, dan tidak melaporkan apa pun.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Di kartu Profil usaha, centang Memakai PPh Final 0,5% (PP 55/2022). Bawaannya tidak dicentang.",
+      "Isi Tahun pajak pertama memakai tarif ini — wajib selama sakelarnya menyala — lalu tekan Simpan PPh Final.",
+      "Buka Pusat Laporan → Pajak → Perkiraan PPh Final UMKM (PP 55/2022), atau tautan Buka perkiraan PPh Final di kartu yang sama, lalu pilih tahunnya.",
+    ],
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Batas waktu menurut bentuk usaha (PP 55/2022 Pasal 59 ayat 1): 7 tahun pajak untuk wajib pajak orang pribadi — usaha perorangan; 4 tahun pajak untuk CV, firma, koperasi, BUMDes, dan PT Perorangan; 3 tahun pajak untuk PT. Untuk “Lainnya” batas waktunya tidak dihitung.",
+      "Tahun terakhir = tahun pertama + masa − 1. CV yang mulai 2023 terakhir boleh memakai tarif ini pada tahun pajak 2026; laporan memberi pengingat pada tahun terakhir dan peringatan sesudahnya.",
+      "Peredaran bruto = mutasi bersih akun pendapatan usaha per bulan (penjualan dikurangi retur yang dicatat di akun pendapatan), tanpa pendapatan lain-lain dan tanpa jurnal tutup buku. Perkiraan pajaknya dibulatkan ke bawah ke rupiah penuh.",
+      "Usaha perorangan: peredaran bruto sampai Rp 500 juta setahun tidak dikenai PPh. Pembebasannya dihitung kumulatif sejak Januari, jadi bulan-bulan awal bisa nol.",
+      "Bila peredaran bruto setahun melewati Rp 4,8 miliar, laporan memperingatkan bahwa tarif ini tidak berlaku lagi mulai tahun pajak berikutnya.",
+      "Selama sakelarnya mati, laporan tetap bisa dibuka, dengan pemberitahuan bahwa angkanya hanya gambaran.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "pajak/pph-final-umkm",
+    alt: "Laporan Perkiraan PPh Final UMKM (PP 55/2022) tahun pajak 2026 untuk CV contoh, dengan catatan bahwa tidak ada jurnal yang dibuat, pengingat bahwa 2026 adalah tahun terakhir, dan tabel bulanan berisi peredaran bruto, kumulatif, dasar pengenaan, dan perkiraan PPh Final 0,5%.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Angka dan batas di layar ini adalah ringkasan PP 55/2022 dan PMK 164/2023 sebagaimana dipahami saat fitur ini ditulis — bukan nasihat pajak. Ketentuan perpajakan bisa berubah, termasuk perpanjangan untuk orang pribadi; periksa ketentuan terbaru atau tanyakan konsultan pajak Anda sebelum menyetor.",
+    nada: "peringatan",
+  },
+  { kind: "lihat-juga", slug: ["saldo-awal", "periode-terkunci", "membaca-laporan", "panel-akun"] },
+];
 
 const PERAN_IZIN: readonly DocBlock[] = [
     {
@@ -1204,6 +1402,32 @@ const LAPORAN: readonly DocBlock[] = [
     berkas: "laporan/neraca",
     alt: "Laporan Neraca per tanggal dengan ringkasan harta, utang, dan modal, serta rincian akun aset.",
   },
+  { kind: "sub", judul: "Perubahan Ekuitas: rincian modal per pemilik" },
+  {
+    kind: "paragraf",
+    teks:
+      "Pada CV, Firma, dan usaha perorangan, Laporan Perubahan Ekuitas memuat tabel kedua di bawah komponen ekuitas: Rincian Modal per Pemilik. Satu baris per pemilik/sekutu — namanya, peran, dan porsi labanya — dengan kolom Modal awal, Bagian laba/rugi, Setoran, Prive, dan Modal akhir. Tabel ini hanya muncul pada buku yang punya daftar pemilik/sekutu; buku PT tidak memilikinya.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Modal akhir = modal awal + bagian laba/rugi + setoran − prive. Angkanya gabungan akun Modal dan Prive milik orang itu.",
+      "Bagian laba/rugi datang dari jurnal tutup buku tahunan; setoran dan prive dari jurnal lainnya. Jurnal umum yang membagi Modal Belum Dibagi ke modal sekutu karena itu terbaca sebagai Setoran.",
+      "Tabel ini rincian dari akun yang sudah ada di tabel komponen, bukan komponen tambahan — ia tidak ikut menambah total ekuitas.",
+      "Sekutu nonaktif yang masih punya saldo tetap tampil, ditandai nonaktif. Sekutu tanpa saldo dan tanpa gerak dalam periode itu dilewati.",
+      "Pratinjau & Cetak memuat tabel yang sama; Unduh Excel menaruhnya di lembar kedua, “Rincian Modal Pemilik”.",
+    ],
+  },
+  {
+    kind: "gambar",
+    berkas: "laporan/perubahan-ekuitas-pemilik",
+    alt: "Laporan Perubahan Ekuitas CV contoh dengan komponen Modal Belum Dibagi, Modal Hendra Wijaya, Modal Lestari Putri, dan Prive Hendra Wijaya, lalu tabel Rincian Modal per Pemilik berisi modal awal, bagian laba/rugi, setoran, prive, dan modal akhir kedua sekutu.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Kategori Pajak di Pusat Laporan juga memuat Perkiraan PPh Final UMKM (PP 55/2022) — perkiraan bulanan 0,5% dari peredaran bruto dengan pengingat batas waktu menurut bentuk usaha. Cara menyalakan dan membacanya ada di halaman Bentuk usaha dan modal pemilik.",
+  },
   {
     kind: "langkah",
     butir: [
@@ -1230,6 +1454,7 @@ const LAPORAN: readonly DocBlock[] = [
     alt: "Halaman Anggaran & Target dengan tiga kartu: Realisasi vs Anggaran, Anggaran Akun, dan Target Penjualan.",
   },
     { kind: "istilah", kunci: ["laba_rugi", "neraca", "tutup_periode"] },
+    { kind: "lihat-juga", slug: ["bentuk-usaha", "periode-terkunci", "efaktur"] },
   ];
 
 const COCOK_ACCURATE: readonly DocBlock[] = [
@@ -1811,19 +2036,21 @@ const PANEL_AKUN: readonly DocBlock[] = [
     butir: [
       "Di panel akun, tekan Tambah Perusahaan.",
       "Isi Nama perusahaan. Slug (alamat pendek) terisi sendiri dari namanya; ubah bila perlu — huruf kecil, angka, dan tanda hubung.",
+      "Pilih Bentuk usaha: Perseroan Terbatas (PT), PT Perorangan, Persekutuan Komanditer (CV), Firma, Usaha Perorangan (UD), atau Lainnya. Bawaannya PT.",
       "Tekan Buat Perusahaan dan tunggu sampai keempat tahap penyiapan selesai.",
-      "Pilih Siapkan buku perusahaan ini untuk menjalankan wisaya penyiapan: identitas, modul, tahun buku, bagan akun, dan saldo awal.",
+      "Pilih Siapkan buku perusahaan ini untuk menjalankan wisaya penyiapan: identitas (termasuk sekutu untuk CV/Firma), modul, tahun buku, bagan akun, dan saldo awal.",
     ],
   },
   {
     kind: "gambar",
     berkas: "tenant/tambah-perusahaan",
-    alt: "Formulir Tambah Perusahaan dengan nama perusahaan contoh, slug yang terisi otomatis, nama basis data, dan tombol Buat Perusahaan.",
+    alt: "Formulir Tambah Perusahaan dengan nama perusahaan contoh CV Sinar Contoh Abadi, slug yang terisi otomatis, Bentuk usaha Persekutuan Komanditer (CV) beserta keterangannya, nama basis data, dan tombol Buat Perusahaan.",
   },
   {
     kind: "poin",
     butir: [
       "Slug tidak bisa diganti sesudahnya — ia menjadi bagian alamat setiap halaman dan nama basis datanya. Nama perusahaan boleh diganti kapan saja.",
+      "Bentuk usaha menentukan akun ekuitas yang disiapkan dan ke mana laba ditutup setiap akhir tahun. Ia masih bisa diganti di langkah Identitas wisaya selama bagan akun belum dibuat; sesudahnya lewat Pengaturan → Bentuk usaha.",
       "“Kuota perusahaan paket Anda sudah terpakai penuh” — naikkan paket di Langganan & Paket, atau hubungi tim.",
       "“Langganan Anda sedang tidak aktif” — uji coba sudah berakhir atau langganan ditangguhkan; perusahaan baru tidak bisa dibuat sampai akun aktif lagi.",
       "Orang yang membuat perusahaan otomatis menjadi Administrator Sistem di dalamnya.",
@@ -1862,7 +2089,7 @@ const PANEL_AKUN: readonly DocBlock[] = [
     teks:
       "Panel akun tidak punya kotak pemberitahuan sendiri. Kabar seputar akun — uji coba yang hampir habis, permintaan penghapusan — dikirim lewat surel ke pemilik. Pemberitahuan pekerjaan (persetujuan, jatuh tempo) tinggal di dalam setiap perusahaan, di ikon kotak masuk pada bilah atas.",
   },
-  { kind: "lihat-juga", slug: ["langganan-dan-tagihan", "paket-dan-perusahaan", "data-anda", "mulai-di-perusahaan"] },
+  { kind: "lihat-juga", slug: ["bentuk-usaha", "langganan-dan-tagihan", "paket-dan-perusahaan", "data-anda", "mulai-di-perusahaan"] },
 ];
 
 const LANGGANAN: readonly DocBlock[] = [
@@ -2020,7 +2247,7 @@ const MULAI_DI_PERUSAHAAN: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Pengaturan (menu Bantuan & Pengaturan) memuat profil Anda dan tombol Ganti Kata Sandi, logo perusahaan untuk kop dokumen PDF, tarif PPN, pengingat jatuh tempo, catatan audit keamanan, dan pembersihan data contoh. Bagian yang mengubah perusahaan hanya bisa disunting peran yang berwenang mengatur perusahaan; yang lain melihatnya sebagai bacaan.",
+      "Pengaturan (menu Bantuan & Pengaturan) memuat profil Anda dan tombol Ganti Kata Sandi, logo perusahaan untuk kop dokumen PDF, bentuk usaha beserta sekutu dan porsi labanya, profil usaha (identitas legal dan PPh Final UMKM), tarif PPN, pengingat jatuh tempo, catatan audit keamanan, dan pembersihan data contoh. Bagian yang mengubah perusahaan hanya bisa disunting peran yang berwenang mengatur perusahaan; yang lain melihatnya sebagai bacaan.",
   },
   {
     kind: "gambar",
@@ -2035,7 +2262,7 @@ const MULAI_DI_PERUSAHAAN: readonly DocBlock[] = [
       "Halaman bertuliskan “Fitur ini belum aktif” berarti modulnya dimatikan untuk perusahaan ini, bukan bahwa data Anda hilang.",
     ],
   },
-  { kind: "lihat-juga", slug: ["modul-usaha", "peran-dan-izin", "saldo-awal", "membaca-laporan"] },
+  { kind: "lihat-juga", slug: ["modul-usaha", "peran-dan-izin", "saldo-awal", "bentuk-usaha", "membaca-laporan"] },
 ];
 
 const PEMBELIAN: readonly DocBlock[] = [
@@ -2295,6 +2522,7 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "alur-per-jenis-usaha": ALUR_USAHA,
   "kas-dan-bank": KAS,
   "saldo-awal": SALDO_AWAL,
+  "bentuk-usaha": BENTUK_USAHA,
   "cocokkan-accurate": COCOK_ACCURATE,
   "peran-dan-izin": PERAN_IZIN,
   "api": API,

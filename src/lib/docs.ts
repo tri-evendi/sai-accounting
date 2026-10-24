@@ -273,6 +273,24 @@ const SALDO_AWAL = {
   navHrefs: ["/setup", "/master/import"],
 } as const satisfies DocMeta;
 
+const BENTUK_USAHA = {
+  slug: "bentuk-usaha",
+  judul: "Bentuk usaha dan modal pemilik",
+  ringkas:
+    "Kenapa PT, CV, Firma, dan usaha perorangan menutup labanya ke tempat berbeda — akun modal dan prive per sekutu, mengganti bentuk usaha, identitas legal, dan perkiraan PPh Final UMKM.",
+  cabang: "pengguna",
+  /*
+   * KOSONG, disengaja. Layarnya hidup di dalam halaman yang sudah punya
+   * dokumen: kartu Bentuk usaha & Profil usaha di `/settings` (milik
+   * `mulai-di-perusahaan`), pilihan bentuk usaha di wisaya `/setup` (milik
+   * `saldo-awal`), dan perkiraan PPh Final adalah kartu Pusat Laporan
+   * (`/reports`, milik `membaca-laporan`) — bukan item menu sendiri. Sebuah
+   * href hanya boleh menunjuk satu halaman; yang ini dijangkau lewat rujukan
+   * silang dari ketiganya.
+   */
+  navHrefs: [],
+} as const satisfies DocMeta;
+
 const COCOK_ACCURATE = {
   slug: "cocokkan-accurate",
   judul: "Mencocokkan buku dengan Accurate",
@@ -486,6 +504,7 @@ export const DOC_INDEX = [
   ALUR_USAHA,
   KAS,
   SALDO_AWAL,
+  BENTUK_USAHA,
   COCOK_ACCURATE,
   PERAN_IZIN,
   API,

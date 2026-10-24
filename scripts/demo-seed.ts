@@ -70,6 +70,8 @@ import { postJournal } from "../src/lib/ledger";
 import { seedCoaForModules } from "../src/lib/coa-seeding";
 import { applyOpeningBalances } from "../src/lib/opening-balance";
 import { bookActivity } from "../src/lib/demo-seed";
+import { allocateByShare } from "../src/lib/partners";
+import { equityModelFor } from "@sai/core/legal-form";
 import { createInvoiceInTx } from "../src/lib/document-writes";
 import { invoiceSchema } from "../src/lib/validations/invoice";
 import {
@@ -418,6 +420,70 @@ async function seedMonth(profile: DemoCompanyProfile, today: Date): Promise<stri
   return log;
 }
 
+/**
+ * CV/Firma contoh: modal per sekutu dan satu prive, supaya Laporan Perubahan
+ * Ekuitas menampilkan "Rincian Modal per Pemilik" dan tangkapan layar panduan
+ * punya isinya.
+ *
+ * Saldo awal wisaya mendarat di 3101 "Modal Belum Dibagi" (aplikasi tidak tahu
+ * bagian tiap sekutu dalam modal awal). Di buku sungguhan pembagiannya dicatat
+ * pemilik dengan jurnal umum — persis yang dilakukan di sini, menurut porsi
+ * profil, bertanggal sama dengan saldo awal. Lalu sekutu pertama menarik prive
+ * dari bank di bulan contoh.
+ */
+async function seedPartnerEquity(profile: DemoCompanyProfile, today: Date): Promise<string[]> {
+  if (equityModelFor(profile.legalForm ?? "pt") !== "partners") return [];
+  const [undivided, partners] = await Promise.all([
+    prisma.account.findUnique({ where: { code: "3101" }, select: { id: true } }),
+    prisma.companyPartner.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
+  ]);
+  if (!undivided || partners.length === 0) return ["modal per sekutu dilewati — 3101 atau daftar sekutu tidak ada"];
+
+  const sum = await prisma.journalLine.aggregate({
+    where: { accountId: undivided.id },
+    _sum: { baseDebit: true, baseCredit: true },
+  });
+  const balanceCents = Math.round(
+    (Number(sum._sum.baseCredit ?? 0) - Number(sum._sum.baseDebit ?? 0)) * 100
+  );
+  const log: string[] = [];
+  if (balanceCents > 0) {
+    const shares = allocateByShare(
+      balanceCents,
+      partners.map((p) => ({ key: p.id, shareBp: p.shareBp, sortOrder: p.sortOrder }))
+    );
+    await postJournal({
+      date: demoFiscalYearStart(today),
+      type: "general",
+      note: `${DEMO_TAG} Pembagian Modal Belum Dibagi ke modal sekutu sesuai akta`,
+      lines: [
+        { accountId: undivided.id, debit: balanceCents / 100, currency: "IDR", rate: 1, memo: "Modal Belum Dibagi" },
+        ...shares.map((s) => {
+          const p = partners.find((x) => x.id === s.key)!;
+          return { accountId: p.capitalAccountId, credit: s.cents / 100, currency: "IDR", rate: 1, memo: `Modal ${p.name}` };
+        }),
+      ],
+    });
+    log.push(`modal awal dibagi ke ${partners.length} sekutu`);
+  }
+
+  const bankId = await resolveAccountId(MAPPING_KEYS.CASH_BANK, "IDR", prisma).catch(() => null);
+  const first = partners[0]!;
+  if (bankId && first.drawingAccountId) {
+    await postJournal({
+      date: demoDate(today, 26),
+      type: "general",
+      note: `${DEMO_TAG} Prive ${first.name} — penarikan pribadi lewat transfer bank`,
+      lines: [
+        { accountId: first.drawingAccountId, debit: 7_500_000, currency: "IDR", rate: 1, memo: `Prive ${first.name}` },
+        { accountId: bankId, credit: 7_500_000, currency: "IDR", rate: 1, memo: "Bank" },
+      ],
+    });
+    log.push(`1 prive sekutu (${first.name})`);
+  }
+  return log;
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.tenant) {
@@ -490,7 +556,8 @@ async function main(): Promise<void> {
       }
       const settings = await prisma.companySetting.findFirst({ select: { isSetup: true } });
       if (!settings?.isSetup) await setupBook(profile, args.today);
-      return seedMonth(profile, args.today);
+      const month = await seedMonth(profile, args.today);
+      return [...month, ...(await seedPartnerEquity(profile, args.today))];
     });
     console.log(`  ✓ ${profile.name}`);
     for (const l of lines) console.log(`      – ${l}`);

@@ -27,7 +27,8 @@ import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { TENANT_EXPORT_KIND } from "@/lib/tenant-export-job";
 import { resultFilename } from "@sai/core/job-result";
 import { jobForDownload } from "@sai/platform/job-queue";
-import { resolveResultPath, resultSize } from "@sai/platform/job-result-store";
+import { isResultExpired, resolveResultPath, resultSize } from "@sai/platform/job-result-store";
+import { RESULT_RETENTION_DAYS } from "@sai/core/generated/job-numbers";
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 
@@ -67,8 +68,18 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const absolute = resolveResultPath(job.resultRef);
   if (absolute === null) return tidakAda();
   const size = await resultSize(job.resultRef);
-  /* Baris ada, berkasnya tidak (retensi, pemulihan tanpa volume) — 404 jujur. */
-  if (size === null) return tidakAda();
+  /* Baris ada, berkasnya tidak. Lewat masa simpan berkas (TATA-KELOLA §6) →
+     410 `result_expired`; selain itu (pemulihan tanpa volume) → 404 jujur. */
+  if (size === null) {
+    if (isResultExpired(job.finishedAt)) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json(
+        { error: t("errors.resultExpired", { days: RESULT_RETENTION_DAYS }), code: "result_expired" },
+        { status: 410 }
+      );
+    }
+    return tidakAda();
+  }
 
   const filename = resultFilename(job.resultRef);
 

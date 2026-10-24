@@ -31,7 +31,7 @@ describe("operatorNav — kelompok & urutan", () => {
       ["Ringkasan", ["Ringkasan"]],
       ["Pelanggan", ["Tenant", "Lisensi on-premise", "Permintaan penghapusan"]],
       ["Penjualan & tagihan", ["Katalog paket", "e-Faktur platform", "Rekonsiliasi"]],
-      ["Halaman publik", ["Isi halaman depan", "Tampilan halaman depan", "Logo produk"]],
+      ["Halaman publik", ["Isi halaman depan", "Tampilan halaman depan", "Gambar & bukti sosial", "Logo produk"]],
       ["Komunikasi", ["Pengumuman status", "Surel"]],
       ["Sistem", ["Penjadwal", "Cadangan", "Kesesuaian data"]],
       ["Administrasi", ["Pengaturan", "Akun operator", "Jejak audit"]],
@@ -51,6 +51,7 @@ describe("operatorNav — kelompok & urutan", () => {
         "/reconciliation",
         "/content",
         "/landing",
+        "/landing/media",
         "/brand",
         "/status-notices",
         "/mail",
@@ -67,7 +68,8 @@ describe("operatorNav — kelompok & urutan", () => {
   it("butir pendaratan tetap `exact`; tidak ada butir tanpa kelompok", () => {
     const nav = navIn(id);
     expect(nav.find((i) => i.href === "/")?.exact).toBe(true);
-    expect(nav.filter((i) => i.href !== "/" && i.exact)).toEqual([]);
+    // `/landing` juga `exact`: `/landing/media` punya butirnya sendiri.
+    expect(nav.filter((i) => i.href !== "/" && i.exact).map((i) => i.href)).toEqual(["/landing"]);
     expect(nav.filter((i) => !i.group).map((i) => i.href)).toEqual([]);
   });
 

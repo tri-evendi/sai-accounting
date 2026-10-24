@@ -489,6 +489,13 @@ export interface JobForDownload {
   tenantId: number | null;
   companyId: number | null;
   resultRef: string | null;
+  /** Kemajuan 0–100 — dikabarkan di jawaban 409 `job_not_done` (sudah lolos gerbang). */
+  progress: number;
+  /**
+   * Kapan selesai — rute membedakan berkas yang sudah DIBERSIHKAN karena umur
+   * (410 `result_expired`, `isResultExpired`) dari berkas yang memang tidak ada.
+   */
+  finishedAt: Date | null;
   /**
    * Muatan pekerjaan — PARAMETER saja, tidak pernah angka.
    *
@@ -513,7 +520,8 @@ export interface JobForDownload {
 export async function jobForDownload(id: number): Promise<JobForDownload | null> {
   const rows = await controlDb.$queryRaw<JobForDownload[]>`
     SELECT id, kind, status, tenant_id AS "tenantId", company_id AS "companyId",
-           result_ref AS "resultRef", payload
+           result_ref AS "resultRef", payload, progress,
+           (finished_at AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS "finishedAt"
       FROM jobs WHERE id = ${id}`;
   return rows[0] ?? null;
 }

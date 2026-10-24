@@ -32,12 +32,13 @@ describe("gambar publik tidak dialihkan ke /login", () => {
     "/favicon.ico",
     "/apple-icon.png",
     "/brand/mark?v=0123456789abcdef",
+    "/brand/landing/42?v=0123456789abcdef",
   ])("%s", async (path) => {
     expect(keLogin(await ke(path))).toBe(false);
   });
 
   it("yang hanya mirip tetap butuh sesi", async () => {
-    for (const path of ["/opengraph-imagex", "/opengraph-image-PWU/../dashboard", "/brand", "/brand/markx", "/settings"]) {
+    for (const path of ["/opengraph-imagex", "/opengraph-image-PWU/../dashboard", "/brand", "/brand/markx", "/settings", "/brand/landing/", "/brand/landing/abc", "/brand/landing/1/../../dashboard"]) {
       expect(keLogin(await ke(path)), path).toBe(true);
     }
   });

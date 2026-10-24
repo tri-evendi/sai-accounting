@@ -230,7 +230,7 @@ export const SITE_CONTENT_SECTIONS: readonly SiteContentSection[] = [
     labelKey: "operator.content.sectionIntegrations",
     prefixes: ["integrations", "integration", "eyebrowIntegrations"],
   },
-  { id: "trust", labelKey: "operator.content.sectionTrust", prefixes: ["trust", "eyebrowTrust"] },
+  { id: "trust", labelKey: "operator.content.sectionTrust", prefixes: ["trust", "eyebrowTrust", "testimonials", "eyebrowTestimonials", "clientLogos", "partners", "eyebrowPartners"] },
   {
     id: "pricing",
     labelKey: "operator.content.sectionPricing",

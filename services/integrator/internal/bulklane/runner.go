@@ -24,8 +24,12 @@
 //   - `mail.batch` menulis riwayat kirim (`invoice_sends`) di buku PT dan
 //     membaca SMTP per tenant yang tersandi — tulisan di luar daftar-izin
 //     pohon Go, dan rahasia tenant di proses yang sudah memegang kunci cadangan.
-//   - `report.package` tidak pernah ada di aplikasi ini (09 §9): membangunnya
-//     adalah FITUR baru, bukan pemindahan.
+//
+// ══ KIND KEDUA: PAKET LAPORAN (`report.package`, 24 Okt 2026) ══════════════
+// Fitur baru (09 §5), bukan pemindahan — lihat `package.go`: lembar sebar
+// dihitung `interactivelane.LembarLaporan` (penghasil `report.export_go`),
+// PDF-nya datang dari pekerjaan anak Node `report.package_pdf`, dan berkas
+// akhirnya satu ZIP di volume `hasil`. HANYA MEMBACA buku dan `jobs`.
 //
 // ══ YANG BERLAKU UNTUK SETIAP KIND DI SINI ═════════════════════════════════
 //   - pagar memori per pekerjaan dari kontrak (`memory_fence_mib`, ditegakkan
@@ -61,7 +65,7 @@ import (
 // Kinds: kind `bulk` yang dikerjakan Go — HARUS sama dengan kunci peta
 // `Handlers` di `Run` (dijaga `runner_test.go`). Peta itu ditulis di tempat
 // supaya `tests/kind-punya-pengklaim.test.ts` bisa membacanya dari teks.
-var Kinds = []contract.JobKind{contract.KindTenantDataExport}
+var Kinds = []contract.JobKind{contract.KindTenantDataExport, contract.KindReportPackage}
 
 // Enabled melaporkan apakah jalur ini punya sedikitnya satu kind ber-handler.
 // `cmd/integrator` tidak menjalankan jalur tanpa kind: pelari kosong adalah
@@ -76,11 +80,13 @@ func Run(ctx, stop context.Context) error {
 	}
 	defer kolam.Close()
 
+	antrean := jobs.New(kolam)
 	pelari := &jobs.Runner{
 		Lane:  contract.LaneBulk,
-		Queue: jobs.New(kolam),
+		Queue: antrean,
 		Handlers: map[contract.JobKind]jobs.Handler{
 			contract.KindTenantDataExport: handlerEkspor(kolam, document.ResultsRootDefault, tenantexport.DocumentsRootDefault, pelaksanaGo),
+			contract.KindReportPackage:    handlerPaket(kolam, antrean, document.ResultsRootDefault),
 		},
 		Stop: stop,
 	}

@@ -295,7 +295,13 @@ export type AuditAction =
   | "company_setting.reminders.test"
   /** Logo perusahaan (migration company 0002). `details` memuat sidik, format, dan ukurannya — bukan isi berkasnya. */
   | "company_setting.logo.update"
-  | "company_setting.logo.remove";
+  | "company_setting.logo.remove"
+  /**
+   * Paket laporan diminta (09 §5) — ditulis PENERBIT saat menerbitkan, sebab
+   * pelari Go tidak menulis buku. `details`: periode, format, laporan yang
+   * disertakan & dikecualikan (+ alasan), id pekerjaan anak PDF.
+   */
+  | "report.package";
 
 export type AuditEntity =
   /** Baris `companies` di basis data KENDALI — bukan tabel di buku perusahaan. */
@@ -353,7 +359,9 @@ export type AuditEntity =
   /** Dokumen unggahan (lampiran). */
   | "document"
   /** Templat transaksi berulang (issue #469). */
-  | "recurring_template";
+  | "recurring_template"
+  /** Pekerjaan `report.package` di basis data kendali — `entityId` = id pekerjaannya. */
+  | "report_package";
 
 /**
  * Satu baris jejak, sebagaimana dibaca layar Audit.

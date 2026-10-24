@@ -5,6 +5,10 @@ import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { Card } from "@sai/ui/card";
 import { Badge } from "@sai/ui/badge";
 import { ReportLaunchDialog } from "@/components/reports/report-launch-dialog";
+import { ReportPackageDialog, type PackageReportOption } from "@/components/reports/report-package-dialog";
+import { packageableReports } from "@/lib/report-package";
+import { isModuleActiveFor } from "@/lib/authz-effective";
+import { RESULT_RETENTION_DAYS } from "@sai/core/generated/job-numbers";
 import { costCenterFilterOptions } from "@/lib/cost-center-options";
 import { AccountBookOutlined, AimOutlined, ArrowRightOutlined, BankOutlined, ContainerOutlined, FileExcelOutlined, FundOutlined, HistoryOutlined, MoneyCollectOutlined, ReconciliationOutlined, RiseOutlined, TeamOutlined, TransactionOutlined, TruckOutlined, WalletOutlined } from "@ant-design/icons";
 import type { IconComponent } from "@sai/ui/icons";
@@ -226,13 +230,38 @@ export default async function ReportsPage({
   // menyatakan saringan `costCenter` yang menerimanya (lihat ReportCard).
   const costCenterOptions = await costCenterFilterOptions();
 
+  /*
+   * Paket laporan (09 §5): daftar laporan yang BOLEH masuk paket, dengan
+   * tanda laporan yang akan dikecualikan server (modul tidak aktif / peran
+   * tidak berwenang). Keputusannya tetap milik penerbit — tanda ini hanya
+   * memberi tahu lebih dulu apa yang akan tertulis di halaman ringkasan.
+   */
+  const packageOptions: PackageReportOption[] = await Promise.all(
+    packageableReports().map(async (r) => ({
+      id: r.id,
+      title: dictionary.reports.catalogReport[reportTextKey(r.id)].title,
+      blocked: (await canEffective(session.user, r.permission))
+        ? null
+        : (await isModuleActiveFor(r.permission))
+          ? ("role" as const)
+          : ("module" as const),
+    }))
+  );
+  const monthNames = Array.from({ length: 12 }, (_, i) => dictionary.month[`m${i + 1}` as keyof Dictionary["month"]]);
+
   return (
     <div>
       <div data-tour="pusat-laporan">
         {/* `mb-8` lama TIDAK pernah berlaku: `PageHeader` menulis
             `marginBottom` sebaris, dan gaya sebaris selalu menang atas kelas.
             Jaraknya karena itu tetap `marginLG` seperti seluruh halaman lain. */}
-        <PageHeader title={t("reports.title")} description={t("reports.description")} />
+        <PageHeader
+          title={t("reports.title")}
+          description={t("reports.description")}
+          actions={
+            <ReportPackageDialog reports={packageOptions} retentionDays={RESULT_RETENTION_DAYS} monthNames={monthNames} />
+          }
+        />
       </div>
 
       <div style={{ display: "grid", gap: GROUP_GAP }}>

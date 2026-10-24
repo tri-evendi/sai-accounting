@@ -52,6 +52,13 @@ export const LANE_LOCK_IDLE_SESSION_MS = 90000;
 export const RESULT_OWNER_UID = 1000;
 export const RESULT_OWNER_GID = 1000;
 
+/**
+ * Umur berkas hasil (hari) sebelum pembersih upkeep menghapusnya dari volume
+ * `hasil` (TATA-KELOLA §6). Rute unduhan menjawab 410 `result_expired` untuk
+ * pekerjaan `done` yang berkasnya sudah lewat umur ini.
+ */
+export const RESULT_RETENTION_DAYS = 7;
+
 // ── e-Faktur (docs/EFAKTUR.md) ─────────────────────────────────────────────
 
 export type EfakturSubmissionStatus =

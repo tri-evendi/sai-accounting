@@ -40,6 +40,7 @@ import {
   LayoutOutlined,
   MailOutlined,
   PictureOutlined,
+  FileImageOutlined,
   SettingOutlined,
   TeamOutlined,
   FileSearchOutlined,
@@ -121,6 +122,15 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/landing",
       label: t("operator.nav.landing"),
       icon: <LayoutOutlined style={UKURAN_IKON} />,
+      group: halamanPublik,
+      /* PERSIS: `/landing/media` punya butirnya sendiri di bawah. */
+      exact: true,
+    },
+    {
+      /* Gambar & bukti sosial halaman depan (migration platform 0015). */
+      href: "/landing/media",
+      label: t("operator.nav.landingMedia"),
+      icon: <FileImageOutlined style={UKURAN_IKON} />,
       group: halamanPublik,
     },
     {

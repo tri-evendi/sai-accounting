@@ -342,6 +342,41 @@ func (q *Queue) CancelRequested(ctx context.Context, id int64) (bool, error) {
 	return batal, nil
 }
 
+// Outcome adalah keadaan pekerjaan LAIN yang ditunggu satu pekerjaan — hari
+// ini satu pemakai: `report.package` (jalur `bulk`) menunggu bagian PDF-nya,
+// `report.package_pdf`, yang dikerjakan pelari Node.
+type Outcome struct {
+	Kind      contract.JobKind
+	CompanyID *int32
+	Status    contract.JobStatus
+	Progress  int
+	ResultRef *string
+	LastError string
+}
+
+// ErrJobMissing: baris yang ditanyakan tidak ada (diarsipkan, atau id salah).
+var ErrJobMissing = errors.New("pekerjaan tidak ditemukan")
+
+// Outcome membaca keadaan satu pekerjaan. HANYA MEMBACA — tulisan atas `jobs`
+// dari pohon Go tetap hanya lewat pernyataan pelari di atas.
+func (q *Queue) Outcome(ctx context.Context, id int64) (*Outcome, error) {
+	r, err := q.sql.JobOutcome(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrJobMissing
+	}
+	if err != nil {
+		return nil, fmt.Errorf("baca keadaan #%d: %w", id, err)
+	}
+	return &Outcome{
+		Kind:      r.Kind,
+		CompanyID: r.CompanyID,
+		Status:    r.Status,
+		Progress:  r.Progress,
+		ResultRef: r.ResultRef,
+		LastError: r.LastError,
+	}, nil
+}
+
 // ReclaimStale memulangkan pekerjaan dari pekerja yang lease-nya berhenti
 // diperbarui, dan memulangkan jumlah yang dipulangkan.
 //

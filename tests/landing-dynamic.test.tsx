@@ -27,6 +27,7 @@ import {
   type LandingAnnouncement,
   type LandingSettings,
 } from "@sai/core/landing-settings";
+import { DEFAULT_LANDING_MEDIA } from "@sai/core/landing-media";
 
 const dict = id as unknown as Dictionary;
 const T = (key: string, values?: Record<string, string | number>) => translate(dict, key, values);
@@ -66,6 +67,7 @@ vi.mock("@/lib/plan-catalog", () => ({ activePlans: async () => null }));
    yang sama (`isSectionVisible`, `isAnnouncementActive`, …) dari inti. */
 vi.mock("@sai/platform/landing-settings", () => ({
   landingSettings: async () => state.settings,
+  landingMedia: async () => DEFAULT_LANDING_MEDIA,
   resolveLandingWhatsappUrl: async () => undefined,
 }));
 

@@ -44,6 +44,7 @@ const EXEMPT: Record<string, string> = {
   "src/lib/company-clients.ts:readPool": "kolam KONEKSI ke replika baca (tahap 3) — sama seperti `pool`, bukan data",
   "packages/core/src/rate-limit.ts:attempts": "penyimpanan cadangan `rate-limit-shared` saat Redis tidak ada",
   "packages/platform/src/brand-assets.ts:contentCache": "dikunci sidik isi (sha256) — tidak bisa basi; dikosongkan bersama metaCache",
+  "packages/platform/src/landing-images.ts:isiCache": "baris `landing_images` tidak pernah diubah sesudah dibuat — isi per id tidak bisa basi; gambar MANA yang dipakai hidup di sinyal `landing-settings`",
 };
 
 /** Deklarasi tingkat modul yang berbentuk penyimpan yang bisa berubah. */

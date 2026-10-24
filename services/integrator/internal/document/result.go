@@ -3,6 +3,7 @@ package document
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -50,6 +51,18 @@ func ResultDir(kind contract.JobKind, jobID int64) (string, error) {
 // WriteResult menulis satu berkas hasil di bawah root dan memulangkan
 // `result_ref`-nya.
 func WriteResult(root string, kind contract.JobKind, jobID int64, filename string, data []byte) (string, error) {
+	return WriteResultStream(root, kind, jobID, filename, func(w io.Writer) error {
+		_, err := w.Write(data)
+		return err
+	})
+}
+
+// WriteResultStream: WriteResult untuk berkas yang TIDAK PERNAH utuh di
+// memori — ekspor data mandiri tenant (jalur `bulk`) bisa bergiga. `tulis`
+// menerima penulis berkas sementara; galat darinya (termasuk pembatalan)
+// MEMBUANG berkas sementara itu, jadi tidak ada `.partial` yatim yang tertinggal
+// dan tidak ada nama sah yang menunjuk berkas setengah jadi.
+func WriteResultStream(root string, kind contract.JobKind, jobID int64, filename string, tulis func(io.Writer) error) (string, error) {
 	dir, err := ResultDir(kind, jobID)
 	if err != nil {
 		return "", err
@@ -70,8 +83,18 @@ func WriteResult(root string, kind contract.JobKind, jobID int64, filename strin
 	}
 	final := filepath.Join(absDir, filename)
 	sementara := final + ".partial"
-	if err := os.WriteFile(sementara, data, 0o600); err != nil {
+	f, err := os.OpenFile(sementara, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
 		return "", fmt.Errorf("tulis %s: %w", sementara, err)
+	}
+	if err := tulis(f); err != nil {
+		_ = f.Close()
+		_ = os.Remove(sementara)
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(sementara)
+		return "", fmt.Errorf("tutup %s: %w", sementara, err)
 	}
 	// Diserahkan SEBELUM rename: berkas yang namanya sudah sah tidak pernah
 	// terlihat dengan pemilik yang salah.

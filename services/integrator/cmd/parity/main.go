@@ -60,6 +60,14 @@
 // Perubahan Ekuitas lahir bersama berkasnya di TS (keputusan pemilik 23 Okt
 // 2026); pembandingnya `scripts/parity-equity-changes-xlsx.ts`.
 //
+//	parity tenant-export -tenant-id <id> -generated-at <RFC3339> -documents-root <dir> -out <berkas.zip>
+//	parity zip-compare -ts <berkas.zip> -go <berkas.zip>
+//
+// Ekspor data mandiri tenant (#142, jalur `bulk`): pembandingnya
+// `scripts/parity-tenant-export.ts` (`bun run parity:tenant-export`), yang
+// membangun arsip TS (`buildTenantExport`) dan arsip Go atas tenant yang sama
+// lalu memanggil `zip-compare` — SHA-256 setiap berkas yang diekstrak.
+//
 // `-compare` (#557, kolom pembanding): mode `?compare=` dan instan pembanding
 // yang dihitung PENERBIT TS (`goExportPayloadShape` → `comparisonRange` /
 // `comparisonDate`) — perkakas ini, seperti pelari, tidak menghitung "tahun
@@ -179,9 +187,14 @@ func run(args []string) error {
 			"income-statement|income-statement-xlsx|cash-flow|cash-flow-xlsx|equity-changes|equity-changes-xlsx|" +
 			"receivables|receivables-xlsx|payables|payables-xlsx|" +
 			"stock-value|stock-value-xlsx|stock-movement|stock-movement-xlsx|opname-history|opname-history-xlsx|" +
-			"sales-by-customer[-xlsx]|purchases-by-supplier[-xlsx]|cash-bank[-xlsx]|budget-realization[-xlsx]|conformance -database <nama> …")
+			"sales-by-customer[-xlsx]|purchases-by-supplier[-xlsx]|cash-bank[-xlsx]|budget-realization[-xlsx]|conformance -database <nama> …" +
+			" | tenant-export -tenant-id <id> … | zip-compare -ts <zip> -go <zip>")
 	}
 	switch args[0] {
+	case "tenant-export":
+		return tenantExport(args[1:])
+	case "zip-compare":
+		return zipCompare(args[1:])
 	case "conformance":
 		return conformanceBook(args[1:])
 	case "trial-balance":

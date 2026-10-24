@@ -31,8 +31,11 @@ func TestJalurScheduleSelaluIkutBulkHanyaBilaPunyaKind(t *testing.T) {
 	if got := fmt.Sprint(namaJalur(daftarJalur(true))); got != "[tenant interactive-go schedule integration bulk]" {
 		t.Fatalf("jalur dengan bulk: %s", got)
 	}
-	if bulklane.Enabled() {
-		t.Fatal("bulklane punya kind — perbarui tes ini, 09 §3.2, dan kepala internal/bulklane")
+	// Sejak 23 Okt 2026 jalur `bulk` punya kind pertamanya (`tenant.data_export`,
+	// #142) — jadi `svc-integrator` menjalankannya. Kind terakhir yang dicabut
+	// mematikannya lagi, dan tes ini yang menyebutnya.
+	if !bulklane.Enabled() {
+		t.Fatal("bulklane tanpa kind — perbarui tes ini, 09 §3.2, dan kepala internal/bulklane")
 	}
 }
 

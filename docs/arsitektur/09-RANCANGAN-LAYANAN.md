@@ -188,7 +188,7 @@ satu commit, beberapa `command`.
 | Jalur | Bahasa | Isinya | Instans | Rahasia | Koneksi | Keadaan |
 |---|---|---|---|---|---|---|
 | `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna; penyediaan PT baru (`company.provision`, Node, Okt 2026) | berapa pun | sisi Node: kredensial PEMILIK `PROVISION_DATABASE_URL` (06 §3.10) | pooler | tahap 1c |
-| `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | 🔶 kerangka Go (`internal/bulklane`): pagar memori per pekerjaan di kontrak, **nol kind** — tidak dijalankan sampai kind pertama (di bawah) |
+| `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan, **ekspor data mandiri tenant** | berapa pun | — | pooler | ✅ jalur Go di `svc-integrator` (`internal/bulklane`) sejak kind pertamanya, `tenant.data_export` (23 Okt 2026); pagar memori per pekerjaan di kontrak. Sakelar `runner:` **bawaan `node`** — rute sinkron TS yang melayani sampai paritas produksi lulus (di bawah) |
 | `schedule` | **Go** | denyut penerbitan tiap jam — hanya MENERBITKAN | **satu** | — | pooler (pagar: **langsung**) | ✅ `svc-integrator` (Okt 2026) — penerbit per kind dipilih kontrak (`schedule.publisher`); **bawaan masih Node** (peran `scheduler`, `svc-worker`) |
 | `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node atau Go — sakelar `runner:`)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
 | `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate` (`db:migrate:release`): *bounded concurrency*, buku yang gagal tidak menahan rilis — §6 |
@@ -238,26 +238,47 @@ menulis riwayat kirim `invoice_sends` di buku PT — tulisan di luar daftar-izin
 Go), `watch:health` dan `prune:trails` (menghapus jejak putaran). Semuanya bukan
 "penerbitan baris `jobs`", jadi tidak satu pun milik jalur ini.
 
-**`bulk` — kerangka tanpa kind, dan itu keputusan.** Kontraknya kini lengkap:
-jalur jamak, satu pekerjaan per proses, dan **pagar memori per pekerjaan**
-(`memory_fence_mib: 512`, ditegakkan `jobs.Runner`): pekerjaan borongan yang
-membuat heap melewatinya dibatalkan dan digagalkan dengan sebab yang terbaca,
-SEBELUM OOM-killer membunuh seluruh `svc-integrator` beserta dump cadangan yang
-sedang berjalan (risiko 2 & 4 di bawah). Tidak satu pun dari tiga kind-nya
-boleh atau bisa dikerjakan Go hari ini: `import.process` menulis buku (I-2),
-`mail.batch` menulis `invoice_sends` dan memegang SMTP tenant, `report.package`
-tidak pernah ada (§9). Pelarinya karena itu TIDAK dijalankan
-(`bulklane.Enabled()` salah) — pelari tanpa kind adalah kode mati yang terlihat
-hidup.
+**`bulk` — kind pertamanya ekspor data mandiri tenant (keputusan pemilik 23
+Okt 2026).** Kontraknya: jalur jamak, satu pekerjaan per proses, dan **pagar
+memori per pekerjaan** (`memory_fence_mib: 512`, ditegakkan `jobs.Runner`):
+pekerjaan borongan yang membuat heap melewatinya dibatalkan dan digagalkan
+dengan sebab yang terbaca, SEBELUM OOM-killer membunuh seluruh `svc-integrator`
+beserta dump cadangan yang sedang berjalan (risiko 2 & 4 di bawah). Tiga kind
+lamanya tetap di luar Go: `import.process` menulis buku (I-2), `mail.batch`
+menulis `invoice_sends` dan memegang SMTP tenant, `report.package` tidak pernah
+ada (§9).
 
-**Kind pertama `bulk` yang akan masuk: ekspor data mandiri tenant** (#142,
-`src/lib/tenant-export.ts`) — hanya membaca, berkasnya besar (ZIP seluruh buku
-setiap PT + dokumen), dan hari ini di-stream sinkron di dalam permintaan
-`app-customer`. Tiga syaratnya, semuanya keputusan, bukan kode: (1) produk —
-unduhan langsung menjadi "pekerjaan, lalu unduh"; (2) jejak audit tenant
-ditulis PENERBIT (Node) saat menerbitkan, sebab Go tidak boleh menulis
-`tenant_audit_logs`; (3) paritas CSV byte demi byte dengan `toCsv` lewat skrip
-paritas, seperti `report-engine`, sebelum versi TS dicabut.
+**`tenant.data_export`** (#142) — hanya membaca, berkasnya besar (ZIP seluruh
+buku setiap PT + dokumen), tingkat TENANT (`company_id` NULL). Tiga syarat yang
+dulu menahannya, dan bagaimana masing-masing dipenuhi:
+
+| Syarat | Dipenuhi oleh |
+|---|---|
+| (1) produk: "pekerjaan, lalu unduh" | **diputuskan ya.** `POST /api/tenant/export` menerbitkan; layar Data & Privasi menunggu `GET /api/tenant/export/jobs` (kemajuan nyata dari pelari) lalu mengunduh `GET /api/tenant/export/jobs/<id>/result` — pintu hasil TINGKAT TENANT (izin `tenant.export`, `tenant_id` dibandingkan eksplisit; rute hasil per-PT tidak bisa melayaninya). Ekspor yang masih berjalan dipakai ulang, bukan digandakan |
+| (2) jejak audit tenant ditulis Node | penerbit (`POST`) menulis `tenant.export` saat MENERBITKAN; rute hasil menulis `tenant.export.download`. Pohon Go tetap hanya menulis `jobs`/`backup_runs` |
+| (3) paritas CSV byte demi byte | `bun run parity:tenant-export` — arsip TS (`buildTenantExport`) dan arsip Go (`internal/tenantexport`) atas tenant yang sama, dengan stempel "Dibuat" yang sama, dibandingkan SHA-256 SETIAP berkas di dalamnya (`cmd/parity zip-compare`) |
+
+Sakelarnya `runner:` kind itu di kontrak — pola `tenant.conformance`: `node`
+(bawaan) = `GET` sinkron TS melayani dan `POST` dijawab 409; `go` = sebaliknya,
+`GET` dijawab 409 `export_async`. Pekerjaan yang tiba di Go sementara nilainya
+`node` DIGAGALKAN dengan pesan yang terbaca (bukan dikerjakan, bukan
+diselesaikan tanpa berkas). Peralihan & jalan mundur: PRODUCTION.md §Ekspor
+data mandiri.
+
+Bentuk nilai CSV sisi TS **bukan** teks PostgreSQL melainkan `String()` atas
+nilai Prisma (`@prisma/adapter-pg`) — `numeric` lewat `Decimal.toString()`
+(nol di belakang dibuang), `timestamp` lewat `Date.toISOString()` (milidetik
+dipotong), `bytea` base64. Go membaca setiap kolom sebagai teks dengan setelan
+sesi yang dipaku (`DateStyle`, `TimeZone`, `bytea_output`) lalu membentuknya
+ulang per tipe (`internal/tenantexport/csv.go`); bentuk-bentuknya DIUKUR, bukan
+ditebak. Pengukuran itu menemukan dua cacat di sisi TS, keduanya diperbaiki
+bersama: `bytea` (logo perusahaan) terekspor sebagai daftar desimal karena
+adapter memulangkan `Uint8Array`, bukan `Buffer`; dan `Readable.from()` di rute
+sinkron menolak aliran `readable-stream@2` milik JSZip.
+
+Memori: arsip Go MENGALIR — baris dari kursor pgx, dokumen lewat `io.Copy`, ZIP
+langsung ke berkas di volume `hasil`. Diukur 23 Okt 2026: tenant dengan dokumen
+200 MB → RSS puncak 14,5 MB (sisi TS menyusun CSV satu tabel utuh di memori).
 
 Hanya satu jalur MEMBACA rahasia — jalur `tenant`. Sampai 22 Okt 2026 ia juga
 satu-satunya container yang memegangnya, dan container itu tidak memproses
@@ -950,7 +971,7 @@ kehabisan waktu:
 |---|---|
 | **Outbox + relay** | ✅ **Dibangun 23 Okt 2026** (keputusan pemilik — pemicunya keputusan produk, persis seperti yang ditulis di sini): pengiriman faktur saat diposting, di belakang sakelar per PT yang bawaannya mati. Bentuknya §4 |
 | **`report.package`** | tidak pernah ada di aplikasi ini. Membangunnya berarti menambah FITUR di bawah nama "pindah ke server" — dua keputusan yang digabung menjadi satu |
-| Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. 🔶 **`bulk` tetap tanpa kind**: kerangkanya dan pagar memorinya ada, pelarinya tidak dijalankan sampai kind pertama (ekspor data mandiri #142, tiga syaratnya di §3.2) — pelari tanpa penerbit adalah kode mati yang terlihat hidup |
+| Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. ✅ **`bulk` berjalan sejak kind pertamanya** (23 Okt 2026): `tenant.data_export`, ekspor data mandiri #142 — pelari Go + pintu hasil tingkat tenant + paritas `parity:tenant-export` (lokal: setara). 🔶 Sakelar `runner:` masih **`node`** sampai paritas produksi lulus — §3.2, PRODUCTION.md §Ekspor data mandiri |
 
 Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 `stock-report`) — ketiganya bukan dokumen satuan, dan jalurnya `/api/reports/pdf`

@@ -42,7 +42,8 @@ export type JobKind =
   | "schedule.tick"
   | "schema.migrate"
   | "tenant.backup"
-  | "tenant.conformance";
+  | "tenant.conformance"
+  | "tenant.data_export";
 
 export type JobLane =
   | "bulk"
@@ -80,6 +81,7 @@ export const JOB_KINDS: Readonly<Record<JobKind, JobKindSpec>> = {
   "schema.migrate": { lane: "schema", maxAttempts: 1, writesLedger: false },
   "tenant.backup": { lane: "tenant", maxAttempts: 2, writesLedger: false },
   "tenant.conformance": { lane: "tenant", maxAttempts: 2, writesLedger: false },
+  "tenant.data_export": { lane: "bulk", maxAttempts: 2, writesLedger: false },
 };
 
 /**
@@ -144,7 +146,7 @@ export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
 
 /** `kind` milik setiap jalur — klausa `WHERE kind IN (…)` pekerjanya. */
 export const KINDS_BY_LANE: Readonly<Record<JobLane, readonly JobKind[]>> = {
-  bulk: ["import.process", "mail.batch", "report.package"],
+  bulk: ["import.process", "mail.batch", "report.package", "tenant.data_export"],
   integration: ["integration.bank_feed", "integration.efaktur_cancel", "integration.efaktur_poll", "integration.efaktur_submit"],
   interactive: ["company.provision", "document.generate", "document.invoice_send", "efaktur.record", "report.export", "report.export_go"],
   ledger: ["ledger.dunning", "ledger.recurring"],
@@ -180,7 +182,8 @@ export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
 export type KindRunner = "node" | "go";
 
 export type RunnerSwitchedKind =
-  | "tenant.conformance";
+  | "tenant.conformance"
+  | "tenant.data_export";
 
 /**
  * Kind ber-`runner:` beserta pelaksananya HARI INI. Sisi yang bukan
@@ -188,6 +191,7 @@ export type RunnerSwitchedKind =
  */
 export const KIND_RUNNERS: Readonly<Record<RunnerSwitchedKind, KindRunner>> = {
   "tenant.conformance": "go",
+  "tenant.data_export": "node",
 };
 
 export const isJobKind = (v: string): v is JobKind =>

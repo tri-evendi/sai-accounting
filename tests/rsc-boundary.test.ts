@@ -335,8 +335,12 @@ import { join } from "node:path";
  *   + `tax/efaktur/pjap-connection-form` — penyedia, client id, rahasia
  *     (tulis-saja; tidak pernah dikirim balik). Halaman `/tax/efaktur` sendiri
  *     tetap server, termasuk tabel status dan berkas XML.
+ * 208 → 209 (24 Okt 2026, ekspor data mandiri sebagai pekerjaan jalur `bulk`):
+ *   + `platform/export-panel` — tombol minta → kemajuan → unduh; menanyai
+ *     `/api/tenant/export/jobs` selama pekerjaannya berjalan. Halaman
+ *     `/platform/privacy` tetap server; sakelar pelaksananya dibaca di sana.
  */
-const AMBANG_KLIEN = 208;
+const AMBANG_KLIEN = 209;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -489,6 +493,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(tenant)/(panel)/platform/billing-actions.tsx",
   "app/(app)/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
   "app/(app)/(tenant)/(panel)/platform/error.tsx",
+  "app/(app)/(tenant)/(panel)/platform/export-panel.tsx",
   "app/(app)/(tenant)/(panel)/platform/privacy-section.tsx",
   "app/(app)/(tenant)/layout.tsx",
   /* Halaman galat & 404 (2026-10-18) — lihat catatan di `AMBANG_KLIEN`. */

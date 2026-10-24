@@ -39,6 +39,7 @@ import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /** Nama cabang di kamus — peta eksplisit; alasannya sama dengan di halaman dokumen. */
 const NAMA_CABANG: Record<DocBranch, DictionaryKey> = {
+  mulai: "docs.branchStart",
   pelanggan: "docs.branchCustomer",
   pengguna: "docs.branchUser",
 };

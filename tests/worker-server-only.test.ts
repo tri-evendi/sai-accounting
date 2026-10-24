@@ -78,6 +78,11 @@ describe("skrip dimuat dengan resolusi yang sama dengan container", () => {
             "pg",
             "--external",
             "@opentelemetry/*",
+            // Peramban otomatis `docs:screenshots` (alat lokal, bukan layanan
+            // container): `require` opsionalnya (electron, chromium-bidi) tidak
+            // terbundel, dan paket itu tidak menyentuh penanda `server-only`.
+            "--external",
+            "playwright-core",
             "--outfile",
             keluar,
           ],

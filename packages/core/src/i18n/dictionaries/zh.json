@@ -4574,7 +4574,7 @@
   },
   "companies": {
     "newTitle": "添加公司",
-    "newDescription": "创建拥有独立数据库的新公司。",
+    "newDescription": "创建拥有独立数据库的新公司——适用于任何企业形式：PT、PT Perorangan、CV、Firma 或个体经营。",
     "explainIsolation": "每家公司都有自己独立的账簿——发票、日记账、库存和用户与其他公司完全隔离。",
     "explainAdmin": "您当前的账户（{name}）将自动成为该公司的系统管理员——拥有完全权限：您是第一个可以打开其账簿并邀请员工的人。您可以随时在「用户」页面更改该角色。",
     "explainNextStep": "创建后，打开该公司并运行设置向导：公司信息、会计年度、会计科目表和期初余额。",

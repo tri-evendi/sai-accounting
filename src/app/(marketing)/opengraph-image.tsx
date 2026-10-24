@@ -143,7 +143,7 @@ export default async function Image() {
             lineHeight: 1.2,
           }}
         >
-          Pembukuan beberapa PT,
+          Pembukuan beberapa usaha,
         </div>
         <div
           style={{

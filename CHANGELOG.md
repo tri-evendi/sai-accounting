@@ -20,7 +20,21 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.22.0 — 2026-10-24 — belum digelar
+## 0.22.1 — 2026-10-24 — belum digelar
+
+Layanan latar memakai memori jauh lebih sedikit, dan lisensi on-premise kini bisa diterbitkan; tidak ada perubahan pada tampilan.
+
+### Baru
+
+- Pemasangan on-premise kini menerima berkas lisensi resmi SAI.
+
+### Perbaikan
+
+- Layanan pengirim peristiwa di latar tidak lagi membuka ulang koneksi ke setiap buku perusahaan berulang kali, sehingga memakai memori jauh lebih sedikit.
+
+---
+
+## 0.22.0 — 2026-10-24 (66115c8)
 
 PDF laporan stok, lembar opname, dan laporan keuangan kini disusun di server dari angka terbaru, dan PDF laporan keuangan dari dialog laporan kembali bisa diunduh.
 

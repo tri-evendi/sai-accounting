@@ -73,8 +73,24 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.22.1",
+    tanggal: "2026-10-24",
+    ringkas: "Layanan latar memakai memori jauh lebih sedikit, dan lisensi on-premise kini bisa diterbitkan; tidak ada perubahan pada tampilan.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks: "Layanan pengirim peristiwa di latar tidak lagi membuka ulang koneksi ke setiap buku perusahaan berulang kali, sehingga memakai memori jauh lebih sedikit.",
+      },
+      {
+        jenis: "baru",
+        teks: "Pemasangan on-premise kini menerima berkas lisensi resmi SAI.",
+      },
+    ],
+  },
+  {
     versi: "0.22.0",
     tanggal: "2026-10-24",
+    sha: "66115c8",
     ringkas: "PDF laporan stok, lembar opname, dan laporan keuangan kini disusun di server dari angka terbaru, dan PDF laporan keuangan dari dialog laporan kembali bisa diunduh.",
     butir: [
       {

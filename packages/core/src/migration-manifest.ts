@@ -12,9 +12,9 @@
  * yang lupa diumumkan di sini membuat tes merah, bukan konsol yang diam.
  */
 export const MIGRATION_TERAKHIR = {
-  control: "0013_tenant_partner_demo",
+  control: "0014_companies_legal_form",
   platform: "0015_landing_media",
-  company: "0005_outbox",
+  company: "0006_company_partners",
 } as const;
 
 export type JenisBasisData = keyof typeof MIGRATION_TERAKHIR;

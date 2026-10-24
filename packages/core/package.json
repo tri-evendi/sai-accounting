@@ -37,6 +37,7 @@
     "./labels": "./src/labels.ts",
     "./landing-media": "./src/landing-media.ts",
     "./landing-settings": "./src/landing-settings.ts",
+    "./legal-form": "./src/legal-form.ts",
     "./licence": "./src/licence.ts",
     "./licence-register": "./src/licence-register.ts",
     "./migration-manifest": "./src/migration-manifest.ts",

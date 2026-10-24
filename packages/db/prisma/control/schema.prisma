@@ -204,6 +204,17 @@ model Company {
   /// pernah berubah arti karena kolom ini lahir.
   isDemo Boolean @default(false) @map("is_demo")
 
+  /// BENTUK USAHA (keputusan pemilik 24 Okt 2026, control 0014): `pt`,
+  /// `pt_perorangan`, `cv`, `firma`, `perorangan` (usaha perorangan/UD),
+  /// `lainnya`. Kosakata di `src/lib/legal-form.ts`, dijaga CHECK.
+  ///
+  /// Dipilih saat perusahaan DIBUAT, dibaca wisaya untuk memilih templat
+  /// ekuitas (Modal/Laba Ditahan untuk PT; Modal & Prive per sekutu untuk
+  /// CV/Firma; Modal & Prive Pemilik untuk perorangan) dan oleh tutup buku
+  /// tahunan. Mengubahnya kemudian TIDAK menulis ulang jurnal apa pun — ia
+  /// hanya berlaku ke depan. Bawaan `pt`: setiap baris lama tidak berubah arti.
+  legalForm String @default("pt") @map("legal_form") @db.VarChar(20)
+
   /// Tenant PEMILIK perusahaan ini (issue #134). Nullable di TIPE hanya untuk
   /// masa transisi adopsi (migration 0002 → skrip adopsi → 0003 NOT NULL);
   /// kode yang MEMBUAT perusahaan wajib selalu mengisinya — basis data menolak

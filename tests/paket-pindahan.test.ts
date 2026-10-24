@@ -27,6 +27,9 @@ const AKAR = process.cwd();
 
 /** [jalur lama, jalur baru] relatif akar repo. */
 const PINDAH: ReadonlyArray<readonly [string, string]> = [
+  /* Formulir penawaran publik (lead_requests): normalisasi nomor dipakai juga
+     konsol operator, jadi pindah ke paket murni. */
+  ["src/lib/phone.ts", "packages/core/src/phone.ts"],
   ["src/components/providers/antd-provider.tsx", "packages/ui/src/providers/antd-provider.tsx"],
   ["src/components/providers/root-document.tsx", "packages/ui/src/providers/root-document.tsx"],
   ["src/components/ui/alert-dialog.tsx", "packages/ui/src/components/alert-dialog.tsx"],

@@ -1227,3 +1227,61 @@ model LandingImage {
   @@index([kind, createdAt])
   @@map("landing_images")
 }
+
+/// PERMINTAAN PENAWARAN / DEMO dari halaman publik (migration platform 0016).
+///
+/// Formulir di `/register` (pendaftaran tertutup) dan `/register?quote=1`
+/// menulis satu baris; konsol operator (`/leads`) membacanya sebagai daftar
+/// kerja. Kosakata & aturan peralihan: `packages/core/src/lead-request.ts`.
+///
+/// DATA PRIBADI: `ip_hash` adalah HMAC alamat klien, bukan alamatnya; baris
+/// `selesai`/`spam` dianonimkan 12 bulan sesudah ditangani, `baru`/`dihubungi`
+/// 24 bulan sesudah masuk (penjadwal, `docs/TATA-KELOLA.md` §6).
+model LeadRequest {
+  id Int @id @default(autoincrement())
+
+  /// Nomor rujukan yang dibacakan prospek: `SAI-7K3M9Q`. UNIK.
+  reference String @unique @db.VarChar(12)
+
+  /// demo | quote | question — CHECK di migration.
+  kind    String  @db.VarChar(20)
+  name    String  @db.VarChar(100)
+  company String  @db.VarChar(150)
+  /// Digit `wa.me` (berkode negara, tanpa `+`) — sudah dinormalkan.
+  phone   String  @db.VarChar(20)
+  email   String? @db.VarChar(191)
+
+  /// Kosakata `companies.legal_form`; opsional.
+  legalForm    String? @map("legal_form") @db.VarChar(20)
+  companyCount Int?    @map("company_count")
+  message      String? @db.Text
+
+  /// Kapan prospek MENCENTANG persetujuan dihubungi (UU PDP). Wajib.
+  consentAt DateTime @map("consent_at")
+
+  /// contact_page | quote | nama tombol dari `?from=` (disaring).
+  source String  @db.VarChar(40)
+  /// Bahasa layar saat mengirim — untuk membalas dalam bahasanya.
+  locale String? @db.VarChar(5)
+
+  /// baru | dihubungi | selesai | spam — CHECK di migration.
+  status    String    @default("baru") @db.VarChar(20)
+  /// Operator yang terakhir mengubah status + kapan.
+  handledBy String?   @map("handled_by") @db.VarChar(100)
+  handledAt DateTime? @map("handled_at")
+  /// Catatan operator, terbaru di atas (`appendLeadNote`).
+  notes     String?   @db.Text
+
+  /// HMAC-SHA256 alamat klien (hex) — pembatas laju & penyalahgunaan.
+  ipHash       String?   @map("ip_hash") @db.Char(64)
+  /// Diisi saat data pribadinya dikosongkan oleh retensi.
+  anonymizedAt DateTime? @map("anonymized_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([ipHash, createdAt])
+  @@index([handledAt])
+  @@map("lead_requests")
+}

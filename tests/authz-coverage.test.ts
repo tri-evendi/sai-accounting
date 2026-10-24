@@ -283,6 +283,12 @@ const API_EXCEPTIONS = new Set([
   // pelanggan. Identitas pajak (NPWP dll.) TIDAK di sini; itu tetap lewat
   // `company-settings/route.ts` yang dijaga `company_setting.manage`.
   "company/identity/route.ts",
+  // publik (migration platform 0016): formulir penawaran/demo halaman publik —
+  // pengirimnya calon customer tanpa akun. Hanya MENULIS satu baris
+  // `lead_requests` dan memulangkan nomor rujukannya; tidak membaca apa pun
+  // milik tenant. JSON saja, pembatas laju PERSISTEN per sidik IP & per nomor,
+  // honeypot, skema yang sama dengan formulirnya.
+  "leads/route.ts",
 ]);
 
 function filesNamed(dir: string, filename: string): string[] {
@@ -793,6 +799,9 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
        pendaftaran mandiri dibuka — `SELF_SERVE_SIGNUP`); yang memanggil
        `/api/auth/register` adalah formulirnya. */
     "app/(app)/(auth)/register/register-form.tsx",
+    /* Formulir penawaran/demo di layar `/register` yang tertutup — memanggil
+       `/api/leads`, route PUBLIK pra-akun (API_EXCEPTIONS di atas). */
+    "app/(app)/(auth)/register/lead-form.tsx",
     "app/(app)/(auth)/reset-password/page.tsx",
     "app/(app)/(auth)/verify-email/page.tsx",
     // Grup (tenant): route TINGKAT TENANT (#135) — pemilik tenant tanpa satu

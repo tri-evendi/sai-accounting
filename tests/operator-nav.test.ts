@@ -30,7 +30,7 @@ describe("operatorNav — kelompok & urutan", () => {
     expect(grouped).toEqual([
       ["Ringkasan", ["Ringkasan"]],
       ["Pelanggan", ["Tenant", "Lisensi on-premise", "Permintaan penghapusan"]],
-      ["Penjualan & tagihan", ["Katalog paket", "e-Faktur platform", "Rekonsiliasi"]],
+      ["Penjualan & tagihan", ["Penawaran masuk", "Katalog paket", "e-Faktur platform", "Rekonsiliasi"]],
       ["Halaman publik", ["Isi halaman depan", "Tampilan halaman depan", "Gambar & bukti sosial", "Logo produk"]],
       ["Komunikasi", ["Pengumuman status", "Surel"]],
       ["Sistem", ["Penjadwal", "Cadangan", "Kesesuaian data"]],
@@ -46,6 +46,7 @@ describe("operatorNav — kelompok & urutan", () => {
         "/tenants",
         "/licences",
         "/deletions",
+        "/leads",
         "/plans",
         "/efaktur",
         "/reconciliation",

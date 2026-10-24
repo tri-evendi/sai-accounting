@@ -435,7 +435,7 @@ dan lantai diskon ditetapkan pemilik, tidak diputuskan per percakapan.
 
 | # | Langkah | Siapa | Alat |
 | --- | --- | --- | --- |
-| 1 | Prospek masuk (WhatsApp/email dari `/pricing`) | penjualan | `contactChannels()` |
+| 1 | Prospek masuk: formulir demo/penawaran di `/register` (tercatat), atau WhatsApp/email | penjualan | `lead_requests` → konsol `/leads`; `contactChannels()` |
 | 2 | Pelingkupan: berapa PT, berapa pengguna, migrasi dari apa | penjualan | — |
 | 3 | **Penawaran**: lingkup, kuota, harga, masa kontrak, syarat bayar, jasa | penjualan | dokumen (template) |
 | 4 | Persetujuan tertulis (tanda tangan/email) | pembeli | — |
@@ -458,6 +458,36 @@ TIDAK lagi menerbitkan tagihan Rp 0 `-K`: yang dicatat adalah baris
 `quote_activations` (nomor penawaran UNIK + referensi bukti transfer,
 migration platform 0011), yang tidak pernah dihitung sebagai pendapatan
 platform. Perpanjangan KOMPENSASI biasa tetap memakai `-K` berstatus `comped`.
+
+**Langkah 1 tercatat sejak 25 Okt 2026 (migration platform 0016).** Sebelumnya
+tombol "Minta penawaran" / "Jadwalkan demo" mendarat di `/register` yang hanya
+memajang tombol WhatsApp & `mailto:` — prospek yang urung mengirim pesan hilang
+tanpa jejak. Sekarang layar itu memuat formulir singkat (nama, perusahaan,
+WhatsApp/telepon, surel opsional, kebutuhan, bentuk usaha, jumlah perusahaan,
+pesan, persetujuan dihubungi) yang menulis satu baris `lead_requests` dengan
+nomor rujukan `SAI-XXXXXX`. Alurnya:
+
+1. Prospek mengirim formulir → `POST /api/leads` (publik; JSON saja, pembatas
+   laju persisten per sidik IP 5/jam dan per nomor 3/hari, honeypot, tanpa
+   CAPTCHA) → baris `baru` + nomor rujukan di layar terima kasih, beserta
+   tombol WhatsApp yang pesannya sudah memuat nomor itu.
+2. Tim dikabari lewat surel ke alamat kontak (`site_settings.contactEmail`,
+   jatuh ke `PLATFORM_CONTACT_EMAIL`) bila SMTP tersetel; bila tidak, surelnya
+   dilewati diam-diam — barisnya tetap ada.
+3. Konsol: baris "N penawaran masuk belum dihubungi" di "Perlu ditangani",
+   lencana di menu **Penawaran masuk** (`/leads`, kelompok "Penjualan &
+   tagihan"). Rincian: buka WhatsApp dengan sapaan dalam bahasa prospek, salin
+   surel, catatan tim, dan status `baru → dihubungi → selesai` (atau `spam`;
+   `selesai` bisa dibuka lagi, `spam` bisa dipulihkan). Mengubah status &
+   mencatat butuh izin `tenant.billing`; setiap aksi berjejak di jejak
+   operator (`operator.lead.status` / `operator.lead.note`).
+4. Sesudah demo, uji coba dibuat dari `/tenants/new` seperti biasa — lead dan
+   tenant belum ditautkan otomatis (lihat batasan di bawah).
+
+Tombol "Jadwalkan demo" di halaman depan tetap menuju tautan pemesanan demo bila
+operator mengisinya di `/landing`; formulir hanya menggantikan layar kontak.
+Tombol lain boleh menyebut dirinya lewat `?from=<nama>` (disaring) sebagai
+sumber lead. **Belum ada:** penautan lead → tenant uji coba, dan ekspor CSV.
 
 ---
 

@@ -18,6 +18,7 @@
  */
 
 import { z } from "zod";
+import { LEAD_LIMITS, LEAD_STATUSES } from "@sai/core/lead-request";
 import { LOCALES } from "@sai/core/i18n/config";
 import { BILLING_MODES } from "@sai/billing/platform-constants";
 import { vmsg } from "@sai/core/i18n/validation";
@@ -140,6 +141,22 @@ export const activationHandledSchema = z.object({
   reason: operatorReasonField,
 });
 export type ActivationHandledFormInput = z.infer<typeof activationHandledSchema>;
+
+/* ── Penawaran masuk (`lead_requests`, migration platform 0016) ───────────── */
+
+/** Ubah status satu lead — peralihan sahnya dijaga `leadTransitionAllowed`. */
+export const leadStatusSchema = z.object({
+  leadId: z.number().int().positive(),
+  to: z.enum(LEAD_STATUSES),
+});
+export type LeadStatusInput = z.infer<typeof leadStatusSchema>;
+
+/** Tambah catatan pada lead — teks bebas pendek, berstempel operator. */
+export const leadNoteSchema = z.object({
+  leadId: z.number().int().positive(),
+  text: z.string().trim().min(2, vmsg("validation.leadNoteRequired")).max(LEAD_LIMITS.noteEntry),
+});
+export type LeadNoteInput = z.infer<typeof leadNoteSchema>;
 
 /* ── 3b. Perpanjangan kompensasi ───────────────────────────────────────────── */
 

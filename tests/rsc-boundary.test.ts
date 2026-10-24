@@ -384,8 +384,13 @@ import { join } from "node:path";
  * 224 → 225 (24 Okt 2026, bentuk usaha PR B):
  *   + `components/settings/business-profile-panel` — identitas legal & sakelar
  *     PPh Final UMKM. Halaman perkiraan PPh Final sendiri server component.
+ * 225 → 227 (25 Okt 2026, penawaran masuk — migration platform 0016):
+ *   + `(auth)/register/lead-form` — formulir demo/penawaran (RHF) di layar
+ *     `/register` yang tertutup. Halamannya tetap server component.
+ *   + `components/operator/lead-actions` (konsol `/leads/[id]`) — tombol
+ *     status, catatan (RHF), salin surel. Halaman daftar & rincian tetap server.
  */
-const AMBANG_KLIEN = 225;
+const AMBANG_KLIEN = 227;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -409,6 +414,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(auth)/forgot-password/page.tsx",
   "app/(app)/(auth)/layout.tsx",
   "app/(app)/(auth)/login/page.tsx",
+  "app/(app)/(auth)/register/lead-form.tsx",
   /* Pendaftaran: halamannya kini SERVER component (ia memutuskan apakah
      pendaftaran mandiri dibuka — `SELF_SERVE_SIGNUP`, environment server);
      yang client hanyalah formulirnya. Jumlahnya tidak bergeser: satu berkas
@@ -573,6 +579,7 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/components/operator/landing-proof-form.tsx",
   "apps/operator/src/components/operator/landing-screens-form.tsx",
   "apps/operator/src/components/operator/landing-sections-form.tsx",
+  "apps/operator/src/components/operator/lead-actions.tsx",
   /* Register lisensi on-premise — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/licence-register-panel.tsx",
   /* Kunci penanda lisensi (migration platform 0007) — lihat `AMBANG_KLIEN`. */

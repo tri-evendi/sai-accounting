@@ -191,7 +191,7 @@ export type RunnerSwitchedKind =
  */
 export const KIND_RUNNERS: Readonly<Record<RunnerSwitchedKind, KindRunner>> = {
   "tenant.conformance": "go",
-  "tenant.data_export": "node",
+  "tenant.data_export": "go",
 };
 
 export const isJobKind = (v: string): v is JobKind =>

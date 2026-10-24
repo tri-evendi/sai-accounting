@@ -1812,10 +1812,10 @@ durasi = `finished_at − started_at`.
 | Jalur | Pekerjaan | Tunggu p50 / p95 / p99 / maks (dtk) | Durasi p95 / maks (ms) | Ambang |
 |---|---|---|---|---|
 | `ledger` (`ledger.recurring`) | **992** | 2,1 / 5,7 / 8,3 / 14,8 | 443 / 1.570 (112 baris pasca-#741: 965; `runtime_samples` 576: 552) | **terukur** |
-| `interactive` (`report.export_go`) | 16 | 1,2 / 1,8 / 1,8 / 1,8 | tak terukur¹ | bawaan |
-| `schedule` (`schedule.tick`) | 11 | 0,7 / 2,0 / 2,0 / 2,0 | tak terukur¹ | bawaan |
-| `tenant` (`backup` 9 + `conformance` 2) | 11 | 1,7–10,1 / 17,0 / 20,0 / 20,7 | tak terukur¹ | bawaan |
-| `bulk` · `integration` · `schema` | 0 | — | — | bawaan |
+| `interactive` (`report.export_go`) | 16 | 1,2 / 1,8 / 1,8 / 1,8 | belum ada sampel¹ — kini terukur² | bawaan + **SLO** p95 < 10 dtk² |
+| `schedule` (`schedule.tick`) | 11 | 0,7 / 2,0 / 2,0 / 2,0 | belum ada sampel¹ — kini terukur² | bawaan |
+| `tenant` (`backup` 9 + `conformance` 2) | 11 | 1,7–10,1 / 17,0 / 20,0 / 20,7 | belum ada sampel¹ — kini terukur² | bawaan |
+| `bulk` (`tenant.data_export`, `report.package`) · `integration` · `schema` | 0 | — | — (terukur² begitu ada pekerjaan) | bawaan |
 
 **Dua cacat data, dan apa yang dilakukan terhadapnya:**
 
@@ -1831,7 +1831,34 @@ durasi = `finished_at − started_at`.
   nol). Diperbaiki di sini: `ClaimJob` (`contract/jobs.sql`) kini menyetel
   `started_at = now()` bersama `claimed_at`, persis klaim Node — dijaga
   `tests/services-go.test.ts`. Jalur Go mulai mengumpulkan sampel durasi sejak
-  rilis berikutnya.
+  0.23.0 (24 Okt 2026); baris sebelumnya tetap `NULL` dan memang dibuang.
+- ² **Penulisan kolom ternyata baru separuh sebabnya** (✅ 24 Okt 2026). Sesudah
+  klaim Go menulis `started_at` pun, durasinya TIDAK akan pernah tampil: satu-
+  satunya permukaan durasi adalah `jobMetrics` — jendela **15 menit**, vonis
+  yang menuntut ≥ 10 sampel di jendela itu dan ambang `alarm:` yang menuntut
+  ≥ 200 sampel. Jalur Go menjalankan belasan pekerjaan **sehari**, jadi jendela
+  15 menitnya hampir selalu nol sampel: p95 `—`, vonis `unset`, selamanya.
+  Datanya ada; jendelanya yang terlalu sempit untuk volumenya. Dan p95 jalur
+  di sana dilipat sebagai yang TERTINGGI antar `kind` — benar untuk detektor,
+  salah untuk SLO "5% pekerjaan boleh melampaui", yang menyatakan himpunan
+  pekerjaan jalur (`report.export` Node + `report.export_go` Go).
+  **Perbaikannya:** `jobDurations` (`@sai/platform/job-durations`) — jendela
+  harian (bawaan = retensi `done`, 14 hari), `started_at → finished_at`,
+  p50/p95/p99/maks per jalur atas GABUNGAN baris (`GROUPING SETS`) dan per
+  `kind`, setiap jalur Node dan Go tanpa saringan `kind`, plus hitungan
+  pekerjaan di atas SLO (*error budget* terpakai). Tampil di panel kedua tab
+  **Metrik** `/scheduler` ("Durasi pekerjaan per jalur & jenis"). SLO-nya
+  didefinisikan SEKALI di kontrak — `lanes.interactive.slo`
+  (`duration_p95_ms: 10000`, `window_days: 30`, `decided`) di
+  `contract/kinds.yaml` → `JOB_LANES[*].slo` — dan dinilai `sloVerdict`
+  (`@sai/core/queue-health`): **dalam SLO** / **melampaui SLO** / **data
+  belum cukup** di bawah `SLO_MIN_SAMPLES` = 20 (di bawah 20, SATU ekspor
+  lambat sudah > 5%). Jendela yang dinilai = min(30 hari, retensi 14 hari) dan
+  layar mengatakannya. Bukti terhadap PostgreSQL sungguhan, termasuk SQL klaim
+  Go dari `contract/jobs.sql`: `tests/jobs-time-columns.integration.test.ts`
+  dan `services/integrator/internal/jobs/queue_durasi_integration_test.go`.
+  Panel 15 menit tetap ada — ia menjawab "sedang melambat SEKARANG", yang ini
+  "apakah janji ditepati".
 
 **Aturan penurunan** (ditulis supaya setel ulangnya mekanis, bukan rapat):
 

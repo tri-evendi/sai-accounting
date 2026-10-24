@@ -252,7 +252,7 @@ describe("otorisasi", () => {
     expect(parent.reports.map((r) => r.reportId)).toEqual(["balance-sheet", "receivables"]);
     expect(parent.excluded).toEqual([
       { reportId: "payables", title: "Utang & Umur Utang", reason: "Peran Anda tidak berwenang membuka laporan ini" },
-      { reportId: "stock-value", title: "Nilai Persediaan", reason: "Modul laporan ini tidak aktif untuk PT ini" },
+      { reportId: "stock-value", title: "Nilai Persediaan", reason: "Modul laporan ini tidak aktif untuk perusahaan ini" },
     ]);
     expect(child.excluded).toEqual(parent.excluded);
   });
@@ -424,7 +424,7 @@ describe("isi ZIP: ringkasan lebih dulu, satu PDF per laporan", () => {
   it("ringkasan menyebut PT, periode, laporan yang disertakan, dan yang dikecualikan beserta alasannya", async () => {
     const { zip } = await bagianPdf(["pdf"], ["balance-sheet", "stock-value"]);
     const teks = Buffer.from(await zip.file("00_Ringkasan_Paket.pdf")!.async("uint8array")).toString("latin1");
-    for (const s of ["PT Uji Paket", "Paket Laporan", "Periode 1 Januari 2026", "Neraca", "Nilai Persediaan", "Modul laporan ini tidak aktif untuk PT ini", "Diminta oleh: Manajer Keuangan"]) {
+    for (const s of ["PT Uji Paket", "Paket Laporan", "Periode 1 Januari 2026", "Neraca", "Nilai Persediaan", "Modul laporan ini tidak aktif untuk perusahaan ini", "Diminta oleh: Manajer Keuangan"]) {
       expect(teks, s).toContain(s);
     }
   });

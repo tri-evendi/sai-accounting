@@ -4574,7 +4574,7 @@
   },
   "companies": {
     "newTitle": "Add Company",
-    "newDescription": "Create a new company with its own database.",
+    "newDescription": "Create a new company with its own database — any legal form works: PT, PT Perorangan, CV, Firma or sole proprietorship.",
     "explainIsolation": "Each company keeps its own books — invoices, journals, stock and users are fully separate from every other company.",
     "explainAdmin": "Your current account ({name}) automatically becomes System Administrator of this company — full access: you are the first who can open its books and invite staff. You can change the role any time on the Users page.",
     "explainNextStep": "Once created, open the company and run the setup wizard: identity, fiscal year, chart of accounts and opening balances.",

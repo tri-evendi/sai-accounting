@@ -99,7 +99,7 @@ const DEFAULT_PLANS = [
      * dengan Pro. */
     key: "starter",
     name: "Starter",
-    description: "Satu PT, tiga pengguna.",
+    description: "Satu perusahaan, tiga pengguna.",
     priceMonthly: "249000.00",
     priceYearly: "2490000.00",
     maxCompanies: 1,
@@ -114,7 +114,7 @@ const DEFAULT_PLANS = [
      * diambil, dan seed tidak berwenang mengubahnya. */
     key: "pro",
     name: "Pro",
-    description: "Sampai tiga PT, lima belas pengguna.",
+    description: "Sampai tiga perusahaan, lima belas pengguna.",
     /* Rp 599rb/bln — DI BAWAH padanan pasar untuk bentuk yang sama, bukan di
      * atasnya: menyusun 3 database + 15 pengguna di Accurate Online berharga
      * ±Rp 813rb/bln (333rb + 2×100rb database + 14×20rb pengguna), dan tiga PT
@@ -147,7 +147,7 @@ const DEFAULT_PLANS = [
      * (899 rb · 1 entitas). */
     key: "business",
     name: "Business",
-    description: "Sampai delapan PT, empat puluh pengguna.",
+    description: "Sampai delapan perusahaan, empat puluh pengguna.",
     priceMonthly: "1199000.00",
     priceYearly: "11990000.00",
     maxCompanies: 8,

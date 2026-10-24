@@ -35,7 +35,7 @@ export type PackageExclusionReason = "module" | "role";
  * muatan). Satu sumber, dua penulis.
  */
 export const PACKAGE_EXCLUSION_TEXT: Record<PackageExclusionReason, string> = {
-  module: "Modul laporan ini tidak aktif untuk PT ini",
+  module: "Modul laporan ini tidak aktif untuk perusahaan ini",
   role: "Peran Anda tidak berwenang membuka laporan ini",
 };
 

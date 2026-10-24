@@ -1,8 +1,24 @@
 "use client";
 
 /**
- * EDITOR ISI HALAMAN DEPAN — satu bagian halaman, ketiga bahasa berdampingan,
- * disimpan sebagai DRAF.
+ * EDITOR ISI HALAMAN DEPAN — satu bagian halaman, BAHASA INDONESIA, disimpan
+ * sebagai DRAF.
+ *
+ * ══ SATU BAHASA DI ALUR BIASA ═════════════════════════════════════════════
+ * Sampai perubahan ini ketiga bahasa tampil berdampingan, lengkap dengan
+ * peringatan "terjemahan tertinggal" — dan pemilik merasa diminta mengelola
+ * terjemahan, yang memang bukan pekerjaannya di layar ini. Sekarang yang tampil
+ * hanya isian `id`. English & 中文 tetap ADA (penyimpanan, draf, terbit, dan
+ * riwayat per bahasa tidak berubah satu baris pun), tetapi tersimpan di balik
+ * `<details>` "Bahasa lain (opsional)" per kunci yang TERTUTUP bawaannya.
+ * Ringkasannya menyebut bila bahasa lain sudah punya draf, dan ia terbuka
+ * sendiri bila server menolak salah satu isiannya — galat tidak boleh
+ * tersembunyi di balik lipatan.
+ *
+ * Isian bahasa lain tetap TERPASANG (hanya terlipat), jadi nilainya ikut
+ * terkirim apa adanya; server tidak membuat draf untuk nilai yang sama dengan
+ * yang tayang/draf (`saveSiteContentDrafts`), sehingga suntingan `id` saja
+ * tidak pernah melahirkan draf kosong untuk `en`/`zh`.
  *
  * ══ YANG TERLIHAT PER ISIAN ═══════════════════════════════════════════════
  *   • status berteks (Bawaan / Diganti / Draf), bukan warna saja;
@@ -11,8 +27,7 @@
  *   • yang tayang sekarang, bila berbeda dari bawaan;
  *   • penghitung karakter terhadap batas isian (`contentFieldSpec`);
  *   • peringatan saat mengetik dari aturan yang SAMA dengan server
- *     (`contentValueProblem` + `describeContentProblem`);
- *   • "terjemahan tertinggal" per kunci: diganti di sebagian bahasa saja.
+ *     (`contentValueProblem` + `describeContentProblem`).
  *
  * Isian KOSONG = kembali ke teks bawaan saat diterbitkan. Isian yang sama
  * dengan yang tayang = tidak ada draf. Jadi "Batalkan perubahan" mengembalikan
@@ -32,7 +47,6 @@ import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Flex, theme } from "antd";
-import { WarningOutlined } from "@ant-design/icons";
 
 import { Badge } from "@sai/ui/badge";
 import { Button } from "@sai/ui/button";
@@ -50,6 +64,7 @@ import { Textarea } from "@sai/ui/textarea";
 import { useT } from "@sai/core/i18n/client";
 import { LOCALES, type Locale } from "@sai/core/i18n/config";
 import {
+  SITE_CONTENT_PRIMARY_LOCALE,
   contentCellState,
   contentLength,
   contentValueProblem,
@@ -77,9 +92,11 @@ export interface ContentEditorRow {
   name: string;
   spec: ContentFieldSpec;
   cells: Record<Locale, ContentEditorCell>;
-  /** Bahasa yang masih bawaan padahal bahasa lain sudah diganti. */
-  behind: Locale[];
 }
+
+/** Bahasa yang tampil di alur biasa; sisanya terlipat di "Bahasa lain". */
+const PRIMARY_CONTENT_LOCALE = SITE_CONTENT_PRIMARY_LOCALE;
+const OTHER_LOCALES = LOCALES.filter((l) => l !== PRIMARY_CONTENT_LOCALE);
 
 interface ContentEditorProps {
   section: string;
@@ -116,6 +133,8 @@ export function ContentEditor({
   const router = useRouter();
   const { token } = theme.useToken();
   const [result, setResult] = useState<OperatorContentActionResult | null>(null);
+  /** Kunci yang lipatan "Bahasa lain"-nya dibuka pengguna. */
+  const [openOthers, setOpenOthers] = useState<Record<string, boolean>>({});
 
   const buildValues = (): SiteContentDraftFormInput => ({
     section,
@@ -171,6 +190,128 @@ export function ContentEditor({
     minWidth: 0,
   };
 
+  /** Satu isian satu bahasa — dipakai untuk `id` dan, di dalam lipatan, sisanya. */
+  const renderCell = (row: ContentEditorRow, locale: Locale) => {
+    const cell = row.cells[locale];
+    const state = contentCellState(cell);
+    const current = values?.[locale]?.[row.name] ?? "";
+    const live = cell.published ?? "";
+    const length = contentLength(current.trim());
+    const problem = contentValueProblem(current, cell.defaultValue, row.spec);
+    const paragraph = row.spec.kind !== "label";
+    return (
+      <div key={locale} style={cellBox}>
+        <FormField
+          control={form.control}
+          name={`entries.${locale}.${row.name}`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <span lang={locale}>{localeLabels[locale]}</span>{" "}
+                <Badge variant={STATE_BADGE[state]}>
+                  {state === "draft"
+                    ? t("operator.content.stateDraft")
+                    : state === "overridden"
+                      ? t("operator.content.stateOverridden")
+                      : t("operator.content.stateDefault")}
+                </Badge>
+              </FormLabel>
+              <FormControl>
+                {paragraph ? (
+                  <Textarea
+                    {...field}
+                    lang={locale}
+                    rows={row.spec.kind === "paragraph" ? 5 : 2}
+                    placeholder={cell.defaultValue}
+                    spellCheck
+                  />
+                ) : (
+                  <TextInput {...field} lang={locale} placeholder={cell.defaultValue} spellCheck />
+                )}
+              </FormControl>
+              <FormDescription>
+                <span
+                  aria-label={t("operator.content.charCountAria", {
+                    count: length,
+                    max: row.spec.maxLength,
+                  })}
+                  style={{
+                    display: "block",
+                    fontVariantNumeric: "tabular-nums",
+                    color: length > row.spec.maxLength ? token.colorErrorText : token.colorTextTertiary,
+                  }}
+                >
+                  {`${length}/${row.spec.maxLength}`}
+                </span>
+                <span lang={locale} style={{ display: "block", color: token.colorTextTertiary }}>
+                  {t("operator.content.defaultIs", { text: cell.defaultValue })}
+                </span>
+                {cell.draft !== undefined && (
+                  <span lang={locale} style={{ display: "block" }}>
+                    {cell.published === null
+                      ? t("operator.content.liveIsDefault")
+                      : t("operator.content.liveIs", { text: cell.published })}
+                  </span>
+                )}
+                {cell.draft === null && (
+                  <span style={{ display: "block" }}>{t("operator.content.draftToDefault")}</span>
+                )}
+                {cell.draftBy ? (
+                  <span style={{ display: "block" }}>
+                    {t("operator.content.draftBy", { who: cell.draftBy, when: cell.draftAt })}
+                  </span>
+                ) : cell.publishedBy ? (
+                  <span style={{ display: "block" }}>
+                    {t("operator.content.publishedBy", {
+                      who: cell.publishedBy,
+                      when: cell.publishedAt,
+                    })}
+                  </span>
+                ) : null}
+                {problem && !form.formState.errors.entries?.[locale]?.[row.name] && (
+                  <span style={{ display: "block", color: token.colorWarningText }}>
+                    {describeContentProblem(
+                      problem,
+                      { value: current, defaultValue: cell.defaultValue, spec: row.spec },
+                      t
+                    )}
+                  </span>
+                )}
+              </FormDescription>
+              <FormMessage />
+              <Flex wrap gap={token.marginXS} style={{ marginTop: token.marginXS }}>
+                {current !== live && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      form.setValue(`entries.${locale}.${row.name}`, live, { shouldDirty: true })
+                    }
+                  >
+                    {t("operator.content.undoEdit")}
+                  </Button>
+                )}
+                {current !== "" && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      form.setValue(`entries.${locale}.${row.name}`, "", { shouldDirty: true })
+                    }
+                  >
+                    {t("operator.content.useDefault")}
+                  </Button>
+                )}
+              </Flex>
+            </FormItem>
+          )}
+        />
+      </div>
+    );
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: token.margin }}>
@@ -207,146 +348,41 @@ export function ContentEditor({
               )}
             </Flex>
 
-            {row.behind.length > 0 && (
-              <p style={{ margin: 0, color: token.colorTextSecondary }}>
-                <WarningOutlined aria-hidden="true" style={{ color: token.colorWarning, marginInlineEnd: token.marginXXS }} />
-                {t("operator.content.behind", {
-                  done: LOCALES.filter((l) => !row.behind.includes(l))
-                    .map((l) => localeLabels[l])
-                    .join(", "),
-                  missing: row.behind.map((l) => localeLabels[l]).join(", "),
-                })}
-              </p>
-            )}
+            {renderCell(row, PRIMARY_CONTENT_LOCALE)}
 
-            <div
-              style={{
-                display: "grid",
-                gap: token.marginSM,
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              }}
-            >
-              {LOCALES.map((locale) => {
-                const cell = row.cells[locale];
-                const state = contentCellState(cell);
-                const current = values?.[locale]?.[row.name] ?? "";
-                const live = cell.published ?? "";
-                const length = contentLength(current.trim());
-                const problem = contentValueProblem(current, cell.defaultValue, row.spec);
-                const paragraph = row.spec.kind !== "label";
-                return (
-                  <div key={locale} style={cellBox}>
-                    <FormField
-                      control={form.control}
-                      name={`entries.${locale}.${row.name}`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            <span lang={locale}>{localeLabels[locale]}</span>{" "}
-                            <Badge variant={STATE_BADGE[state]}>
-                              {state === "draft"
-                                ? t("operator.content.stateDraft")
-                                : state === "overridden"
-                                  ? t("operator.content.stateOverridden")
-                                  : t("operator.content.stateDefault")}
-                            </Badge>
-                          </FormLabel>
-                          <FormControl>
-                            {paragraph ? (
-                              <Textarea
-                                {...field}
-                                lang={locale}
-                                rows={row.spec.kind === "paragraph" ? 5 : 2}
-                                placeholder={cell.defaultValue}
-                                spellCheck
-                              />
-                            ) : (
-                              <TextInput {...field} lang={locale} placeholder={cell.defaultValue} spellCheck />
-                            )}
-                          </FormControl>
-                          <FormDescription>
-                            <span
-                              aria-label={t("operator.content.charCountAria", {
-                                count: length,
-                                max: row.spec.maxLength,
-                              })}
-                              style={{
-                                display: "block",
-                                fontVariantNumeric: "tabular-nums",
-                                color: length > row.spec.maxLength ? token.colorErrorText : token.colorTextTertiary,
-                              }}
-                            >
-                              {`${length}/${row.spec.maxLength}`}
-                            </span>
-                            <span lang={locale} style={{ display: "block", color: token.colorTextTertiary }}>
-                              {t("operator.content.defaultIs", { text: cell.defaultValue })}
-                            </span>
-                            {cell.draft !== undefined && (
-                              <span lang={locale} style={{ display: "block" }}>
-                                {cell.published === null
-                                  ? t("operator.content.liveIsDefault")
-                                  : t("operator.content.liveIs", { text: cell.published })}
-                              </span>
-                            )}
-                            {cell.draft === null && (
-                              <span style={{ display: "block" }}>{t("operator.content.draftToDefault")}</span>
-                            )}
-                            {cell.draftBy ? (
-                              <span style={{ display: "block" }}>
-                                {t("operator.content.draftBy", { who: cell.draftBy, when: cell.draftAt })}
-                              </span>
-                            ) : cell.publishedBy ? (
-                              <span style={{ display: "block" }}>
-                                {t("operator.content.publishedBy", {
-                                  who: cell.publishedBy,
-                                  when: cell.publishedAt,
-                                })}
-                              </span>
-                            ) : null}
-                            {problem && !form.formState.errors.entries?.[locale]?.[row.name] && (
-                              <span style={{ display: "block", color: token.colorWarningText }}>
-                                {describeContentProblem(
-                                  problem,
-                                  { value: current, defaultValue: cell.defaultValue, spec: row.spec },
-                                  t
-                                )}
-                              </span>
-                            )}
-                          </FormDescription>
-                          <FormMessage />
-                          <Flex wrap gap={token.marginXS} style={{ marginTop: token.marginXS }}>
-                            {current !== live && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  form.setValue(`entries.${locale}.${row.name}`, live, { shouldDirty: true })
-                                }
-                              >
-                                {t("operator.content.undoEdit")}
-                              </Button>
-                            )}
-                            {current !== "" && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  form.setValue(`entries.${locale}.${row.name}`, "", { shouldDirty: true })
-                                }
-                              >
-                                {t("operator.content.useDefault")}
-                              </Button>
-                            )}
-                          </Flex>
-                        </FormItem>
-                      )}
-                    />
+            {(() => {
+              /* Lipatan bahasa lain — tertutup bawaannya; terbuka sendiri
+                 bila server menolak isian di dalamnya (lihat kepala berkas). */
+              const drafted = OTHER_LOCALES.filter((l) => row.cells[l].draft !== undefined);
+              const hasError = OTHER_LOCALES.some((l) => form.formState.errors.entries?.[l]?.[row.name]);
+              return (
+                <details
+                  open={hasError || openOthers[row.key] === true}
+                  onToggle={(e) => {
+                    const open = (e.currentTarget as HTMLDetailsElement).open;
+                    setOpenOthers((prev) => (prev[row.key] === open ? prev : { ...prev, [row.key]: open }));
+                  }}
+                >
+                  <summary style={{ cursor: "pointer", color: token.colorTextSecondary, minHeight: 32 }}>
+                    {t("operator.content.otherLocales")}
+                    {drafted.length > 0 &&
+                      ` · ${t("operator.content.otherLocalesDraft", {
+                        locales: drafted.map((l) => localeLabels[l]).join(", "),
+                      })}`}
+                  </summary>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: token.marginSM,
+                      marginTop: token.marginSM,
+                      gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                    }}
+                  >
+                    {OTHER_LOCALES.map((locale) => renderCell(row, locale))}
                   </div>
-                );
-              })}
-            </div>
+                </details>
+              );
+            })()}
           </section>
         ))}
 

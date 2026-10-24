@@ -40,7 +40,27 @@ import { tenantApiPath } from "./tenant-routes";
  * ketiadaan entri tidak bisa dibedakan dari entri yang lupa ditulis, sementara
  * `null` adalah pernyataan.
  */
-export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, Permission | null>> = {
+/**
+ * Penanda: izin unduh jenis ini milik JENIS LAPORAN yang disebut muatannya,
+ * bukan milik `kind`-nya.
+ *
+ * Satu pemakai: `report.pdf`. Tiga laporannya dijaga tiga izin berbeda
+ * (`inventory.read` / `inventory.write` / `cash.read` — izin HALAMAN
+ * masing-masing), dan satu izin `kind` untuk ketiganya berarti salah satu dari
+ * dua kegagalan: terlalu longgar (gudang mengunduh laporan kas) atau terlalu
+ * ketat (Manajer Keuangan kehilangan laporan kas tepat ketika ia besar).
+ *
+ * Rute hasil karena itu menuntut `?jenis=` di alamatnya dan menurunkan izin
+ * gerbang PERTAMA dari sana — tetap SEBELUM baris pekerjaannya dibaca — lalu
+ * menolak baris yang muatannya menyebut jenis lain. Gerbang KEDUA
+ * (`src/lib/job-result-gate.ts`) memeriksa ulang izin jenis dari muatannya.
+ */
+export const PER_REPORT_PERMISSION = "per_report" as const;
+
+/** Izin unduh satu `kind`: sebuah izin, penanda per-laporan, atau `null` (tanpa pintu). */
+export type JobResultPermission = Permission | typeof PER_REPORT_PERMISSION | null;
+
+export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, JobResultPermission>> = {
   /* Berkas yang ditunggu pengguna di layar. */
   "report.export": "report.export",
   /* Lembar sebar yang sama, dihitung Go (tahap 1d) — izinnya SAMA dengan
@@ -48,6 +68,9 @@ export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, Permission | null>>
      mesin yang menghitungnya. */
   "report.export_go": "report.export",
   "report.package": "report.export",
+  /* PDF laporan berantre (09 §5) — izinnya milik jenis laporannya; lihat
+     `PER_REPORT_PERMISSION`. */
+  "report.pdf": PER_REPORT_PERMISSION,
   "document.generate": "document.read",
 
   /* Impor melaporkan hasilnya sebagai ringkasan, bukan berkas. Kalau suatu

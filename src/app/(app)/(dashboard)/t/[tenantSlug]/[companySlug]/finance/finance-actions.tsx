@@ -1,14 +1,11 @@
 "use client";
 
-import { FinanceReportPDFButton } from "@/components/shared/pdf-export-buttons";
-import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
+import {
+  FinanceReportPDFButton,
+  type FinanceReportFilters,
+} from "@/components/shared/pdf-export-buttons";
 
-export function FinancePageActions({
-  balances,
-  transactions,
-}: {
-  balances: FinanceBalanceRow[];
-  transactions: FinanceReportRow[];
-}) {
-  return <FinanceReportPDFButton balances={balances} transactions={transactions} />;
+/* Saringan halaman, bukan barisnya — laporan dihitung server (09 §5). */
+export function FinancePageActions({ filters }: { filters: FinanceReportFilters }) {
+  return <FinanceReportPDFButton filters={filters} />;
 }

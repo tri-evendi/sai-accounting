@@ -59,7 +59,14 @@ import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 
 import { requireApiPermission } from "@/lib/auth-guard";
-import { JOB_RESULT_PERMISSION, isKnownKind, resultFilename } from "@sai/core/job-result";
+import {
+  JOB_RESULT_PERMISSION,
+  PER_REPORT_PERMISSION,
+  isKnownKind,
+  resultFilename,
+} from "@sai/core/job-result";
+import type { Permission } from "@sai/core/authz";
+import { REPORT_PDF, isQueueableReportPdf } from "@/lib/report-pdf";
 import { jobForDownload } from "@sai/platform/job-queue";
 import { bolehAmbilHasil } from "@/lib/job-result-gate";
 import { resolveResultPath, resultSize } from "@sai/platform/job-result-store";
@@ -84,7 +91,7 @@ function contentDisposition(filename: string): string {
 const tidakAda = () => new Response(null, { status: 404 });
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<TenantScopedParams & { kind: string; id: string }> }
 ) {
   /* Diurai SEKALI: `kind`, `id`, dan sepasang slug datang dari promise yang
@@ -95,10 +102,28 @@ export async function GET(
   const kindDiminta = decodeURIComponent(params.kind);
   if (!isKnownKind(kindDiminta)) return tidakAda();
 
-  const izin = JOB_RESULT_PERMISSION[kindDiminta];
+  const izinJenis = JOB_RESULT_PERMISSION[kindDiminta];
   /* `null` = jenis ini TIDAK PERNAH menghasilkan berkas yang bisa diunduh
      pengguna. 404 dan bukan 403: jenisnya memang tidak punya pintu di sini. */
-  if (izin === null) return tidakAda();
+  if (izinJenis === null) return tidakAda();
+
+  /*
+   * `report.pdf`: izinnya milik JENIS LAPORAN (`PER_REPORT_PERMISSION`), dan
+   * jenis itu dibaca dari ALAMAT (`?jenis=`) — bukan dari baris, yang belum
+   * boleh dibaca sebelum gerbang. Barisnya nanti WAJIB menyebut jenis yang
+   * sama (langkah 3), jadi alamat hanya bisa MEMPERSEMPIT apa yang terjangkau:
+   * menyebut jenis berizin longgar untuk mengambil hasil jenis berizin ketat
+   * gugur di perbandingan itu.
+   */
+  const jenisLaporan =
+    izinJenis === PER_REPORT_PERMISSION ? new URL(request.url).searchParams.get("jenis") : null;
+  let izin: Permission;
+  if (izinJenis === PER_REPORT_PERMISSION) {
+    if (!isQueueableReportPdf(jenisLaporan)) return tidakAda();
+    izin = REPORT_PDF[jenisLaporan].permission;
+  } else {
+    izin = izinJenis;
+  }
 
   if (!/^\d+$/.test(params.id)) return tidakAda();
   const id = Number(params.id);
@@ -144,7 +169,16 @@ export async function GET(
    * melanggar justru aturan yang §4 tuntut. Pekerjaan hidup berjam-jam; modul
    * dan peran berubah di antaranya.
    */
-  if (!(await bolehAmbilHasil(job.kind, job.payload, authz.session.user))) return tidakAda();
+  /* `report.pdf`: jenis di alamat (gerbang pertama) wajib SAMA dengan yang
+     disebut muatan barisnya — diperiksa di gerbang kedua, satu-satunya pembaca
+     muatan di rute ini. */
+  if (
+    !(await bolehAmbilHasil(job.kind, job.payload, authz.session.user, {
+      jenis: jenisLaporan,
+    }))
+  ) {
+    return tidakAda();
+  }
 
   if (job.status !== "done" || job.resultRef === null) {
     /* Sudah lolos izin DAN perusahaan, jadi keadaannya kabar yang sah. */

@@ -1,14 +1,13 @@
 /**
- * Baris transaksi Laporan Kas & Bank → muatan `/api/reports/pdf/finance`.
+ * Baris transaksi Laporan Kas & Bank → bagian `transactions` muatannya.
  *
- * Dua pemanggil, satu pemeta: halaman Kas & Bank (baris Prisma, `Date` +
- * `Decimal`) dan tombol pratinjau di beranda (JSON `GET /api/finance`, tempat
- * `Decimal` tiba sebagai STRING). Sejak tahap 1c PDF-nya digambar server dan
- * skemanya menuntut `number`; tombol beranda mengoper baris API mentah dan
- * ditolak 400 di SETIAP buku — terpotret di sapuan visual 21 Okt 2026 sebagai
- * "Gagal membuat dokumen.", sementara tombol yang sama di halaman Kas & Bank
- * lulus karena halamannya sudah mengonversi. Dua pemeta menyimpang tanpa galat;
- * karena itu tinggal satu.
+ * Sejak 09 §5 ditutup pemanggilnya SATU: `financeReportPayload`
+ * (`src/lib/report-pdf-payload.ts`), di server, atas baris Prisma (`Date` +
+ * `Decimal`). Bentuk JSON (`Decimal` sebagai STRING) tetap diterima — itu
+ * bentuk yang dulu dioper tombol beranda dari `GET /api/finance`, dan
+ * regresinya (21 Okt 2026: 400 di SETIAP buku, "Gagal membuat dokumen.")
+ * terpotret di `tests/finance-report-rows.test.ts`. Pemeta yang menerima
+ * keduanya tidak bisa menyimpang menurut asal barisnya.
  */
 // `import type` — terhapus saat kompilasi, jadi jsPDF tidak ikut ke peramban.
 import type { FinanceReportRow } from "@/lib/pdf/finance-report-pdf";

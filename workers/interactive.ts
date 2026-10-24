@@ -55,6 +55,7 @@ import { getCompanyIdentity } from "../src/lib/company-identity";
 import { runReadOnly } from "../src/lib/read-replica";
 import { applyEfakturRecord } from "../src/lib/efaktur-record";
 import { autoSendPostedInvoice } from "../src/lib/invoice-auto-send";
+import { renderReportPdfJob, type ReportPdfJobPayload } from "../src/lib/report-pdf-job";
 
 /** Muatan `report.export` — PARAMETER saja. */
 interface MuatanEkspor {
@@ -159,6 +160,32 @@ async function eksporLaporan(ctx: JobContext): Promise<string | null> {
 }
 
 /**
+ * `report.pdf` — PDF laporan yang muatannya dihitung server (stok, lembar
+ * opname, kas & bank), di atas ambang penyerahan (09 §5). Fungsinya SATU
+ * dengan rute sinkronnya — `src/lib/report-pdf-job.ts` memanggil `REPORT_PDF`
+ * yang sama — jadi berkas berantre dan berkas sinkron adalah dokumen yang
+ * sama. Byte-nya dibangkitkan SEKALI dan buffer itulah yang ditulis.
+ *
+ * `false` = perusahaan NONAKTIF tetap dikerjakan, alasan yang sama dengan
+ * ekspor: jalur ini hanya MEMBACA.
+ */
+async function pdfLaporan(ctx: JobContext): Promise<string | null> {
+  const berkas = await dalamKonteksPerusahaan(ctx.job.companyId, false, async () => {
+    await ctx.progress(10);
+    /* Pembacaan buku → replika baca bila terpasang, aturan kesegaran yang sama
+       dengan ekspor (`src/lib/read-replica.ts`). */
+    return renderReportPdfJob((ctx.job.payload ?? {}) as ReportPdfJobPayload, runReadOnly);
+  });
+
+  /* Sesudah perhitungan, sebelum penulisan — pekerjaan yang dibatalkan tidak
+     meninggalkan berkas yang tak akan diunduh siapa pun. */
+  if (ctx.cancelled()) return null;
+
+  await ctx.progress(90);
+  return writeJobResult(ctx.job.kind, ctx.job.id, berkas.filename, berkas.bytes);
+}
+
+/**
  * `efaktur.record` — hasil PJAP dari jalur `integration` Go ke buku PT
  * (docs/EFAKTUR.md). Di sini karena hanya Node yang menulis basis data
  * perusahaan; jalur `interactive` karena orang di layar Pajak menunggu
@@ -212,6 +239,7 @@ void runLane({
      * DITERBITKAN tanpa pengklaim.
      */
     "report.export": eksporLaporan,
+    "report.pdf": pdfLaporan,
     /*
      * Buku PT baru (Okt 2026). Di jalur ini karena yang menunggu adalah orang
      * di layar `/companies/new` — kontrak `company.provision` menulis kenapa

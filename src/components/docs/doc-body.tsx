@@ -20,9 +20,12 @@
  * ke sana adalah tautan yang memantul ke halaman masuk.
  */
 
+import Image from "next/image";
+
 import { DocFigure } from "@/components/docs/docs-figures";
-import { docAnchor } from "@/lib/docs";
-import type { DocBlock } from "@/lib/docs-content";
+import { docAnchor, docBySlug, docsPath } from "@/lib/docs";
+import { UKURAN_TANGKAPAN, alamatTangkapan, type DocBlock } from "@/lib/docs-content";
+import { Link } from "@sai/ui/app-link";
 import { getTerm } from "@sai/core/labels";
 import { getT } from "@sai/platform/i18n/server";
 
@@ -186,6 +189,41 @@ const ISTILAH_DEFINISI: React.CSSProperties = {
 };
 
 /**
+ * Bingkai tangkapan layar. Tepi tipis bertoken + sudut membulat supaya gambar
+ * BERTEMA TERANG tidak "melayang" di atas latar gelap: dalam mode gelap,
+ * tepinya yang memisahkan gambar dari halaman, bukan bayangan putih.
+ */
+const GAMBAR_KOTAK: React.CSSProperties = {
+  margin: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--ant-margin-xs)",
+};
+
+const GAMBAR: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  height: "auto",
+  borderRadius: "var(--ant-border-radius-lg)",
+  border: "1px solid var(--ant-color-border)",
+  background: "var(--ant-color-bg-container)",
+  boxShadow: "var(--ant-box-shadow-tertiary)",
+};
+
+const GAMBAR_KETERANGAN: React.CSSProperties = {
+  fontSize: "var(--ant-font-size-sm)",
+  lineHeight: 1.6,
+  color: "var(--ant-color-text-tertiary)",
+};
+
+const LIHAT_JUGA: React.CSSProperties = {
+  padding: "var(--ant-padding)",
+  borderRadius: "var(--ant-border-radius-lg)",
+  border: "1px solid var(--ant-color-border-secondary)",
+  background: "var(--ant-color-fill-quaternary)",
+};
+
+/**
  * Satu blok. Blok BANGKITAN (`matriks-izin`, `endpoint-api`, `riwayat-rilis`)
  * dirender
  * pemanggilnya — lihat `DocBody`.
@@ -236,6 +274,49 @@ async function Blok({
 
     case "diagram":
       return <DocFigure nama={blok.nama} keterangan={blok.keterangan} />;
+
+    case "gambar":
+      /*
+       * `next/image` dengan `unoptimized`: berkasnya SUDAH WebP terkompresi
+       * hasil `bun run docs:screenshots`, jadi pengoptimal hanya akan
+       * menyandikannya ulang. Yang diambil dari komponen ini adalah `width`/
+       * `height` (tata letak tidak melompat) dan `loading="lazy"` bawaan —
+       * halaman panjang bergambar banyak tidak mengunduh semuanya sekaligus.
+       */
+      return (
+        <figure style={GAMBAR_KOTAK}>
+          <Image
+            src={alamatTangkapan(blok.berkas)}
+            alt={blok.alt}
+            width={UKURAN_TANGKAPAN.lebar}
+            height={UKURAN_TANGKAPAN.tinggi}
+            sizes="(max-width: 52rem) 100vw, 48rem"
+            loading="lazy"
+            unoptimized
+            style={GAMBAR}
+          />
+          {blok.keterangan ? (
+            <figcaption style={GAMBAR_KETERANGAN}>{blok.keterangan}</figcaption>
+          ) : null}
+        </figure>
+      );
+
+    case "lihat-juga": {
+      const tujuan = blok.slug.map(docBySlug).filter((h) => h !== undefined);
+      if (tujuan.length === 0) return null;
+      return (
+        <nav aria-label={t("docs.seeAlso")} style={LIHAT_JUGA}>
+          <h2 style={ISTILAH_JUDUL}>{t("docs.seeAlso")}</h2>
+          <ul style={{ ...DAFTAR, marginTop: "var(--ant-margin-xs)", fontSize: "var(--ant-font-size)" }}>
+            {tujuan.map((h) => (
+              <li key={h.slug}>
+                <Link href={docsPath(h.slug)}>{h.judul}</Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      );
+    }
 
     case "kode":
       /*

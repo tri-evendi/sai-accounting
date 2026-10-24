@@ -197,7 +197,7 @@ const KISI_PT: React.CSSProperties = {
   gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
 };
 
-/** Satu basis data kendali di atas, satu buku per PT di bawahnya. */
+/** Satu basis data kendali di atas, satu buku per perusahaan di bawahnya. */
 function BukuPerPt() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin-xs)" }}>
@@ -210,9 +210,9 @@ function BukuPerPt() {
         ↓
       </span>
       <div style={KISI_PT}>
-        <Kotak judul="PT A" isi="Buku besarnya sendiri" />
-        <Kotak judul="PT B" isi="Buku besarnya sendiri" />
-        <Kotak judul="PT C" isi="Buku besarnya sendiri" />
+        <Kotak judul="Perusahaan A" isi="Buku besarnya sendiri" />
+        <Kotak judul="Perusahaan B" isi="Buku besarnya sendiri" />
+        <Kotak judul="Perusahaan C" isi="Buku besarnya sendiri" />
       </div>
     </div>
   );

@@ -65,6 +65,7 @@ export function generateStaticParams() {
  * muncul sebagai kunci mentah di layar.
  */
 const NAMA_CABANG: Record<DocBranch, DictionaryKey> = {
+  mulai: "docs.branchStart",
   pelanggan: "docs.branchCustomer",
   pengguna: "docs.branchUser",
 };

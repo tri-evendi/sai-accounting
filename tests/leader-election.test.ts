@@ -298,7 +298,7 @@ describe("compose dasar TIDAK berubah — election hanya lewat override", () => 
     const b = tanpaKomentar(blok(HA, "svc-worker"));
     expect(b).not.toMatch(/^\s+command:/m);
     expect(b).not.toMatch(/^\s+entrypoint:/m);
-    expect(b).toMatch(/WORKER_LEADER_ROLES: scheduler,ledger,conformance/);
+    expect(b).toMatch(/WORKER_LEADER_ROLES: scheduler,ledger,conformance,outbox$/m);
   });
 
   it("peran pemimpin HA = peran tunggal; `interactive` (jamak) tidak pernah dibungkus", () => {
@@ -308,7 +308,7 @@ describe("compose dasar TIDAK berubah — election hanya lewat override", () => 
     expect(m).not.toBeNull();
     const roles = [...workerRoles()].map(([name, script]) => ({ name, script }));
     const pemimpin = leaderRoles(m![1], roles);
-    expect([...pemimpin].sort()).toEqual(["conformance", "ledger", "scheduler"]);
+    expect([...pemimpin].sort()).toEqual(["conformance", "ledger", "outbox", "scheduler"]);
     expect(pemimpin.has("interactive")).toBe(false);
     expect(() => leaderRoles("scheduler,penjadwal", roles)).toThrow(/bukan peran/);
     expect(() => parseRoles(["ledger", "exec true", "ledger", "exec true"])).toThrow(/dua kali/);

@@ -139,7 +139,9 @@ services:
   #     replika kedua keluar karena pagar, dan penyelia (yang mengakhiri
   #     container begitu satu peran berakhir) membuat replika itu crash-loop;
   #   • `conformance` — dua pemeriksaan mingguan hanya berarti dua kali sapuan
-  #     seluruh buku dan dua baris jejak.
+  #     seluruh buku dan dua baris jejak;
+  #   • `outbox` — relay outbox (09 §4) tunggal-instans berpagar
+  #     `sai.outbox.relay`; alasan yang sama dengan `ledger`.
   # `interactive` TIDAK disebut: ia jamak, dan berjalan di setiap replika.
   # Dijaga `tests/leader-election.test.ts`.
   #
@@ -162,7 +164,7 @@ services:
   svc-worker:
     container_name: !reset null
     environment:
-      WORKER_LEADER_ROLES: scheduler,ledger,conformance
+      WORKER_LEADER_ROLES: scheduler,ledger,conformance,outbox
       CONTROL_DATABASE_DIRECT_URL: *control-direct
       COMPANY_DATABASE_READ_URL_TEMPLATE: postgres://${PG_APP_USER:-${PG_USER:-sai}}:${PG_APP_PASSWORD:-${PG_PASSWORD}}@pg:5433/template
 

@@ -37,6 +37,7 @@ type JobKind string
 const (
 	KindCompanyProvision         JobKind = "company.provision"
 	KindDocumentGenerate         JobKind = "document.generate"
+	KindDocumentInvoiceSend      JobKind = "document.invoice_send"
 	KindEfakturRecord            JobKind = "efaktur.record"
 	KindImportProcess            JobKind = "import.process"
 	KindIntegrationBankFeed      JobKind = "integration.bank_feed"
@@ -83,6 +84,7 @@ type KindSpec struct {
 var JobKinds = map[JobKind]KindSpec{
 	KindCompanyProvision:         {Lane: LaneInteractive, MaxAttempts: 1, WritesLedger: false},
 	KindDocumentGenerate:         {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
+	KindDocumentInvoiceSend:      {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindEfakturRecord:            {Lane: LaneInteractive, MaxAttempts: 5, WritesLedger: false},
 	KindImportProcess:            {Lane: LaneBulk, MaxAttempts: 1, WritesLedger: false},
 	KindIntegrationBankFeed:      {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
@@ -137,7 +139,7 @@ var JobLanes = map[JobLane]LaneSpec{
 var KindsByLane = map[JobLane][]JobKind{
 	LaneBulk:        {KindImportProcess, KindMailBatch, KindReportPackage, KindTenantDataExport},
 	LaneIntegration: {KindIntegrationBankFeed, KindIntegrationEfakturCancel, KindIntegrationEfakturPoll, KindIntegrationEfakturSubmit},
-	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindEfakturRecord, KindReportExport, KindReportExportGo},
+	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindDocumentInvoiceSend, KindEfakturRecord, KindReportExport, KindReportExportGo},
 	LaneLedger:      {KindLedgerDunning, KindLedgerRecurring},
 	LaneSchedule:    {KindScheduleTick},
 	LaneSchema:      {KindSchemaMigrate},

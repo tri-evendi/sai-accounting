@@ -115,6 +115,7 @@ export async function bolehAmbilHasil(
     case "integration.efaktur_cancel":
     case "efaktur.record":
     case "integration.bank_feed":
+    case "document.invoice_send":
       return false;
   }
 }

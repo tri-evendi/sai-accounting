@@ -35,6 +35,7 @@ import {
   type JobKind,
   type JobLane,
 } from "@sai/core/generated/job-kinds";
+import { OUTBOX_EVENTS } from "@sai/core/generated/job-numbers";
 
 const SEMUA: JobKind[] = Object.keys(JOB_KINDS) as JobKind[];
 
@@ -75,6 +76,14 @@ function kindDiterbitkan(): Set<JobKind> {
     for (const kind of SEMUA) {
       if (new RegExp(`kind:\\s*"${kind.replace(".", "\\.")}"`).test(b.isi)) hasil.add(kind);
     }
+  }
+  /* Relay outbox (09 §4): kind diterbitkan dari peta kontrak
+     `OUTBOX_EVENTS[...].consumers`, bukan sebagai teks `kind: "…"` — penjaga
+     yang hanya membaca literal akan lulus dengan nol penerbit begitu peristiwa
+     baru ditambahkan ke kontrak tanpa pengklaim. */
+  const relay = SUMBER.find((b) => b.rel === "src/lib/outbox-relay.ts");
+  if (relay && /spec\.consumers/.test(relay.isi) && relay.isi.includes("publish(")) {
+    for (const ev of Object.values(OUTBOX_EVENTS)) for (const k of ev.consumers) hasil.add(k);
   }
   /* Sisi Go (jalur `schedule`, Okt 2026): kind ditulis sebagai KONSTANTA
      bangkitan (`contract.KindScheduleTick`), tidak pernah sebagai teks —
@@ -163,6 +172,14 @@ describe("pengklaim: penjaganya memang sedang melihat sesuatu", () => {
     expect(kindDiklaim().get("schedule.tick")).toEqual([
       "services/integrator/internal/schedulelane/runner.go",
     ]);
+  });
+});
+
+describe("pengklaim: relay outbox terlihat sebagai penerbit", () => {
+  it("setiap konsumen peristiwa outbox dihitung DITERBITKAN, dan `document.invoice_send` diklaim pelari `interactive`", () => {
+    const terbit = kindDiterbitkan();
+    for (const ev of Object.values(OUTBOX_EVENTS)) for (const k of ev.consumers) expect(terbit).toContain(k);
+    expect(kindDiklaim().get("document.invoice_send")).toEqual(["workers/interactive.ts"]);
   });
 });
 

@@ -75,6 +75,7 @@ import {
 } from "./rules";
 import { averageUnitCostForItem, costOfMovement } from "./cogs";
 import { isPostingBlocked } from "@/lib/approval-requests";
+import { emitOutboxEvent, invoicePostedDedupeKey } from "@/lib/outbox";
 
 export * from "./mapping";
 export * from "./rules";
@@ -1800,6 +1801,44 @@ async function approvalGate(client: Client, ctx: PostingContext): Promise<boolea
   return isPostingBlocked(client, ctx.sourceType, ctx.sourceId);
 }
 
+// ─── Outbox (09 §4) ──────────────────────────────────────
+/**
+ * Peristiwa yang lahir dari posting — DI SINI, di pintu posting, bukan di
+ * rute: setiap jalan yang menjadikan dokumen jurnal lewat `postForSource` /
+ * `repostForSource` (rute, persetujuan, wisaya, pekerja `ledger`), jadi
+ * peristiwanya tidak bisa terlewat dengan menambah rute baru — alasan yang
+ * sama yang menaruh gerbang persetujuan (#25) di berkas ini.
+ *
+ * `client` di sini SELALU klien transaksi (`withClient`), jadi peristiwanya
+ * commit bersama jurnalnya atau rollback bersamanya. `emitOutboxEvent`
+ * melempar bila tidak — pemanggil yang menyerahkan klien biasa sebagai `tx`
+ * akan tahu seketika, bukan sesudah surel berangkat untuk faktur yang batal.
+ *
+ * `invoice.posted` = jurnal PERTAMA faktur ini seumur hidupnya. Edit yang
+ * memposting ulang (`repostForSource`) meninggalkan jurnal lama yang dibalik
+ * — masih bersumber faktur ini — jadi hitungannya > 1 dan tidak ada peristiwa:
+ * faktur lama yang disunting sesudah rilis ini tidak tiba-tiba "diposting"
+ * lagi, dan pelanggan tidak menerima faktur yang sama setiap kali ia diedit.
+ * Jurnal pembalikan tidak membawa `source_type`, jadi ia tidak ikut terhitung.
+ */
+async function emitPostingEvents(
+  client: Client,
+  ctx: PostingContext,
+  journal: Journal
+): Promise<void> {
+  if (ctx.sourceType !== "invoice") return;
+  const jurnalSumber = await client.journal.count({
+    where: { sourceType: "invoice", sourceId: ctx.sourceId },
+  });
+  if (jurnalSumber !== 1) return;
+  await emitOutboxEvent(client as Prisma.TransactionClient, {
+    type: "invoice.posted",
+    aggregateId: ctx.sourceId,
+    payload: { invoiceId: ctx.sourceId, journalId: journal.id },
+    dedupeKey: invoicePostedDedupeKey(ctx.sourceId),
+  });
+}
+
 /** Run against the caller's transaction if given, otherwise open our own. */
 function withClient<T>(
   ctx: PostingContext,
@@ -1830,7 +1869,9 @@ export async function postForSource(ctx: PostingContext): Promise<Journal | null
 
     const entry = await buildStampedEntry(client, ctx);
     if (!entry) return null;
-    return postJournal(entry, client);
+    const journal = await postJournal(entry, client);
+    await emitPostingEvents(client, ctx, journal);
+    return journal;
   });
 }
 
@@ -1852,7 +1893,9 @@ export async function repostForSource(ctx: PostingContext): Promise<Journal | nu
 
     const entry = await buildStampedEntry(client, ctx);
     if (!entry) return null;
-    return postJournal(entry, client);
+    const journal = await postJournal(entry, client);
+    await emitPostingEvents(client, ctx, journal);
+    return journal;
   });
 }
 

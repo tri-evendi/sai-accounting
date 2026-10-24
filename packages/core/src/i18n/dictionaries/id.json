@@ -1062,6 +1062,11 @@
     "closing": "Terima kasih atas kerja samanya.",
     "colSent": "Dikirim"
   },
+  "invoiceAutoSend": {
+    "enable": "Kirim faktur ke surel pelanggan saat diposting",
+    "hint": "Faktur yang baru diposting dikirim otomatis sebagai lampiran PDF, sekali per faktur. Mengedit faktur tidak mengirimnya lagi. Pelanggan tanpa alamat surel dilewati.",
+    "historyLabel": "saat diposting"
+  },
   "invoiceReminder": {
     "subject": {
       "before_3": "Pengingat: faktur {no} akan jatuh tempo",
@@ -4930,6 +4935,19 @@
         "queueStatusWarn": "Tertahan",
         "queueStatusLate": "Terlambat",
         "queueUnavailable": "Antrean tidak bisa dibaca. Basis data kendali tidak terjangkau atau migration belum diterapkan.",
+        "outboxHeading": "Outbox (peristiwa buku → antrean)",
+        "outboxNote": "Umur baris tertua yang belum diteruskan relay, per buku. Peringatan di {warn} detik, terlambat di {late} detik; jejak relay yang lebih tua dari {stale} detik berarti relay mati atau buku tak terjangkau.",
+        "outboxColBook": "Buku",
+        "outboxColPending": "Belum terbit",
+        "outboxColAge": "Umur tertua (detik)",
+        "outboxColLastPass": "Putaran relay terakhir",
+        "outboxColError": "Galat terakhir",
+        "outboxStatusOk": "Lancar",
+        "outboxStatusLagging": "Tersendat",
+        "outboxStatusLate": "Terlambat",
+        "outboxStatusUnknown": "Belum ada jejak",
+        "outboxEmpty": "Relay belum pernah menyentuh satu buku pun.",
+        "outboxUnavailable": "Jejak relay tidak terbaca. Basis data kendali tak terjangkau atau migration kendali 0012 belum diterapkan.",
         "metricsHeading": "Laju & durasi pekerjaan",
         "metricsNote": "Jendela {window} menit terakhir. Persentil hanya bermakna bila jumlah sampelnya cukup.",
         "metricsColPublished": "Terbit /menit",

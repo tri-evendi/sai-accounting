@@ -31,6 +31,7 @@ import type { WatchdogDecision } from "@/lib/backup-watchdog";
 import type { SchedulerHealthStatus } from "@sai/core/scheduler-heartbeat";
 import type { ConformanceHealthStatus } from "@/lib/conformance-heartbeat";
 import type { MigrationsHealth } from "@sai/core/schema-version";
+import type { OutboxHealthStatus } from "@sai/core/outbox-health";
 
 const DIAM: WatchdogDecision = { alert: false, subject: "", body: "", fingerprint: "" };
 
@@ -318,5 +319,55 @@ export function decideMigrationsAlert(input: MigrationsWatchdogInput): WatchdogD
       ["putaran terakhir", input.lastRunAt ?? "(belum pernah)"],
     ]),
     fingerprint: `migrations:${input.status}:${input.expected}`,
+  };
+}
+
+/* ══ OUTBOX TRANSAKSIONAL (09 §4) ═══════════════════════════════════════════ */
+
+export interface OutboxWatchdogInput {
+  status: OutboxHealthStatus;
+  oldestAgeSeconds: number | null;
+  unpublishedTotal: number;
+  /** Slug buku yang jejaknya basi — surel operator, bukan probe publik. */
+  staleSlugs: string[];
+  erroredSlugs: string[];
+}
+
+/**
+ * Berbunyi untuk peristiwa yang TERTAHAN di buku PT — faktur yang sudah
+ * diposting tetapi pekerjaannya belum terbit. Itu persis keadaan yang outbox
+ * ada untuk mencegah menjadi diam: posting berhasil, dan tidak ada apa pun
+ * yang menyusul.
+ *
+ * `lagging` DIAM: umur di atas ambang peringatan tapi di bawah terlambat
+ * adalah relay yang sedang mengejar (mis. sesudah kendali tersendat), dan
+ * surel untuk keadaan yang menyembuhkan diri dalam menit adalah surel yang
+ * mengajari orang mengabaikan alarm ini. `unknown` DIAM: belum ada jejak
+ * relay — setiap pemasangan sebelum rilis pertamanya dengan peran `outbox`.
+ */
+export function decideOutboxAlert(input: OutboxWatchdogInput): WatchdogDecision {
+  if (input.status !== "late") return DIAM;
+  const basi = input.staleSlugs.length > 0;
+  const pesan = basi
+    ? "RELAY OUTBOX TIDAK MENYENTUH SEBAGIAN BUKU.\n\n" +
+      "Jejak relay untuk buku di bawah lebih tua dari ambang basinya: relay mati\n" +
+      "(peran `outbox` di svc-worker), atau buku itu tak terjangkau. Peristiwa yang\n" +
+      "ditulis di buku itu — faktur yang diposting — TIDAK diteruskan ke antrean.\n\n" +
+      "Periksa:  docker compose logs svc-worker --tail 200 | grep ' outbox *|'\n\n" +
+      `Buku: ${input.staleSlugs.join(", ")}`
+    : "PERISTIWA OUTBOX TERTAHAN.\n\n" +
+      `Baris tertua yang belum terbit berumur ${input.oldestAgeSeconds ?? "?"} detik. Relay hidup,\n` +
+      "tetapi penerbitannya ke `jobs` gagal (lihat `outbox.last_error` di buku yang\n" +
+      "disebut, dan log peran `outbox`).\n\n" +
+      `Buku dengan galat: ${input.erroredSlugs.join(", ") || "(tidak ada — periksa umur per buku di konsol /scheduler)"}`;
+  return {
+    alert: true,
+    subject: `[SAI] outbox: ${basi ? "relay tidak berjalan" : "peristiwa tertahan"}`,
+    body: badan(pesan, [
+      ["status", input.status],
+      ["umur tertua", input.oldestAgeSeconds === null ? "—" : `${input.oldestAgeSeconds} detik`],
+      ["belum terbit", String(input.unpublishedTotal)],
+    ]),
+    fingerprint: `outbox:${basi ? "stale" : "lag"}`,
   };
 }

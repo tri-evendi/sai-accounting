@@ -728,6 +728,45 @@ UPDATE jobs SET status = 'dead', finished_at = now(), updated_at = now(),
  WHERE kind = 'tenant.conformance' AND status = 'queued';
 ```
 
+### Transactional outbox — `invoice.posted` → send invoice on posting (Oct 2026)
+
+What ships (design: `docs/arsitektur/09-RANCANGAN-LAYANAN.md` §4):
+
+- **Migrations, both expand-only:** company `0005_outbox` (table `outbox` +
+  `company_settings.invoice_auto_send BOOLEAN NOT NULL DEFAULT false`) on
+  every book, control `0012_outbox_relay_books`. The normal `migrate` service
+  applies them; run it BEFORE the new `svc-worker` / `app-*` images start —
+  posting an invoice writes to `outbox` in the same transaction, so a book
+  without `0005` would fail the post (the per-company schema gate already
+  refuses books whose schema is behind).
+- **New `svc-worker` role `outbox`** (`bun run outbox:relay`), already in the
+  compose `command`. Optional env `OUTBOX_RELAY_CONCURRENCY` (default 3, max 8).
+  The HA override adds `outbox` to `WORKER_LEADER_ROLES`.
+- **No new database role or grant.** Tables created by `migrate` (as
+  `sai_owner`) reach `sai_app` through the default privileges.
+- **Behaviour does not change by itself:** every posted invoice now produces a
+  `document.invoice_send` job, but the job finishes `done` without sending
+  while the company's switch is off — and it is off by default. A company
+  turns it on under Settings → reminders ("Kirim faktur ke surel pelanggan saat
+  diposting"). Only an invoice's FIRST journal emits the event; editing and
+  re-posting never sends again.
+
+After the deploy:
+
+```bash
+# relay is running and has touched every book (expect one line per company)
+docker compose logs svc-worker | grep ' outbox *|' | tail -5
+curl -s https://<host>/api/health | jq .outbox.status   # expect "ok" ("unknown" until the first pass)
+```
+
+The console `/scheduler` → Outbox panel shows per book: rows not yet
+published, oldest age, last relay pass, last error. `lagging`/`late` there
+means rows are stuck (control refusing, unknown kind) or the relay is dead
+(trail older than `relay_stale_seconds`); `watch:health` alerts on the same.
+
+Rollback: the previous release ignores both tables. Unpublished rows simply
+wait; the next release that has the relay publishes them.
+
 ### Ekspor data mandiri — switching the tenant data export from TS (sync) to Go (bulk lane) (Oct 2026)
 
 The tenant self-service export (#142, UU PDP access right: one ZIP with a CSV

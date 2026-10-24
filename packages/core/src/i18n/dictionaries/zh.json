@@ -1062,6 +1062,11 @@
     "closing": "感谢您的惠顾。",
     "colSent": "已发送"
   },
+  "invoiceAutoSend": {
+    "enable": "发票过账时通过电子邮件发送给客户",
+    "hint": "新过账的发票会自动以 PDF 附件发送，每张发票仅一次。编辑发票不会再次发送。没有电子邮件地址的客户将被跳过。",
+    "historyLabel": "过账时"
+  },
   "invoiceReminder": {
     "subject": {
       "before_3": "提醒：发票 {no} 即将到期",
@@ -4930,6 +4935,19 @@
         "queueStatusWarn": "积压",
         "queueStatusLate": "超时",
         "queueUnavailable": "无法读取队列。控制数据库无法连接，或迁移尚未应用。",
+        "outboxHeading": "Outbox（账簿事件 → 队列）",
+        "outboxNote": "每个账簿中尚未被中继转发的最早一行的时长。{warn} 秒时警告，{late} 秒时为延迟；中继记录超过 {stale} 秒未更新表示中继已停止或账簿无法访问。",
+        "outboxColBook": "账簿",
+        "outboxColPending": "未发布",
+        "outboxColAge": "最久时长（秒）",
+        "outboxColLastPass": "最近一次中继",
+        "outboxColError": "最近错误",
+        "outboxStatusOk": "通畅",
+        "outboxStatusLagging": "滞后",
+        "outboxStatusLate": "延迟",
+        "outboxStatusUnknown": "尚无记录",
+        "outboxEmpty": "中继尚未处理任何账簿。",
+        "outboxUnavailable": "无法读取中继记录。控制数据库无法访问，或控制迁移 0012 尚未应用。",
         "metricsHeading": "作业速率与时长",
         "metricsNote": "最近 {window} 分钟。样本足够时百分位数才有意义。",
         "metricsColPublished": "发布 /分钟",

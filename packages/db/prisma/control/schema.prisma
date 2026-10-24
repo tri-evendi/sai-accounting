@@ -1229,3 +1229,26 @@ model RuntimeSample {
   @@index([jobId])
   @@map("runtime_samples")
 }
+
+/// Jejak relay outbox per buku (09 §4, migration kendali 0012). Satu baris per
+/// perusahaan, di-upsert relay tiap putaran. Pembacanya `/api/health`,
+/// `watch:health`, dan konsol `/scheduler` — tak satu pun menyapu buku PT.
+/// Bukan FK: jejak tetap terbaca sesudah perusahaannya dihapus.
+model OutboxRelayBook {
+  id                  Int       @id @default(autoincrement())
+  companyId           Int       @unique @map("company_id")
+  /// Putaran relay terakhir yang MENYENTUH buku ini (berhasil atau gagal).
+  lastPassAt          DateTime  @map("last_pass_at")
+  /// `created_at` baris outbox tertua yang belum terbit; NULL = tidak ada.
+  oldestUnpublishedAt DateTime? @map("oldest_unpublished_at")
+  unpublishedCount    Int       @default(0) @map("unpublished_count")
+  publishedLastPass   Int       @default(0) @map("published_last_pass")
+  /// Galat putaran terakhir (buku tak terjangkau, kendali menolak). NULL = sehat.
+  lastError           String?   @map("last_error") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([lastPassAt])
+  @@map("outbox_relay_books")
+}

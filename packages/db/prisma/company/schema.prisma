@@ -1932,6 +1932,12 @@ model CompanySetting {
   /// melihat sendiri kalimat yang akan diterima pelanggannya sebelum kalimat
   /// itu keluar dari kantor.
   reminderTestedAt DateTime? @map("reminder_tested_at")
+  /// Kirim faktur ke surel pelanggan SAAT diposting (pemakai pertama outbox,
+  /// 09 §4). **Bawaannya FALSE** — alasan yang sama dengan `reminderEnabled`:
+  /// surel yang terlanjur keluar ke orang luar tidak bisa ditarik kembali.
+  /// Peristiwa `invoice.posted` tetap mengalir ketika ia mati; pelaksananya
+  /// (`document.invoice_send`) yang diam. Migration 0005.
+  invoiceAutoSend Boolean @default(false) @map("invoice_auto_send")
   /// Run-once flag: true once the wizard has completed and the opening journal is
   /// posted. Re-entry then shows a read-only summary and refuses a second run.
   isSetup Boolean @default(false) @map("is_setup")
@@ -2950,4 +2956,38 @@ model EfakturSubmission {
   @@index([status])
   @@index([requestedByUserId])
   @@map("efaktur_submissions")
+}
+
+// ─── Outbox transaksional (09 §4, migration 0005) ──────────────────────────
+//
+// Ditulis HANYA lewat `src/lib/outbox.ts` (`emitOutboxEvent`), di dalam
+// transaksi tulisan domainnya — dijaga `tests/outbox-write-door.test.ts`.
+// Dibaca & ditandai terbit HANYA oleh relay (`src/lib/outbox-relay.ts`).
+// Indeks berpredikat `outbox_unpublished_idx` (WHERE published_at IS NULL)
+// ditulis tangan di migration — Prisma tidak bisa menyatakannya.
+model Outbox {
+  id            Int      @id @default(autoincrement())
+  /// Kosakata `OUTBOX_EVENT_TYPES` (dibangkitkan dari `contract/kinds.yaml`).
+  eventType     String   @map("event_type") @db.VarChar(60)
+  /// `invoice`, … — `OUTBOX_EVENTS[eventType].aggregate`.
+  aggregateType String   @map("aggregate_type") @db.VarChar(40)
+  aggregateId   Int      @map("aggregate_id")
+  /// KECIL: id & parameter, bukan isi — ia menyeberang ke basis data KENDALI
+  /// (`jobs.payload`), yang tidak memuat satu angka akuntansi pun (#104).
+  payload       Json
+  /// Idempotensi PENULISAN: peristiwa yang sama tidak lahir dua kali.
+  dedupeKey     String   @unique @map("dedupe_key") @db.VarChar(160)
+  /// NULL = belum terbit ke `jobs`.
+  publishedAt   DateTime? @map("published_at")
+  attempts      Int      @default(0)
+  lastError     String?  @map("last_error") @db.Text
+  /// Penerbitan yang gagal ditunda sampai sini; NULL = segera.
+  nextAttemptAt DateTime? @map("next_attempt_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([aggregateType, aggregateId])
+  @@index([publishedAt])
+  @@map("outbox")
 }

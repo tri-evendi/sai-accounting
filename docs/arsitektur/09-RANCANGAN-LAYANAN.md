@@ -557,7 +557,7 @@ cukup — `report.export` menjawab "boleh mengekspor laporan", bukan "boleh
 mengekspor laporan INI" (#355), sehingga pekerjaan yang terbit ketika sebuah
 modul masih aktif tetap bisa diunduh sesudah modul itu dimatikan.
 
-Yang **belum**, dan ia satu — bukan dua:
+Yang dulu **belum**, dan kini dibangun (23 Okt 2026):
 
 **Dua jawaban untuk *dual-write*.** Karena `jobs` di `control` sementara tulisan
 domain di basis data perusahaan, penerbitan tidak satu transaksi dengan tulisan
@@ -579,25 +579,41 @@ menjadikannya demikian. Relay memakai polling berinterval pendek, bukan CDC.
 > **Satu aturan yang tetap:** pekerjaan demi kenyamanan pengguna (ekspor, impor)
 > tidak butuh keduanya — yang hilang hanya berarti pengguna mengklik lagi.
 
-⚠ **Outbox TIDAK dibangun di tahap 1c, dan itu keputusan — bukan sisa.**
-Paragraf di atas menyebut sendiri bahwa ia "menunggu pemakai pertamanya", dan
-pemakai yang dinamainya adalah **"faktur diposting → terbitkan dokumen &
-email"** — yaitu fitur yang `src/lib/invoice-send.ts` sengaja menolak
-mengotomatiskan:
+✅ **Outbox DIBANGUN — keputusan pemilik 23 Okt 2026.** Sampai hari itu
+bagian ini mencatat "Outbox TIDAK dibangun di tahap 1c, dan itu keputusan":
+pemakai yang dinamainya — "faktur diposting → terbitkan dokumen & email" —
+adalah fitur yang `src/lib/invoice-send.ts` sengaja menolak mengotomatiskan,
+dan mekanisme tanpa konsumen adalah jalur yang tidak pernah dijalankan. **Yang
+berubah adalah keputusan produknya**, bukan tahapnya: pemilik memutuskan
+pengiriman faktur saat diposting dibangun, sehingga pemakai pertama kini ada —
+dan ia berdiri di belakang sakelar per PT yang bawaannya MATI, jadi tidak ada
+perilaku yang berubah diam-diam.
 
-> *"TIDAK ADA YANG DIKIRIM OTOMATIS DI SINI. Setiap fungsi di modul ini berawal
-> dari seseorang yang menekan tombol. Pengingat otomatis adalah #467, dan
-> digabung sekarang berarti satu bug di sini mengirimkan surel ke pelanggan
-> sungguhan tanpa ada yang memintanya."*
+| Bagian | Di mana | Sifat yang dijaga |
+|---|---|---|
+| Tabel `outbox` di SETIAP buku PT | migration buku `0005_outbox` | `dedupe_key` UNIK; indeks berpredikat `published_at IS NULL` satu-satunya yang dipindai relay; `attempts`/`last_error`/`next_attempt_at` untuk penerbitan yang gagal |
+| Kosakata peristiwa | `contract/kinds.yaml` → `outbox.events` (dibangkitkan ke `job-numbers.ts`) | tipe `<agregat>.<kata_kerja>`; konsumen wajib kind sah tanpa `schedule:`; ambang lag & retensi di kontrak |
+| Pintu tulis tunggal | `src/lib/outbox.ts` → `emitOutboxEvent(tx, …)` | MELEMPAR untuk klien non-transaksi (punya `$disconnect`); `createMany … skipDuplicates`, jadi tabrakan dedupe tidak membatalkan transaksi domain; penjaga statis `tests/outbox-write-door.test.ts` menolak penulis `outbox` lain |
+| Peristiwa pertama `invoice.posted` | pintu posting `src/lib/posting/index.ts` (`postForSource`/`repostForSource`) | ditulis di transaksi jurnalnya, hanya untuk jurnal PERTAMA faktur (kunci `invoice.posted:<id>`) — edit yang memposting ulang tidak menerbitkan lagi |
+| Relay | `src/lib/outbox-relay.ts` (satu buku) + `workers/outbox-relay.ts` (peran `outbox` di `svc-worker`) | pagar instans tunggal `sai.outbox.relay` (mekanisme pagar jalur); setiap buku registry lewat `companyContextOf`, `OUTBOX_RELAY_CONCURRENCY` (bawaan 3, plafon 8); `FOR UPDATE SKIP LOCKED`; `publishJob` dengan kunci `outbox:<companyId>:<outboxId>:<kind>` lalu `published_at` di transaksi buku yang sama; baris terbit dibuang sesudah `published_retention_days` (14) |
+| Konsumen pertama | kind `document.invoice_send` (jalur `interactive`) → `src/lib/invoice-auto-send.ts` | sakelar `company_settings.invoice_auto_send` BAWAAN FALSE (Pengaturan → pengingat); idempoten lewat kunci unik `invoice_sends (invoice_id, "on_post", "posted")` yang ditulis SEBELUM surel |
+| Kesehatan | jejak per buku `outbox_relay_books` (migration kendali `0012`) → `/api/health` → `outbox`, `watch:health`, konsol `/scheduler` | dua sinyal: umur baris tertua yang belum terbit DAN kesegaran jejak relay (relay mati = `late`); tidak ada pembaca yang menyapu buku PT |
 
-Membangun mekanisme untuk konsumen yang sengaja absen menghasilkan jalur yang
-tidak pernah dijalankan satu kali pun — dan jalur yang tidak pernah dijalankan
-tidak bisa dibedakan dari jalur yang rusak. Alasan yang sama menahan
-`contract/accounting.yaml` (§3.5).
+**Kenapa relay yang mati di tengah tidak menerbitkan dua kali.** Terbit
+(`jobs`, kendali, autocommit) dan tandai (`published_at`, buku) adalah dua
+basis data. Relay yang mati di antaranya meninggalkan pekerjaan yang sudah ada
+dan baris yang belum bertanda; putaran berikutnya menerbitkan lagi, `publishJob`
+menjawab "kunci sudah ada", dan barisnya ditandai tanpa pekerjaan kedua. Batas
+yang disebut: bila baris tertahan di celah itu LEBIH lama daripada retensi
+`done` di `jobs` (14 hari), kuncinya sudah dibuang di sana. Dibuktikan di
+PostgreSQL sungguhan oleh `tests/outbox.integration.test.ts` (atomisitas,
+crash terbit/tandai, dua relay serentak `SKIP LOCKED`, fan-out multi-buku,
+retensi).
 
-**Pemicunya karena itu BUKAN tahap, melainkan satu keputusan produk:** hari
-pertama ada pengiriman dokumen yang terjadi TANPA seseorang menekan tombol.
-Sebelum itu, rekonsiliasi sudah cukup untuk setiap produser yang ada.
+**Yang TETAP rekonsiliasi:** produser berjadwal (pengingat, dokumen berulang,
+dunning) — alasannya tabel di atas, dan itu tidak berubah. Pengiriman faktur
+dengan tombol (`invoice-send.ts`) juga tetap; kalimat "TIDAK ADA YANG DIKIRIM
+OTOMATIS DI SINI" tetap benar untuk berkas itu.
 
 ## 5. Dokumen dibuat di server
 
@@ -953,7 +969,7 @@ kehabisan waktu:
 
 | Tertahan | Kenapa, dan pemicunya |
 |---|---|
-| **Outbox + relay** | §4 menyebut sendiri ia "menunggu pemakai pertamanya", dan pemakai yang dinamainya adalah fitur yang `invoice-send.ts` SENGAJA menolak mengotomatiskan. Pemicunya keputusan produk, bukan tahap: hari pertama ada pengiriman dokumen tanpa seseorang menekan tombol |
+| **Outbox + relay** | ✅ **Dibangun 23 Okt 2026** (keputusan pemilik — pemicunya keputusan produk, persis seperti yang ditulis di sini): pengiriman faktur saat diposting, di belakang sakelar per PT yang bawaannya mati. Bentuknya §4 |
 | **`report.package`** | tidak pernah ada di aplikasi ini. Membangunnya berarti menambah FITUR di bawah nama "pindah ke server" — dua keputusan yang digabung menjadi satu |
 | Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. ✅ **`bulk` berjalan sejak kind pertamanya** (23 Okt 2026): `tenant.data_export`, ekspor data mandiri #142 — pelari Go + pintu hasil tingkat tenant + paritas `parity:tenant-export` (lokal: setara). 🔶 Sakelar `runner:` masih **`node`** sampai paritas produksi lulus — §3.2, PRODUCTION.md §Ekspor data mandiri |
 

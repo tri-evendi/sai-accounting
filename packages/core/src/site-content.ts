@@ -207,7 +207,7 @@ export const SITE_CONTENT_SECTIONS: readonly SiteContentSection[] = [
   {
     id: "nav",
     labelKey: "operator.content.sectionNav",
-    prefixes: ["nav", "signIn", "signUp", "skipToContent"],
+    prefixes: ["nav", "signIn", "signUp", "skipToContent", "announcement"],
   },
   { id: "hero", labelKey: "operator.content.sectionHero", prefixes: ["hero", "fact"] },
   {

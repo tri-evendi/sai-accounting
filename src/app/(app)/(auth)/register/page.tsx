@@ -51,13 +51,14 @@
  */
 
 import type { Metadata } from "next";
-import { MailOutlined, UserAddOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { CalendarOutlined, MailOutlined, UserAddOutlined, WhatsAppOutlined } from "@ant-design/icons";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@sai/ui/button";
 import { resolveContactChannels, resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
-import { getT } from "@sai/platform/i18n/server";
+import { getLocale, getT } from "@sai/platform/i18n/server";
 import { QUOTE_PARAM } from "@/lib/landing-ask";
+import { landingSettings, resolveLandingWhatsappUrl } from "@sai/platform/landing-settings";
 
 import { RegisterForm } from "./register-form";
 
@@ -84,6 +85,13 @@ export default async function RegisterPage({
 
   const t = await getT();
   const kanal = await resolveContactChannels();
+  /* WhatsApp dengan kalimat pembuka (konsol `/landing`) — tujuan yang sama
+     dengan tombol melayang di pendaratan, jadi orang yang datang dari sana
+     tidak mendapat dua percakapan yang dibuka dengan cara berbeda. */
+  const [waUrl, { demoBookingUrl }] = await Promise.all([
+    resolveLandingWhatsappUrl(await getLocale()),
+    landingSettings(),
+  ]);
 
   return (
     <AuthShell
@@ -118,10 +126,19 @@ export default async function RegisterPage({
         {/* Kanal yang BENAR-BENAR terpasang saja — `contactChannels()`
             memulangkan hanya yang nilainya sah, jadi tidak ada tombol yang
             menjanjikan jalan yang tidak ada. */}
-        {kanal.whatsappUrl && (
-          <Button href={kanal.whatsappUrl} target="_blank" rel="noreferrer" variant="primary">
+        {waUrl && (
+          <Button href={waUrl} target="_blank" rel="noreferrer" variant="primary">
             <WhatsAppOutlined aria-hidden="true" />
             {t("auth.register.closedWhatsapp")}
+          </Button>
+        )}
+        {/* Tautan pemesanan demo (konsol `/landing`) — langkah pertama dari
+            tiga di atas, langsung ke kalender. `outline`: WhatsApp tetap satu-
+            satunya primer layar ini. https saja, tab baru, tanpa `opener`. */}
+        {demoBookingUrl && (
+          <Button href={demoBookingUrl} target="_blank" rel="noopener noreferrer" variant="outline">
+            <CalendarOutlined aria-hidden="true" />
+            {t("auth.register.closedBookDemo")}
           </Button>
         )}
         {kanal.email && (

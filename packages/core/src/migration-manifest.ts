@@ -13,7 +13,7 @@
  */
 export const MIGRATION_TERAKHIR = {
   control: "0013_tenant_partner_demo",
-  platform: "0013_public_pricing_visible",
+  platform: "0014_landing_settings",
   company: "0005_outbox",
 } as const;
 

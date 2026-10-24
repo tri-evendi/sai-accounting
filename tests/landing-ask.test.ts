@@ -76,7 +76,10 @@ describe("keputusan janji pendaratan", () => {
   it("bilah navigasi ikut keputusan yang SAMA — tidak ada 'Daftar' saat pendaftaran ditutup", () => {
     expect(landingAsk(true).navCta).toBe("landing.signUp");
     const nav = readFileSync(join(LANDING, "landing-nav.tsx"), "utf8");
-    expect(nav).toContain("landingAsk(await resolveSelfServeSignupOpen()).navCta");
+    /* Keputusannya dihitung sekali (`ask`) dan dipakai untuk label DAN untuk
+       `LandingAskButton` (tujuan: `/register` atau tautan pemesanan demo). */
+    expect(nav).toContain("const ask = landingAsk(await resolveSelfServeSignupOpen());");
+    expect(nav).toContain("t(ask.navCta)");
   });
 
   it("catatan harga TIDAK dihapus saat tertutup — ruangnya tetap menjelaskan", () => {

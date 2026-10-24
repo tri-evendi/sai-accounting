@@ -37,6 +37,8 @@ import { LandingShell } from "@/components/landing/landing-shell";
 import { auth } from "@/lib/auth";
 import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
+import { landingSettings } from "@sai/platform/landing-settings";
+import { isSectionVisible } from "@sai/core/landing-settings";
 import { publicAppUrl } from "@/lib/public-url";
 import { quoteContactHref } from "@/lib/landing-ask";
 import {
@@ -90,6 +92,9 @@ export default async function PricingPage() {
   if (!(await resolvePublicPricingVisible())) {
     redirect(quoteContactHref(await resolveSelfServeSignupOpen()));
   }
+  /* FAQ yang disembunyikan di konsol `/landing` hilang di SINI juga — satu
+     sakelar untuk satu seksi, di halaman mana pun ia tampil. */
+  const faqTampil = isSectionVisible(await landingSettings(), "faq");
 
   return (
     <LandingShell>
@@ -98,7 +103,7 @@ export default async function PricingPage() {
           situlah keberatan muncul. Kontak & ajakan penutup sengaja TIDAK
           ikut — kaki halaman sudah menautkan `/#kontak`, dan tiap kartu paket
           sudah memikul ajakannya sendiri. */}
-      <LandingFaq />
+      {faqTampil && <LandingFaq />}
     </LandingShell>
   );
 }

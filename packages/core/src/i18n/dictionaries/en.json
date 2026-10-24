@@ -184,7 +184,10 @@
     "compareHeading": "Upgrading costs less than stacking smaller plans",
     "compareRow": "{count} × {small} {stacked} → {large} {upgrade},",
     "compareSaving": "saves {amount}/month",
-    "demoCta": "Book a demo"
+    "demoCta": "Book a demo",
+    "announcementLabel": "Announcement",
+    "announcementMore": "Learn more",
+    "announcementDismiss": "Dismiss announcement"
   },
   "common": {
     "skipToContent": "Skip to content",
@@ -562,7 +565,8 @@
       "quoteStep3": "Ready to continue? We send a written quote (quota, price, contract term, payment terms), and the account is activated once it is approved.",
       "closedWhatsapp": "Contact us on WhatsApp",
       "closedEmail": "Email us at {email}",
-      "closedSignIn": "Already have an account? Sign in"
+      "closedSignIn": "Already have an account? Sign in",
+      "closedBookDemo": "Book a demo"
     }
   },
   "status": {
@@ -4403,7 +4407,10 @@
     "nitkuInvalid": "NITKU must be 22 digits",
     "transferProofRequired": "Transfer proof reference is required (at least 3 characters).",
     "retentionDaysRange": "Retention is 30–3650 days, or 0 to follow the server setting.",
-    "retentionConfirmRequired": "Type HAPUS to turn on automatic deletion."
+    "retentionConfirmRequired": "Type HAPUS to turn on automatic deletion.",
+    "landingHttpsUrl": "The link must start with https:// and point to a public address.",
+    "landingLinkInvalid": "The link must start with https:// or be a path on this site, e.g. /pricing.",
+    "landingIndonesianRequired": "Indonesian text is required; other languages left empty use this text."
   },
   "taxSettings": {
     "sectionTitle": "PPN (VAT)",
@@ -4782,7 +4789,8 @@
       "efaktur": "Platform e-Faktur",
       "statusNotices": "Status notices",
       "brand": "Product logo",
-      "licences": "On-premise licences"
+      "licences": "On-premise licences",
+      "landing": "Landing page layout"
     },
     "attention": {
       "heading": "Needs attention",
@@ -5999,7 +6007,67 @@
       "colDelete": "Deleted on",
       "colNotices": "Notices",
       "notNotified": "not notified yet (earliest {date})"
-    }
+    },
+      "landing": {
+        "heading": "Landing page layout",
+        "description": "Visible sections, the announcement bar, the demo link, the WhatsApp opening message, and the FAQ list on the landing and pricing pages. Anything not set shows the default.",
+        "unavailable": "The platform database is unreachable. The landing page is using its default layout, and these settings cannot be changed right now.",
+        "save": "Save",
+        "saved": "Saved. Live on the landing page within {seconds} seconds.",
+        "errSave": "Could not save: the platform database is unreachable. The landing page keeps its last layout.",
+        "sectionsHeading": "Visible sections",
+        "sectionsDescription": "Unchecked sections are not rendered, and their links in the top bar and footer disappear too.",
+        "sectionsLegend": "Show section",
+        "sectionsAlwaysOn": "The hero and the closing call to action are always shown. Pricing is controlled in Site settings.",
+        "sectionFeatures": "What you get (benefit cards)",
+        "sectionModules": "Modules",
+        "sectionAudience": "Who it is for",
+        "sectionIntegrations": "Integrations & data exit",
+        "sectionTrust": "Security & trust",
+        "sectionFaq": "FAQ (also on the pricing page)",
+        "contactHeading": "Demo booking & WhatsApp",
+        "contactDescription": "Where the \"Book a demo\" button leads, and the opening message when a prospect opens WhatsApp.",
+        "demoUrlLabel": "Demo booking link",
+        "demoUrlHint": "E.g. a Calendly or Google Calendar page, starting with https://. Empty = the \"Book a demo\" button goes to the contact page as usual. Only applies while self-serve sign-up is closed.",
+        "whatsappId": "WhatsApp opening message (Indonesian)",
+        "whatsappEn": "WhatsApp opening message (English)",
+        "whatsappZh": "WhatsApp opening message (Chinese)",
+        "whatsappHint": "Pre-filled in the message box when someone taps the WhatsApp button on the landing and contact pages. Empty = no opening message. Other languages left empty use the Indonesian text. The number is set in Site settings.",
+        "announcementHeading": "Announcement bar",
+        "announcementDescription": "One line at the top of the landing and pricing pages. Visitors can dismiss it.",
+        "announcementEnabled": "Show announcement",
+        "announcementTextId": "Text (Indonesian)",
+        "announcementTextEn": "Text (English)",
+        "announcementTextZh": "Text (Chinese)",
+        "announcementTextHint": "At most {max} characters. Other languages left empty use the Indonesian text.",
+        "announcementHref": "Link (optional)",
+        "announcementHrefHint": "An https://… address (opens in a new tab) or a path on this site, e.g. /pricing.",
+        "announcementStartsAt": "Show from (WIB)",
+        "announcementEndsAt": "Show until (WIB)",
+        "announcementWindowHint": "Both optional: empty = from now / until switched off. Changing the text, link, or schedule shows it again to visitors who dismissed the old version.",
+        "announcementClear": "Delete announcement",
+        "announcementClearTitle": "Delete the announcement?",
+        "announcementClearBody": "The text, link, and schedule are discarded and the bar stops showing. To hide it temporarily, just untick \"Show announcement\".",
+        "faqHeading": "FAQ",
+        "faqDescription": "Build your own list of questions. Structured data for search engines follows the list that is shown.",
+        "faqUsingDefault": "The page uses the default list from the dictionary. Saving the list below replaces it entirely.",
+        "faqUsingCustom": "The page uses the list below, in this order.",
+        "faqItemTitle": "Question {n}",
+        "faqQuestionId": "Question (Indonesian)",
+        "faqAnswerId": "Answer (Indonesian)",
+        "faqQuestionEn": "Question (English)",
+        "faqAnswerEn": "Answer (English)",
+        "faqQuestionZh": "Question (Chinese)",
+        "faqAnswerZh": "Answer (Chinese)",
+        "faqMoveUp": "Move up",
+        "faqMoveDown": "Move down",
+        "faqRemove": "Remove question",
+        "faqAdd": "Add question",
+        "faqSave": "Save list",
+        "faqReset": "Restore the default list",
+        "faqResetTitle": "Restore the default list?",
+        "faqResetBody": "The saved list is discarded; the page goes back to the default questions from the dictionary."
+      }
   },
   "docs": {
     "title": "Documentation",

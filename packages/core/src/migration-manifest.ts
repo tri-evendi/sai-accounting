@@ -14,7 +14,7 @@
 export const MIGRATION_TERAKHIR = {
   control: "0013_tenant_partner_demo",
   platform: "0015_landing_media",
-  company: "0005_outbox",
+  company: "0006_system_roles",
 } as const;
 
 export type JenisBasisData = keyof typeof MIGRATION_TERAKHIR;

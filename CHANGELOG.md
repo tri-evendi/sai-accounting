@@ -20,7 +20,22 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.26.0 — 2026-10-25 — belum digelar
+## 0.27.0 — 2026-10-25 — belum digelar
+
+Permintaan demo dan penawaran dari situs kini tercatat, dan panduan bentuk usaha dilengkapi gambar.
+
+### Baru
+
+- Formulir minta demo atau penawaran di halaman kontak. Setiap permintaan mendapat nomor referensi dan langsung diteruskan ke tim SAI.
+- Panduan baru Bentuk usaha dan modal pemilik, lengkap dengan tangkapan layar.
+
+### Perbaikan
+
+- Nama pemilik usaha perorangan di wisaya setup kini boleh dikosongkan, sesuai petunjuknya.
+
+---
+
+## 0.26.0 — 2026-10-25 (1b83163)
 
 Pilihan bentuk usaha: PT, PT Perorangan, CV, Firma, dan usaha perorangan, dengan modal per sekutu dan tutup tahun yang membagi laba.
 

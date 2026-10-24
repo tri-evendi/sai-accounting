@@ -443,7 +443,7 @@ Yang tinggal di sini: kontrak yang **belum** ada, beserta pemakai pertamanya.
 
 | Kontrak | Dibangkitkan jadi | Pemakai pertamanya |
 |---|---|---|
-| `contract/jobs.sql` → `sqlc` | kueri Go bertipe atas tabel `jobs` | belum ada. SQL antrean Go hari ini ditulis tangan dengan parameter terikat, dan bentuknya dijaga `tests/services-go.test.ts` — `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
+| ~~`contract/jobs.sql` → `sqlc`~~ | kueri Go bertipe atas tabel `jobs` | ✅ **lahir 23 Okt 2026** — `contract/jobs.sql` (antrean) + `contract/trail.sql` (`backup_runs`/`conformance_runs`) → `internal/controlsql/`, dipakai `internal/jobs/queue.go` dan `internal/trail/`. Skema = migration kendali berurutan (Prisma tetap pemilik). `sqlc` v1.28.0 dipatok di modul perkakas terpisah `services/integrator/tools/sqlc` (tidak masuk `go.mod` integrator maupun image) dan dijalankan `bun run contract:gen` lewat `go run`. Gerbangnya `contract:gen --cek` membandingkan SIDIK SHA-256 masukan & keluaran (`controlsql/sqlc.sum`) — tanpa Go, tanpa jaringan. Semantik SQL tangan sebelumnya dipertahankan kata demi kata (termasuk konvensi jam PR #741); dua cast ditambah demi pengetikan: muatan `::text::jsonb` dan instan jejak `::text::timestamp` — masukan yang sama dengan bentuk tangan (string → `jsonb`/`timestamp`). Dibuktikan `queue_tz_integration_test.go` (3 zona sesi × 3 TZ proses × 2 mode pgx) dan uji integrasi `schedulelane`. `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
 | `contract/accounting.yaml` — sisanya | **saldo normal per tipe akun** | laporan Go yang membacanya. (Kategori, sisi laporan, band Laba Rugi, jenis jurnal penutup, mata uang, status dokumen, dan — sejak 23 Okt 2026 — ambang materialitas SUDAH masuk; lihat di bawah) |
 | `internal/document/` | ✅ lahir 22 Okt 2026 — penulis XLSX pustaka baku + penyimpanan hasil; kalimat/kolom/format/rupa dibaca dari `internal/contract/report_layout_gen.go`, yang DIBANGKITKAN dari `statement-layout.ts` + `report-export.ts` (sumber tunggal layar, PDF, dan lembar sebar) | lembar sebar Neraca Saldo. Dokumen satuan (PDF) belum — menunggu keputusannya sendiri |
 
@@ -1714,11 +1714,68 @@ pertanyaan yang §11 ajukan — ambang disetel dari minggu terakhir, bukan dari
 kuartal lalu. **Pemicu** untuk membangun rollup per jam: ada orang yang sungguh
 menanyakan tren lebih panjang daripada retensinya.
 
-⚠ **Ambang per-jalur masih BELUM disetel, dan itu bukan kelalaian.** Histogramnya
-baru ada hari ini, jadi ia belum punya sampel — dan `samples` ditampilkan di
-samping setiap persentil justru karena itu: **p95 atas tiga pekerjaan adalah
-angka, bukan fakta.** Tujuh jalur tetap memakai satu pasang ambang sampai
-angkanya layak dipercaya. Pemicunya pengukuran, sama seperti 1d.
+✅ **Ambang per-jalur DISETEL 23 Okt 2026 — dari data produksi, dan hanya di
+jalur yang datanya cukup.** Kontraknya `lanes.<jalur>.alarm` di
+`contract/kinds.yaml` (dibangkitkan ke `JOB_LANES[*].alarm` TS dan
+`contract.JobLanes[*].Alarm` Go); pembacanya `laneAlarm()` di
+`@sai/core/queue-health` — `queueSnapshot` → `/api/health` → `watch:health`,
+dan panel `/scheduler` di konsol. Jalur tanpa `alarm:` memakai bawaan
+`numbers.queue_age_*` (420/600 detik) dan TIDAK punya batas durasi.
+
+**Sumber dan jendela.** `sai_control.jobs` produksi, dibaca hanya-`SELECT` pada
+23 Okt 2026 22:44 WIB: 1.030 baris, `created_at` 21 Okt 09:45 → 23 Okt 22:21
+(retensi 14 hari belum penuh — tabelnya baru berumur 2,5 hari), ditambah
+`runtime_samples` (`sample_kind = 'job'`). Tunggu = `started_at − run_after`;
+durasi = `finished_at − started_at`.
+
+| Jalur | Pekerjaan | Tunggu p50 / p95 / p99 / maks (dtk) | Durasi p95 / maks (ms) | Ambang |
+|---|---|---|---|---|
+| `ledger` (`ledger.recurring`) | **992** | 2,1 / 5,7 / 8,3 / 14,8 | 443 / 1.570 (112 baris pasca-#741: 965; `runtime_samples` 576: 552) | **terukur** |
+| `interactive` (`report.export_go`) | 16 | 1,2 / 1,8 / 1,8 / 1,8 | tak terukur¹ | bawaan |
+| `schedule` (`schedule.tick`) | 11 | 0,7 / 2,0 / 2,0 / 2,0 | tak terukur¹ | bawaan |
+| `tenant` (`backup` 9 + `conformance` 2) | 11 | 1,7–10,1 / 17,0 / 20,0 / 20,7 | tak terukur¹ | bawaan |
+| `bulk` · `integration` · `schema` | 0 | — | — | bawaan |
+
+**Dua cacat data, dan apa yang dilakukan terhadapnya:**
+
+- **880 dari 992 baris `ledger` bergeser tepat 7 jam** (tunggu ≈ 25.201–25.209
+  dtk): `run_after` mereka ditulis UTC sementara `started_at` ditulis `now()`
+  WIB — baris dari sebelum perbaikan jam PR #741. Pergeserannya konstan, jadi
+  tunggunya dikoreksi −25.200 dtk; subset bersih (112 baris pasca-#741) memberi
+  p95 10,5 / p99 14,0 / maks 14,8 dtk — sebaran yang sama, ekor sedikit lebih
+  berat, dan ambang di bawah tetap berada jauh di atasnya.
+- ¹ **Jalur Go tidak pernah menulis `started_at`.** Klaim Go hanya menyetel
+  `claimed_at`, yang diperpanjang tiap lease — jadi durasi pekerjaan Go tidak
+  terukur sama sekali (`jobMetrics` menyaring `started_at IS NULL`, sampelnya
+  nol). Diperbaiki di sini: `ClaimJob` (`contract/jobs.sql`) kini menyetel
+  `started_at = now()` bersama `claimed_at`, persis klaim Node — dijaga
+  `tests/services-go.test.ts`. Jalur Go mulai mengumpulkan sampel durasi sejak
+  rilis berikutnya.
+
+**Aturan penurunan** (ditulis supaya setel ulangnya mekanis, bukan rapat):
+
+- **Sampel minimum 200 pekerjaan** per jalur (`ALARM_MIN_SAMPLES`, ditegakkan
+  GENERATOR — `alarm:` dengan `samples` < 200 ditolak `contract:gen`). Dengan
+  200, p99 masih ditopang dua pengamatan di atasnya.
+- **warn** = maks(10 × p99 tunggu, 2 × `upkeep_ms`), dibulatkan ke atas ke
+  menit → `ledger`: maks(83, 120) = **120 dtk**. Lantai 2 × upkeep: satu
+  putaran pemeliharaan + mulai ulang `svc-worker` saat rilis tidak boleh
+  memperingatkan.
+- **late** = maks(20 × tunggu maksimum, 5 × `upkeep_ms`), dibulatkan ke atas ke
+  menit → `ledger`: maks(295, 300) = **300 dtk**.
+- **Batas p95 durasi** = 10 × p95 TERTINGGI dari ketiga sumber (semua baris,
+  subset pasca-#741, `runtime_samples`), dibulatkan ke atas ke 5 dtk →
+  `ledger`: 10 × 965 → **10.000 ms**. Dinilai di konsol atas p95 jendela 15
+  menit (`laneDurationVerdict`), hanya bila jendela itu punya ≥ 10 sampel
+  (`DURATION_MIN_WINDOW_SAMPLES`); di bawahnya vonisnya `insufficient`, bukan
+  hijau.
+
+**Pemicu setel ulang:** p99 tunggu `ledger` melewati 12 dtk (10 × p99 melewati
+lantai 120) — ledakan awal jam tumbuh bersama jumlah dokumen berulang; atau
+satu jalur lain mencapai 200 pekerjaan bertanda `started_at`. Kueri sumbernya
+cukup dijalankan ulang (`SELECT kind, percentile_cont(…) … FROM jobs GROUP BY
+kind`), lalu `alarm:` ditulis di `contract/kinds.yaml` beserta `samples` dan
+`window`-nya.
 
 ✅ **Pemicu 1d kini diukur (22 Okt 2026)** — tabel kendali `runtime_samples`
 (migration `0008`), panel ketiga di `/scheduler`. Rinciannya keadaan, jadi

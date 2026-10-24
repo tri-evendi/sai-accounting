@@ -106,17 +106,29 @@ type LaneSpec struct {
 	SingleInstance bool
 	// MemoryFenceMiB: pagar memori per pekerjaan (MiB heap Go); 0 = tanpa pagar.
 	MemoryFenceMiB int
+	Alarm          LaneAlarm
+}
+
+// LaneAlarm: ambang alarm satu jalur (09 §11). Measured=false berarti bawaan
+// QueueAgeWarn/QueueAgeLate karena sampelnya belum cukup; DurationP95Warn
+// kemudian 0 (tidak dinilai).
+type LaneAlarm struct {
+	QueueAgeWarn    time.Duration
+	QueueAgeLate    time.Duration
+	DurationP95Warn time.Duration
+	Measured        bool
+	Samples         int
 }
 
 // JobLanes memetakan setiap jalur ke sifatnya.
 var JobLanes = map[JobLane]LaneSpec{
-	LaneBulk:        {SingleInstance: false, MemoryFenceMiB: 512},
-	LaneIntegration: {SingleInstance: false, MemoryFenceMiB: 0},
-	LaneInteractive: {SingleInstance: false, MemoryFenceMiB: 0},
-	LaneLedger:      {SingleInstance: true, MemoryFenceMiB: 0},
-	LaneSchedule:    {SingleInstance: true, MemoryFenceMiB: 0},
-	LaneSchema:      {SingleInstance: true, MemoryFenceMiB: 0},
-	LaneTenant:      {SingleInstance: true, MemoryFenceMiB: 0},
+	LaneBulk:        {SingleInstance: false, MemoryFenceMiB: 512, Alarm: LaneAlarm{QueueAgeWarn: 420 * time.Second, QueueAgeLate: 600 * time.Second, DurationP95Warn: 0 * time.Millisecond, Measured: false, Samples: 0}},
+	LaneIntegration: {SingleInstance: false, MemoryFenceMiB: 0, Alarm: LaneAlarm{QueueAgeWarn: 420 * time.Second, QueueAgeLate: 600 * time.Second, DurationP95Warn: 0 * time.Millisecond, Measured: false, Samples: 0}},
+	LaneInteractive: {SingleInstance: false, MemoryFenceMiB: 0, Alarm: LaneAlarm{QueueAgeWarn: 420 * time.Second, QueueAgeLate: 600 * time.Second, DurationP95Warn: 0 * time.Millisecond, Measured: false, Samples: 0}},
+	LaneLedger:      {SingleInstance: true, MemoryFenceMiB: 0, Alarm: LaneAlarm{QueueAgeWarn: 120 * time.Second, QueueAgeLate: 300 * time.Second, DurationP95Warn: 10000 * time.Millisecond, Measured: true, Samples: 992}},
+	LaneSchedule:    {SingleInstance: true, MemoryFenceMiB: 0, Alarm: LaneAlarm{QueueAgeWarn: 420 * time.Second, QueueAgeLate: 600 * time.Second, DurationP95Warn: 0 * time.Millisecond, Measured: false, Samples: 0}},
+	LaneSchema:      {SingleInstance: true, MemoryFenceMiB: 0, Alarm: LaneAlarm{QueueAgeWarn: 420 * time.Second, QueueAgeLate: 600 * time.Second, DurationP95Warn: 0 * time.Millisecond, Measured: false, Samples: 0}},
+	LaneTenant:      {SingleInstance: true, MemoryFenceMiB: 0, Alarm: LaneAlarm{QueueAgeWarn: 420 * time.Second, QueueAgeLate: 600 * time.Second, DurationP95Warn: 0 * time.Millisecond, Measured: false, Samples: 0}},
 }
 
 // KindsByLane adalah klausa WHERE kind = ANY(…) milik setiap pelari.
@@ -217,8 +229,14 @@ const (
 
 	DoneRetentionDays = 14
 
+	// Bawaan ambang umur antrean — untuk jalur tanpa `alarm:` terukur
+	// (JobLanes[*].Alarm memuat nilai efektif setiap jalur).
 	QueueAgeWarn = 420 * time.Second
 	QueueAgeLate = 600 * time.Second
+
+	// AlarmMinSamples: sampel minimum agar jalur boleh punya ambang sendiri
+	// (JobLanes[*].Alarm.Measured) — ditegakkan generator.
+	AlarmMinSamples = 200
 
 	// Denyut pagar jalur tunggal-instans (`jobs.LaneLock`; padanan Node
 	// `@sai/db/session-lock`). Dijamin generator:

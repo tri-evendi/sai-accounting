@@ -998,7 +998,7 @@ Lingkungan: pengembangan `bun run dev` (transport surel `file` →
 | `GET /status` | Versi untuk manusia: 4 keadaan per komponen, tanpa nama basis data atau kalimat error |
 | Healthcheck Docker & Traefik | Kedua `app-*` tiap 30s · `pg` tiap 10s |
 | `scheduler_runs` · `conformance_runs` · `backup_runs` | Jejak per putaran, dipangkas > 90 hari (baris `error`, baris terakhir, dan `ok` terakhir ditahan selamanya) |
-| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur**, **laju & durasi pekerjaan** (sengaja terpisah: yang pertama berambang, yang kedua belum), **pemicu tahap 1d** (tunda event loop & memori per pekerjaan, berambang + jumlah sampel), dan **versi layanan** (build tiap layanan terhadap build konsol, §9); `/conformance` memuat **catatan per buku** beserta lamanya |
+| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur**, **laju & durasi pekerjaan** (sengaja terpisah; keduanya berambang per jalur sejak 23 Okt 2026 — durasi hanya di jalur yang sampelnya cukup, 09 §11), **pemicu tahap 1d** (tunda event loop & memori per pekerjaan, berambang + jumlah sampel), dan **versi layanan** (build tiap layanan terhadap build konsol, §9); `/conformance` memuat **catatan per buku** beserta lamanya |
 | `prove-scheduler-alive` · `prove-backup-restore` | Memeriksa keadaan nyata |
 | CI `Verify` | *Required status check* pada `main` sejak 11 Okt 2026 |
 
@@ -1014,12 +1014,18 @@ semuanya selesai dalam dua detik adalah sistem yang sehat; **satu** pekerjaan
 yang menunggu empat jam adalah sistem yang rusak — dan metrik kedalaman membaca
 keduanya terbalik.
 
-| Status | Artinya | Ambang |
-|---|---|---|
-| `idle` | tidak ada yang menunggu | ambang **tidak berlaku** |
-| `ok` | ada yang menunggu, masih segar | < 7 menit |
-| `warn` | antrean tertahan | ≥ 7 menit |
-| `late` | ini yang membangunkan orang | ≥ 10 menit |
+| Status | Artinya | Ambang bawaan | `ledger` (terukur) |
+|---|---|---|---|
+| `idle` | tidak ada yang menunggu | ambang **tidak berlaku** | — |
+| `ok` | ada yang menunggu, masih segar | < 7 menit | < 2 menit |
+| `warn` | antrean tertahan | ≥ 7 menit | ≥ 2 menit |
+| `late` | ini yang membangunkan orang | ≥ 10 menit | ≥ 5 menit |
+
+Ambangnya **per jalur** sejak 23 Okt 2026 (`lanes.<jalur>.alarm` di
+`contract/kinds.yaml`, `laneAlarm()` di `@sai/core/queue-health`; probe
+kesehatan, `watch:health`, dan konsol membacanya dari satu tempat). Hanya jalur
+yang sampelnya ≥ 200 yang punya angka sendiri — hari ini `ledger`; sisanya
+memakai bawaan dan konsol menandainya "(bawaan)". Penurunannya: 09 §11.
 
 Dipecah **per jalur**, dan ringkasannya mengambil yang **terburuk**: rata-rata
 lintas jalur menyembunyikan justru hal yang paling ingin diketahui —
@@ -1096,10 +1102,12 @@ selesai yang dibaca sebelumnya, dan pembacanya tidak punya cara menduga mana
 yang lebih baru. Angka yang saling bertentangan lebih buruk daripada angka yang
 kurang.
 
-⚠ **Ambang per-jalur masih belum disetel.** Histogramnya baru menyala, jadi
-sampelnya belum ada. Tujuh jalur tetap memakai satu pasang ambang umur sampai
-angkanya layak dipercaya — dan satu pasang ambang yang jujur lebih baik daripada
-tujuh yang dikarang.
+✅ **Ambang per-jalur disetel 23 Okt 2026 — untuk jalur yang datanya cukup
+saja.** `ledger` (992 pekerjaan) mendapat ambang umur 120/300 detik dan batas
+p95 durasi 10.000 ms (kolom "Batas p95" + lencana "Lambat" di panel durasi,
+dinilai bila jendela 15 menit punya ≥ 10 sampel). Enam jalur lain tetap pada
+bawaan karena sampelnya belum cukup — satu pasang ambang yang jujur lebih baik
+daripada enam yang dikarang. Penurunan dan pemicu setel ulangnya: 09 §11.
 
 | Yang tidak ada | Akibat |
 |---|---|

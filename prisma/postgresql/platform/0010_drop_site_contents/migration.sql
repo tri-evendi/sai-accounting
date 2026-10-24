@@ -1,0 +1,21 @@
+-- PARUH CONTRACT isi halaman depan: cabut tabel lama `site_contents`.
+--
+-- Paruh EXPAND-nya migration 0008 (`site_content_entries` + penerbitan +
+-- revisi), terkirim di rilis 0.18.0. Sejak itu `site_contents` hanya ditulis
+-- ulang (dual-write di `packages/platform/src/site-content-store.ts`) supaya
+-- image SEBELUM 0008 tetap menampilkan kalimat yang sama bila rilis
+-- di-rollback; tidak ada kode 0.18.0+ yang MEMBACANYA.
+--
+-- Syarat kontraksinya (docs/DATABASE.md §7.1) diperiksa di produksi 23 Okt
+-- 2026, hanya-baca: image yang berjalan 0.19.1 (>= 0.18.0, tidak ada image
+-- yang membaca tabel ini); `site_contents` berisi 0 baris dan
+-- `site_content_entries` berisi 0 baris — tidak ada baris lama yang lebih baru
+-- daripada bentuk barunya, jadi DROP ini tidak membuang satu kalimat pun.
+--
+-- Didaftarkan di `KONTRAKSI_DIIZINKAN` (tests/expand-contract.test.ts) dengan
+-- `expandDiRilis` = 0.18.0. Konsekuensi yang diterima: rollback ke image
+-- SEBELUM 0.18.0 sesudah migration ini membuat halaman depan memakai kalimat
+-- bawaan kamus (pembaca lama gagal-lunak, bukan 500).
+--
+-- `IF EXISTS`: dijalankan ulang tidak gagal.
+DROP TABLE IF EXISTS "site_contents";

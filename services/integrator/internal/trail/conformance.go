@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/controlsql"
 )
 
 // ══ `conformance_runs` — PENGECUALIAN KEDUA, DENGAN ALASAN YANG SAMA ═══════
@@ -32,7 +34,7 @@ import (
 // aturan itu dijaga — bukan hanya di sini.
 //
 // Konvensi jamnya sama dengan `backup_runs` (lihat `RekamCadangan`): instan
-// dikirim sebagai teks UTC `::timestamp`, `created_at`/`updated_at` =
+// dikirim sebagai teks UTC `::text::timestamp`, `created_at`/`updated_at` =
 // `now() AT TIME ZONE 'UTC'`, sebab pembacanya Prisma.
 
 // PutaranKesesuaian adalah satu baris `conformance_runs`.
@@ -57,14 +59,16 @@ type PutaranKesesuaian struct {
 // Kendali yang tak terjangkau berarti `/api/health` menjawab `unknown`/`late`
 // — jawaban jujur — bukan berarti sapuannya gagal.
 func RekamKesesuaian(ctx context.Context, kendali *pgxpool.Pool, p PutaranKesesuaian) error {
-	_, err := kendali.Exec(ctx, `
-		INSERT INTO conformance_runs (started_at, finished_at, status, companies_checked,
-		                              companies_failed, finding_count, details,
-		                              created_at, updated_at)
-		VALUES ($1::timestamp, $2::timestamp, $3, $4, $5, $6, $7,
-		        now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')`,
-		TeksUTC(p.MulaiPada), TeksUTC(p.SelesaiPada), p.Status, p.CompaniesChecked,
-		p.CompaniesFailed, p.FindingCount, p.Details)
+	// SQL-nya `contract/trail.sql` → InsertConformanceRun (bangkitan `sqlc`).
+	err := controlsql.New(kendali).InsertConformanceRun(ctx, controlsql.InsertConformanceRunParams{
+		StartedAtUtc:     TeksUTC(p.MulaiPada),
+		FinishedAtUtc:    TeksUTC(p.SelesaiPada),
+		Status:           p.Status,
+		CompaniesChecked: p.CompaniesChecked,
+		CompaniesFailed:  p.CompaniesFailed,
+		FindingCount:     p.FindingCount,
+		Details:          &p.Details,
+	})
 	if err != nil {
 		return fmt.Errorf("rekam putaran kesesuaian: %w", err)
 	}

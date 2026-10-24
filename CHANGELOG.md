@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.19.1 — 2026-10-23 — belum digelar
+## 0.20.0 — 2026-10-24 — belum digelar
+
+Konsol operator kini menilai antrean tiap jalur dengan ambangnya sendiri; tidak ada perubahan pada tampilan aplikasi.
+
+### Berubah
+
+- Konsol operator: halaman Penjadwal menampilkan ambang peringatan tiap jalur antrean beserta batas durasinya, dan menandai jalur yang melambat.
+
+---
+
+## 0.19.1 — 2026-10-23 (882d801)
 
 Ekspor Rekap Penjualan, Rekap Pembelian, Kas & Bank, dan Realisasi Anggaran kini disiapkan di latar.
 

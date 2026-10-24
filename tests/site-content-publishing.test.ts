@@ -12,8 +12,10 @@
  *  3. **Terbit mencatat riwayat yang bisa dibalik:** setiap perubahan punya
  *     nilai sebelum/sesudah, dan "batalkan penerbitan" menghasilkan draf yang
  *     mengembalikan keadaan sebelumnya.
- *  4. **Dual-write:** `site_contents` (paruh expand) selalu sama dengan yang
- *     tayang, supaya rollback image tidak mengubah halaman depan.
+ *  4. **Tanpa dual-write:** paruh contract (platform 0010) mencabut
+ *     `site_contents`; store tidak lagi menyentuh model `siteContent` — basis
+ *     data tiruan di bawah sengaja tidak memilikinya, jadi tulisan yang
+ *     tertinggal melempar di sini, bukan di produksi.
  *  5. **Aturan isian:** batas per isian cukup untuk setiap kalimat bawaan di
  *     ketiga bahasa, penanda `{…}` wajib sama, tag HTML ditolak.
  *
@@ -127,7 +129,6 @@ const fake = vi.hoisted(() => {
 
   const db: Record<string, unknown> = {
     siteContentEntry: model("siteContentEntry"),
-    siteContent: model("siteContent"),
     siteContentPublication: model("siteContentPublication"),
     siteContentRevision: model("siteContentRevision"),
     siteContentPreview: model("siteContentPreview"),
@@ -200,7 +201,7 @@ describe("draf tidak pernah terlihat di jalur publik", () => {
 });
 
 describe("terbit, riwayat, dan kembali", () => {
-  it("terbit memindahkan draf ke yang tayang, mencatat revisi, dan menyalin ke site_contents", async () => {
+  it("terbit memindahkan draf ke yang tayang dan mencatat revisi", async () => {
     await saveSiteContentDrafts(
       [
         { locale: "id", key: HERO, input: "Judul baru" },
@@ -222,14 +223,11 @@ describe("terbit, riwayat, dan kembali", () => {
       ["id", null, "Judul baru"],
     ]);
 
-    /* Dual-write: tabel lama sama dengan yang tayang. */
-    expect(fake.tables.siteContent.map((r) => [r.locale, r.key, r.value]).sort()).toEqual([
-      ["en", HERO, "New heading"],
-      ["id", HERO, "Judul baru"],
-    ]);
+    /* Paruh contract: tabel lama tidak ditulis lagi. */
+    expect(fake.tables.siteContent).toBeUndefined();
   });
 
-  it("isian kosong = kembali ke bawaan saat terbit (tayang & site_contents terhapus)", async () => {
+  it("isian kosong = kembali ke bawaan saat terbit (baris tayang terhapus)", async () => {
     await saveSiteContentDrafts([{ locale: "id", key: HERO, input: "Judul baru" }], "rina");
     await publishSiteContentDrafts({ actor: "vyn", note: null, isEditable: editable });
 
@@ -242,7 +240,7 @@ describe("terbit, riwayat, dan kembali", () => {
 
     await publishSiteContentDrafts({ actor: "vyn", note: null, isEditable: editable });
     expect(await publishedSiteContent("id")).toEqual({});
-    expect(fake.tables.siteContent).toHaveLength(0);
+    expect(fake.tables.siteContentEntry.filter((r) => r.status === "published")).toHaveLength(0);
   });
 
   it("isian yang sama dengan yang tayang tidak menjadi draf", async () => {

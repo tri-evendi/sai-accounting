@@ -7,13 +7,21 @@
  * dan tombol Kembali yang benar-benar kembali (pages/operator.md: saringan
  * lewat form GET).
  *
- *   • Sunting: satu bagian halaman, ketiga bahasa BERDAMPINGAN. Setiap isian
- *     menunjukkan teks bawaan, yang tayang, drafnya, batas karakternya, dan
- *     bahasa yang tertinggal. Simpan = draf; halaman publik belum berubah.
- *   • Tinjau: setiap draf sebagai baris "tayang sekarang → sesudah terbit",
+ *   • Sunting: satu bagian halaman, BAHASA INDONESIA saja di alur biasa;
+ *     English & 中文 terlipat di "Bahasa lain (opsional)" per kunci
+ *     (`content-editor.tsx`). Setiap isian menunjukkan teks bawaan, yang
+ *     tayang, drafnya, dan batas karakternya. Simpan = draf; halaman publik
+ *     belum berubah. Peringatan "terjemahan tertinggal" sengaja TIDAK
+ *     dipajang lagi: pemilik tidak mengelola terjemahan di sini, dan bahasa
+ *     yang tidak diganti memang tetap memakai teks bawaannya
+ *     (`lockedBehindLocales` tetap ada di inti untuk yang membutuhkannya).
+ *   • Tinjau: setiap draf sebagai baris "tayang sekarang → sesudah terbit"
+ *     (draf bahasa Indonesia lebih dulu; bahasa lain hanya bila memang punya
+ *     draf),
  *     pratinjau lewat tautan bertoken, terbitkan (owner), buang draf, dan
  *     kunci yatim.
- *   • Riwayat: penerbitan terakhir dengan nilai sebelum/sesudah; "batalkan
+ *   • Riwayat: penerbitan terakhir dengan nilai sebelum/sesudah (perubahan
+ *     bahasa Indonesia lebih dulu); "batalkan
  *     penerbitan" dan "pakai versi ini" membuat DRAF lalu membuka Tinjau.
  *
  * ══ BAWAAN TETAP DARI KAMUS ═══════════════════════════════════════════════
@@ -24,7 +32,6 @@
 
 import { HistoryOutlined } from "@ant-design/icons";
 
-import { Link } from "@sai/ui/app-link";
 import { Button, ButtonLink } from "@sai/ui/button";
 import { EmptyState } from "@sai/ui/empty-state";
 import { Input } from "@sai/ui/input";
@@ -37,12 +44,12 @@ import type { Dictionary } from "@sai/core/i18n/dictionary";
 import {
   SITE_CONTENT_PREFIX,
   SITE_CONTENT_PREVIEW_TTL_MINUTES,
+  SITE_CONTENT_PRIMARY_LOCALE as PRIMARY_CONTENT_LOCALE,
   SITE_CONTENT_SECTIONS,
   contentCellState,
   contentFieldSpec,
   defaultsOf,
   isEditableInAll,
-  lockedBehindLocales,
   resolveSection,
   sectionOf,
   siteContentDefaults,
@@ -84,7 +91,9 @@ export const dynamic = "force-dynamic";
 const VIEWS = ["edit", "review", "history"] as const;
 type View = (typeof VIEWS)[number];
 
-const SHOWS = ["all", "changed", "behind"] as const;
+/* `behind` (terjemahan tertinggal) dicabut dari layar — alamat lama
+   `?show=behind` jatuh ke `all`, bukan galat. */
+const SHOWS = ["all", "changed"] as const;
 type Show = (typeof SHOWS)[number];
 
 /** Jumlah penerbitan di tampilan riwayat. */
@@ -139,7 +148,6 @@ function buildModel(
       sectionId: sectionOf(key).id,
       spec: contentFieldSpec(Object.values(defaults)),
       cells,
-      behind: lockedBehindLocales(cells),
     });
   }
 
@@ -295,7 +303,6 @@ function EditView({
   const visible = keys.filter((k) => {
     if (q ? !matches(k, q) : k.sectionId !== section.id) return false;
     if (show === "changed") return isChanged(k);
-    if (show === "behind") return k.behind.length > 0;
     return true;
   });
 
@@ -339,7 +346,6 @@ function EditView({
               options={[
                 { value: "all", label: t("operator.content.showAll") },
                 { value: "changed", label: t("operator.content.showChanged") },
-                { value: "behind", label: t("operator.content.showBehind") },
               ]}
             />
           </div>
@@ -412,6 +418,7 @@ interface DraftRow {
   text: string;
   section: string;
   locale: string;
+  localeCode: Locale;
   live: string;
   after: string;
   by: string;
@@ -444,14 +451,19 @@ function ReviewView({
         text: k.name,
         section: sectionLabelOf(k.key, t),
         locale: LOCALE_LABELS[locale],
+        localeCode: locale,
         live: shownValue(c.published, c.defaultValue, t),
         after: shownValue(c.draft, c.defaultValue, t),
         by: `${c.draftBy}, ${c.draftAt}`,
       });
     }
   }
-  /* Tertinggal SESUDAH terbit: dihitung dari keadaan yang akan tayang. */
-  const behind = keys.filter((k) => k.behind.length > 0);
+  /* Bahasa Indonesia lebih dulu — bahasa lain hanya muncul bila memang punya
+     draf, dan menyusul sesudahnya (urutan stabil per kunci). */
+  drafts.sort(
+    (a, b) =>
+      Number(b.localeCode === PRIMARY_CONTENT_LOCALE) - Number(a.localeCode === PRIMARY_CONTENT_LOCALE)
+  );
 
   const columns: SaiColumns<DraftRow> = [
     {
@@ -520,35 +532,6 @@ function ReviewView({
           </div>
         )}
       </ConsolePanel>
-
-      {behind.length > 0 && (
-        <ConsolePanel
-          title={t("operator.content.behindHeading")}
-          description={t("operator.content.behindDescription")}
-        >
-          <ul style={{ margin: 0, paddingInlineStart: "var(--ant-padding-lg)" }}>
-            {behind.map((k) => {
-              const done = LOCALES.filter((l) => !k.behind.includes(l));
-              return (
-                <li key={k.key} style={{ marginBottom: "var(--ant-margin-xxs)" }}>
-                  <Link
-                    href={viewHref("edit", { q: k.name })}
-                    style={{ fontFamily: "var(--ant-font-family-code)", color: "var(--ant-color-link)" }}
-                  >
-                    {k.name}
-                  </Link>{" "}
-                  <span style={CONSOLE_MUTED}>
-                    {t("operator.content.behind", {
-                      done: done.map((l) => LOCALE_LABELS[l]).join(", "),
-                      missing: k.behind.map((l) => LOCALE_LABELS[l]).join(", "),
-                    })}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </ConsolePanel>
-      )}
 
       {orphans.length > 0 && (
         <ConsolePanel
@@ -619,7 +602,12 @@ async function HistoryView({
         description={t("operator.content.historyDescription", { count: HISTORY_LIMIT })}
       >
       {publications.map((pub) => {
-        const rows: RevisionRow[] = pub.revisions.map((r) => ({
+        /* Perubahan bahasa Indonesia lebih dulu; bahasa lain hanya ada bila
+           memang berubah di penerbitan itu (revisi = perubahan nyata). */
+        const revisions = [...pub.revisions].sort(
+          (a, b) => Number(b.locale === PRIMARY_CONTENT_LOCALE) - Number(a.locale === PRIMARY_CONTENT_LOCALE)
+        );
+        const rows: RevisionRow[] = revisions.map((r) => ({
           id: r.id,
           text: r.key.slice(SITE_CONTENT_PREFIX.length),
           locale: (LOCALE_LABELS as Record<string, string>)[r.locale] ?? r.locale,

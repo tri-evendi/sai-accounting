@@ -62,7 +62,7 @@ import {
   reportProgress,
   type JobRow,
 } from "@sai/platform/job-queue";
-import { pruneOrphanResults } from "@sai/platform/job-result-store";
+import { pruneExpiredResults, pruneOrphanResults } from "@sai/platform/job-result-store";
 import { tryAcquireSessionLock, type SessionLock } from "@sai/db/session-lock";
 import {
   pruneRuntimeSamples,
@@ -230,6 +230,27 @@ async function upkeep(lane: JobLane): Promise<void> {
     await pruneRuntimeSamples();
   } catch (e) {
     console.error(`[${lane}] upkeep: gagal memangkas \`runtime_samples\`:`, e);
+  }
+
+  /*
+   * ══ HASIL KEDALUWARSA — "berkas ekspor dihapus setelah 7 hari" ═══════════
+   *
+   * Keputusan pemilik di docs/TATA-KELOLA.md §6; angkanya
+   * `results.retention_days` di kontrak. SEBELUM pembersih yatim di bawah,
+   * dan TIDAK bergantung pada basis data: keputusannya dari umur direktori
+   * hasil saja, jadi basis data yang tak terjangkau tidak bisa membuatnya
+   * menghapus lebih banyak. Ia menyapu SELURUH volume `hasil` — termasuk hasil
+   * yang ditulis pelari Go (`svc-integrator` tidak menyapu cakramnya sendiri)
+   * dan ekspor data mandiri tenant. Idempoten antar pelari: dua pelari yang
+   * menyapu bersamaan membuang direktori yang sama, `rm -f` yang kedua diam.
+   */
+  try {
+    const kedaluwarsa = await pruneExpiredResults();
+    if (kedaluwarsa.length > 0) {
+      console.log(`[${lane}] upkeep: ${kedaluwarsa.length} direktori hasil lewat masa simpan dibuang`);
+    }
+  } catch (e) {
+    console.error(`[${lane}] upkeep: gagal membuang hasil kedaluwarsa:`, e);
   }
 
   /*

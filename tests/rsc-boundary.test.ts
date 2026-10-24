@@ -350,8 +350,12 @@ import { join } from "node:path";
  *   + `components/operator/trial-retention-form` — sakelar hapus otomatis (bawaan
  *     MATI) + masa retensi, konfirmasi ketik-HAPUS. Halaman `/settings` tetap
  *     server; daftar kandidatnya dirender di sana.
+ * 212 → 213 (24 Okt 2026, paket laporan — 09 §5):
+ *   + `components/reports/report-package-dialog` — formulir periode/laporan/format
+ *     + kemajuan pekerjaan di header Pusat Laporan. Halaman `/reports` tetap
+ *     server; daftar laporan & tanda izinnya dihitung di sana dan dioper.
  */
-const AMBANG_KLIEN = 212;
+const AMBANG_KLIEN = 213;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -577,6 +581,8 @@ const KLIEN_TERSAHKAN = [
   "components/layout/status-banner.tsx",
   "components/layout/user-menu.tsx",
   "components/reports/report-launch-dialog.tsx",
+  // Paket laporan (09 §5, 24 Okt 2026) — pulau formulir di header Pusat Laporan; halamannya tetap server.
+  "components/reports/report-package-dialog.tsx",
   "components/settings/audit-log-panel.tsx",
   "components/settings/company-logo-panel.tsx",
   "components/settings/module-picker.tsx",

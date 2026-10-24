@@ -129,20 +129,6 @@ func comparative(m muatanEkspor, instants ...string) (bool, error) {
 
 func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 	return func(c jobs.Ctx) (*string, error) {
-		var m muatanEkspor
-		if err := json.Unmarshal(c.Payload, &m); err != nil {
-			return nil, fmt.Errorf("muatan tidak terbaca: %w", err)
-		}
-		if m.ReportID == "" {
-			return nil, errors.New("muatan tanpa `reportId` — pekerjaan ini tidak bisa tahu laporan mana")
-		}
-		if !contract.GoEngineReports[m.ReportID] {
-			// Register sudah tidak menyatakan laporan ini milik Go (atau tak
-			// pernah). Melempar — bukan menghasilkan berkas dari mesin yang
-			// register-nya sendiri sudah dicabut.
-			return nil, fmt.Errorf("laporan %q bukan milik mesin Go di src/lib/report-engine.ts", m.ReportID)
-		}
-
 		company, err := registry.Lookup(c.Ctx, kolam, c.Job.CompanyID)
 		if err != nil {
 			return nil, err
@@ -152,48 +138,8 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 		// diarsipkan justru alasan orang menonaktifkannya.
 
 		_ = c.Progress(10)
-		var data []byte
-		var filename string
-		switch m.ReportID {
-		case contract.ReportTrialBalance:
-			data, filename, err = neracaSaldo(c.Ctx, company, m, c.Progress)
-		// Laba Rugi & Neraca: penghasilnya SUDAH ada, tetapi selama register
-		// menyatakan `go-parity` keduanya tidak pernah sampai ke sini —
-		// `GoEngineReports` di atas menolaknya lebih dulu. Cabang ini menunggu
-		// paritas produksi, bukan sebaliknya.
-		case contract.ReportIncomeStatement:
-			data, filename, err = labaRugi(c.Ctx, company, m, c.Progress)
-		case contract.ReportBalanceSheet:
-			data, filename, err = neraca(c.Ctx, company, m, c.Progress)
-		// Arus Kas (tahap 1d): `go` sejak paritas produksi 23 Okt 2026.
-		case contract.ReportCashFlow:
-			data, filename, err = arusKas(c.Ctx, company, m, c.Progress)
-		// Laporan Perubahan Ekuitas (berkas sejak keputusan pemilik 23 Okt
-		// 2026, `go-parity`): penghasilnya ADA, tetapi `GoEngineReports`
-		// menolaknya lebih dulu sampai paritas produksinya lulus — pola yang
-		// sama dengan Arus Kas dulu.
-		case contract.ReportEquityChanges:
-			data, filename, err = perubahanEkuitas(c.Ctx, company, m, c.Progress)
-		// Umur Piutang & Umur Utang (`go-parity`): sama — penghasilnya ada,
-		// register yang memutuskan kapan cabang ini terjangkau.
-		case contract.ReportReceivables, contract.ReportPayables:
-			data, filename, err = umur(c.Ctx, company, m, c.Progress)
-		// Gelombang A berikutnya (`go-parity`, 23 Okt 2026): Rekap per Pihak,
-		// Laporan Kas & Bank, Realisasi vs Anggaran — penghasilnya ada,
-		// `GoEngineReports` di atas yang memutuskan kapan terjangkau.
-		case contract.ReportSalesByCustomer, contract.ReportPurchasesBySupplier:
-			data, filename, err = rekapPihak(c.Ctx, company, m, c.Progress)
-		case contract.ReportCashBank:
-			data, filename, err = kasBank(c.Ctx, company, m, c.Progress)
-		case contract.ReportBudgetRealization:
-			data, filename, err = anggaran(c.Ctx, company, m, c.Progress)
-		// Laporan stok (tahap 1d, `go-parity`): penghasilnya ada, register yang
-		// memutuskan kapan cabang ini terjangkau.
-		case contract.ReportStockValue, contract.ReportStockMovement, contract.ReportOpnameHistory:
-			data, filename, err = stok(c.Ctx, company, m, c.Progress)
-		default:
-			err = fmt.Errorf("laporan %q belum punya penghasil berkas Go", m.ReportID)
-		}
+		now := time.Now()
+		l, err := LembarLaporan(c.Ctx, company, c.Payload, now, c.Progress)
 		if err != nil {
 			return nil, err
 		}
@@ -202,9 +148,17 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 			// berkas yang tidak akan diunduh siapa pun.
 			return nil, c.Ctx.Err()
 		}
+		// Satu lembar = satu buku kerja — persis `document.<Laporan>Workbook`
+		// (pembuat = nama perusahaan, dibuat = `now`), sehingga berkas
+		// `report.export_go` tidak berubah oleh pemisahan lembar dari bukunya.
+		wb := document.Workbook{Creator: l.Company, Created: now, Sheets: []document.Sheet{l.Sheet}}
+		data, err := wb.Bytes()
+		if err != nil {
+			return nil, err
+		}
 
 		_ = c.Progress(90)
-		ref, err := document.WriteResult(root, c.Job.Kind, c.Job.ID, filename, data)
+		ref, err := document.WriteResult(root, c.Job.Kind, c.Job.ID, document.FileName(l.Title, now), data)
 		if err != nil {
 			return nil, err
 		}
@@ -212,27 +166,90 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 	}
 }
 
-func neracaSaldo(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+// Lembar: SATU laporan sebagai SATU lembar kerja, beserta judul dokumennya dan
+// nama perusahaan di kopnya. Dua pemakai, satu penghasil:
+//
+//   - `report.export_go` (berkas = buku kerja satu lembar, `handlerEkspor`);
+//   - `report.package` (jalur `bulk`, `internal/bulklane`): banyak lembar dari
+//     banyak laporan dalam SATU buku kerja.
+//
+// Paket laporan karena itu TIDAK menulis aritmetika laporan kedua — ia
+// memanggil fungsi ini per laporan, dengan muatan yang bentuknya sama persis
+// dengan `report.export_go` (`GoExportPayload`, dihitung penerbit TS).
+type Lembar struct {
+	Sheet   document.Sheet
+	Title   string
+	Company string
+}
+
+// LembarLaporan menghitung satu laporan dari muatan `GoExportPayload` (lihat
+// `muatanEkspor`) dan memetakannya ke satu lembar. Register mesin dibaca di
+// sini (`contract.GoEngineReports`), jadi laporan yang dicabut dari Go ditolak
+// oleh SETIAP pemakai, bukan hanya oleh pelari ekspor.
+func LembarLaporan(ctx context.Context, company *registry.Company, payload json.RawMessage, now time.Time, progress func(int) error) (Lembar, error) {
+	var m muatanEkspor
+	if err := json.Unmarshal(payload, &m); err != nil {
+		return Lembar{}, fmt.Errorf("muatan tidak terbaca: %w", err)
+	}
+	if m.ReportID == "" {
+		return Lembar{}, errors.New("muatan tanpa `reportId` — pekerjaan ini tidak bisa tahu laporan mana")
+	}
+	if !contract.GoEngineReports[m.ReportID] {
+		// Register sudah tidak menyatakan laporan ini milik Go (atau tak
+		// pernah). Melempar — bukan menghasilkan berkas dari mesin yang
+		// register-nya sendiri sudah dicabut.
+		return Lembar{}, fmt.Errorf("laporan %q bukan milik mesin Go di src/lib/report-engine.ts", m.ReportID)
+	}
+	if progress == nil {
+		progress = func(int) error { return nil }
+	}
+
+	switch m.ReportID {
+	case contract.ReportTrialBalance:
+		return neracaSaldo(ctx, company, m, progress, now)
+	case contract.ReportIncomeStatement:
+		return labaRugi(ctx, company, m, progress, now)
+	case contract.ReportBalanceSheet:
+		return neraca(ctx, company, m, progress, now)
+	case contract.ReportCashFlow:
+		return arusKas(ctx, company, m, progress, now)
+	case contract.ReportEquityChanges:
+		return perubahanEkuitas(ctx, company, m, progress, now)
+	case contract.ReportReceivables, contract.ReportPayables:
+		return umur(ctx, company, m, progress, now)
+	case contract.ReportSalesByCustomer, contract.ReportPurchasesBySupplier:
+		return rekapPihak(ctx, company, m, progress, now)
+	case contract.ReportCashBank:
+		return kasBank(ctx, company, m, progress, now)
+	case contract.ReportBudgetRealization:
+		return anggaran(ctx, company, m, progress, now)
+	case contract.ReportStockValue, contract.ReportStockMovement, contract.ReportOpnameHistory:
+		return stok(ctx, company, m, progress, now)
+	}
+	return Lembar{}, fmt.Errorf("laporan %q belum punya penghasil berkas Go", m.ReportID)
+}
+
+func neracaSaldo(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	// Instan dihitung PENERBIT (`resolveAsOf`, zona proses Node) dan diterima
 	// apa adanya — lihat kepala `src/lib/report-export-go.ts`.
 	asOf, err := time.Parse(time.RFC3339Nano, m.AsOfInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("asOfInstant %q: %w", m.AsOfInstant, err)
+		return Lembar{}, fmt.Errorf("asOfInstant %q: %w", m.AsOfInstant, err)
 	}
 	period, err := document.PeriodAsOf(m.Params["asOf"])
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
 	tb, err := r.TrialBalance(ctx, asOf)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	if len(tb.UnknownTypes) > 0 {
 		log.Printf("[interactive-go] ⚠ %s: akun bertipe di luar kontrak: %s",
@@ -243,38 +260,33 @@ func neracaSaldo(ctx context.Context, company *registry.Company, m muatanEkspor,
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.TrialBalanceWorkbook(tb, name, period, now)
-	if err != nil {
-		return nil, "", err
-	}
-	return data, document.FileName(contract.TrialBalanceTitle, now), nil
+	return Lembar{Sheet: document.TrialBalanceSheet(tb, name, period, now), Title: contract.TrialBalanceTitle, Company: name}, nil
 }
 
-func labaRugi(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func labaRugi(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	from, err := time.Parse(time.RFC3339Nano, m.FromInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
+		return Lembar{}, fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
 	}
 	to, err := time.Parse(time.RFC3339Nano, m.ToInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
+		return Lembar{}, fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
 	}
 	raw := m.Params["costCenter"]
 	cc, err := ledgerread.ParseCostCenterFilter(raw)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
 	is, err := r.IncomeStatement(ctx, &from, &to, cc)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	if len(is.UnknownTypes) > 0 {
 		log.Printf("[interactive-go] ⚠ %s: akun bertipe di luar kontrak: %s",
@@ -286,46 +298,41 @@ func labaRugi(ctx context.Context, company *registry.Company, m muatanEkspor, pr
 		return r.CostCenter(ctx, id)
 	})
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], ccLabel)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	prior, err := priorIncomeStatement(ctx, r, m, cc)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.IncomeStatementWorkbook(is, prior, name, period, now)
-	if err != nil {
-		return nil, "", err
-	}
-	return data, document.FileName(contract.IncomeStatementTitle, now), nil
+	return Lembar{Sheet: document.IncomeStatementSheet(is, prior, name, period, now), Title: contract.IncomeStatementTitle, Company: name}, nil
 }
 
-func neraca(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func neraca(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	asOf, err := time.Parse(time.RFC3339Nano, m.AsOfInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("asOfInstant %q: %w", m.AsOfInstant, err)
+		return Lembar{}, fmt.Errorf("asOfInstant %q: %w", m.AsOfInstant, err)
 	}
 	period, err := document.PeriodAsOf(m.Params["asOf"])
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
 	bs, err := r.BalanceSheet(ctx, asOf)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	if len(bs.UnknownTypes) > 0 {
 		log.Printf("[interactive-go] ⚠ %s: akun bertipe di luar kontrak: %s",
@@ -333,50 +340,45 @@ func neraca(ctx context.Context, company *registry.Company, m muatanEkspor, prog
 	}
 	prior, err := priorBalanceSheet(ctx, r, m)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	_ = progress(55)
 
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.BalanceSheetWorkbook(bs, prior, name, period, now)
-	if err != nil {
-		return nil, "", err
-	}
-	return data, document.FileName(contract.BalanceSheetTitle, now), nil
+	return Lembar{Sheet: document.BalanceSheetSheet(bs, prior, name, period, now), Title: contract.BalanceSheetTitle, Company: name}, nil
 }
 
-func arusKas(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func arusKas(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	// Instan dihitung PENERBIT (`resolvePeriod`), diterima apa adanya. Arus
 	// Kas tidak punya kolom pembanding — muatan yang membawanya DITOLAK, bukan
 	// dicetak satu kolom diam-diam.
 	if m.Params["compare"] != "" || m.PriorFromInstant != "" || m.PriorToInstant != "" || m.PriorAsOfInstant != "" {
-		return nil, "", fmt.Errorf("arus kas tidak punya kolom pembanding (compare %q)", m.Params["compare"])
+		return Lembar{}, fmt.Errorf("arus kas tidak punya kolom pembanding (compare %q)", m.Params["compare"])
 	}
 	from, err := time.Parse(time.RFC3339Nano, m.FromInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
+		return Lembar{}, fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
 	}
 	to, err := time.Parse(time.RFC3339Nano, m.ToInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
+		return Lembar{}, fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
 	}
 	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
 	cf, err := r.CashFlow(ctx, &from, &to)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	if len(cf.UnknownTypes) > 0 {
 		log.Printf("[interactive-go] ⚠ %s: akun lawan kas bertipe di luar kontrak: %s",
@@ -387,44 +389,39 @@ func arusKas(ctx context.Context, company *registry.Company, m muatanEkspor, pro
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.CashFlowWorkbook(cf, name, period, now)
-	if err != nil {
-		return nil, "", err
-	}
-	return data, document.FileName(contract.CashFlowTitle, now), nil
+	return Lembar{Sheet: document.CashFlowSheet(cf, name, period, now), Title: contract.CashFlowTitle, Company: name}, nil
 }
 
 // perubahanEkuitas: Laporan Perubahan Ekuitas [fromInstant, toInstant].
 // Instan dihitung PENERBIT (`resolvePeriod`), diterima apa adanya. Tanpa
 // kolom pembanding — muatan yang membawanya DITOLAK, bukan dicetak satu kolom
 // diam-diam.
-func perubahanEkuitas(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func perubahanEkuitas(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	if m.Params["compare"] != "" || m.PriorFromInstant != "" || m.PriorToInstant != "" || m.PriorAsOfInstant != "" {
-		return nil, "", fmt.Errorf("laporan perubahan ekuitas tidak punya kolom pembanding (compare %q)", m.Params["compare"])
+		return Lembar{}, fmt.Errorf("laporan perubahan ekuitas tidak punya kolom pembanding (compare %q)", m.Params["compare"])
 	}
 	from, err := time.Parse(time.RFC3339Nano, m.FromInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
+		return Lembar{}, fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
 	}
 	to, err := time.Parse(time.RFC3339Nano, m.ToInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
+		return Lembar{}, fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
 	}
 	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
 	es, err := r.EquityStatement(ctx, from, to)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	if len(es.UnknownTypes) > 0 {
 		log.Printf("[interactive-go] ⚠ %s: akun bergerak bertipe di luar kontrak: %s",
@@ -435,36 +432,31 @@ func perubahanEkuitas(ctx context.Context, company *registry.Company, m muatanEk
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.EquityStatementWorkbook(es, name, period, now)
-	if err != nil {
-		return nil, "", err
-	}
-	return data, document.FileName(contract.EquityStatementTitle, now), nil
+	return Lembar{Sheet: document.EquityStatementSheet(es, name, period, now), Title: contract.EquityStatementTitle, Company: name}, nil
 }
 
 // umur: Umur Piutang / Umur Utang per `asOfInstant`. Parameter halaman yang
 // ikut muatan: `cols` (kolom tampil, `resolveColumns`) dan `overdue` ("1" =
 // hanya jatuh tempo) — keduanya dibaca `buildReportPayload` TS dengan bunyi
 // yang sama.
-func umur(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func umur(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	asOf, err := time.Parse(time.RFC3339Nano, m.AsOfInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("asOfInstant %q: %w", m.AsOfInstant, err)
+		return Lembar{}, fmt.Errorf("asOfInstant %q: %w", m.AsOfInstant, err)
 	}
 	period, err := document.PeriodAsOf(m.Params["asOf"])
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	specs, err := document.AgingColumnsFor(m.ReportID)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	overdue := m.Params["overdue"] == "1"
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
@@ -475,19 +467,18 @@ func umur(ctx context.Context, company *registry.Company, m muatanEkspor, progre
 		rep, err = r.Payables(ctx, asOf, overdue)
 	}
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	_ = progress(55)
 
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.AgingWorkbook(rep, document.AgingVisibleColumns(specs, m.Params["cols"]), name, period, now)
+	sheet, err := document.AgingSheet(rep, document.AgingVisibleColumns(specs, m.Params["cols"]), name, period, now)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
-	return data, document.FileName(document.AgingTitle(m.ReportID), now), nil
+	return Lembar{Sheet: sheet, Title: document.AgingTitle(m.ReportID), Company: name}, nil
 }
 
 // stok: Nilai Persediaan, Riwayat Stok, atau Riwayat Hitung Ulang Stok
@@ -496,81 +487,80 @@ func umur(ctx context.Context, company *registry.Company, m muatanEkspor, progre
 // di `buildReportPayload` — dan diterima apa adanya. `params.cols` = `?cols=`
 // halaman (Riwayat Hitung Ulang Stok tidak punya pilihan kolom). Tanpa kolom
 // pembanding: muatan yang membawanya DITOLAK.
-func stok(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func stok(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	if m.Params["compare"] != "" || m.PriorFromInstant != "" || m.PriorToInstant != "" || m.PriorAsOfInstant != "" {
-		return nil, "", fmt.Errorf("laporan stok tidak punya kolom pembanding (compare %q)", m.Params["compare"])
+		return Lembar{}, fmt.Errorf("laporan stok tidak punya kolom pembanding (compare %q)", m.Params["compare"])
 	}
 	from, err := time.Parse(time.RFC3339Nano, m.FromInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
+		return Lembar{}, fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
 	}
 	to, err := time.Parse(time.RFC3339Nano, m.ToInstant)
 	if err != nil {
-		return nil, "", fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
+		return Lembar{}, fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
-	now := time.Now()
-	var data []byte
-	var title string
+	var sheet document.Sheet
+	var title, name string
 	switch m.ReportID {
 	case contract.ReportStockValue:
 		period, err := document.StockValuePeriod(m.Params["from"], m.Params["to"])
 		if err != nil {
-			return nil, "", err
+			return Lembar{}, err
 		}
 		rep, err := r.StockValue(ctx, from, to)
 		if err != nil {
-			return nil, "", err
+			return Lembar{}, err
 		}
 		_ = progress(55)
-		name := companyName(ctx, r, company)
+		name = companyName(ctx, r, company)
 		_ = progress(70)
-		if data, err = document.StockValueWorkbook(rep, m.Params["cols"], name, period, now); err != nil {
-			return nil, "", err
+		if sheet, err = document.StockValueSheet(rep, m.Params["cols"], name, period, now); err != nil {
+			return Lembar{}, err
 		}
 		title = contract.StockValueTitle
 	case contract.ReportStockMovement:
 		period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
 		if err != nil {
-			return nil, "", err
+			return Lembar{}, err
 		}
 		rep, err := r.StockMovement(ctx, from, to)
 		if err != nil {
-			return nil, "", err
+			return Lembar{}, err
 		}
 		_ = progress(55)
-		name := companyName(ctx, r, company)
+		name = companyName(ctx, r, company)
 		_ = progress(70)
-		if data, err = document.StockMovementWorkbook(rep, m.Params["cols"], name, period, now); err != nil {
-			return nil, "", err
+		if sheet, err = document.StockMovementSheet(rep, m.Params["cols"], name, period, now); err != nil {
+			return Lembar{}, err
 		}
 		title = contract.StockMovementTitle
 	case contract.ReportOpnameHistory:
 		period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
 		if err != nil {
-			return nil, "", err
+			return Lembar{}, err
 		}
 		h, err := r.OpnameHistory(ctx, from, to)
 		if err != nil {
-			return nil, "", err
+			return Lembar{}, err
 		}
 		_ = progress(55)
-		name := companyName(ctx, r, company)
+		name = companyName(ctx, r, company)
 		_ = progress(70)
-		if data, err = document.OpnameHistoryWorkbook(h, name, period, now); err != nil {
-			return nil, "", err
+		if sheet, err = document.OpnameHistorySheet(h, name, period, now); err != nil {
+			return Lembar{}, err
 		}
 		title = contract.OpnameHistoryTitle
 	default:
-		return nil, "", fmt.Errorf("laporan stok %q tidak dikenal", m.ReportID)
+		return Lembar{}, fmt.Errorf("laporan stok %q tidak dikenal", m.ReportID)
 	}
-	return data, document.FileName(title, now), nil
+	return Lembar{Sheet: sheet, Title: title, Company: name}, nil
 }
 
 // tanpaPembanding menolak muatan berperiode yang membawa kolom pembanding —
@@ -599,80 +589,78 @@ func periodeInstan(m muatanEkspor) (time.Time, time.Time, error) {
 
 // rekapPihak: Penjualan per Pelanggan / Pembelian per Pemasok [fromInstant,
 // toInstant]. Parameter halaman yang ikut: `cols` (`resolveColumns`).
-func rekapPihak(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func rekapPihak(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	if err := tanpaPembanding(m, m.ReportID); err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	from, to, err := periodeInstan(m)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	specs, err := document.PartyRecapColumnsFor(m.ReportID)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
 	rep, err := r.PartyRecap(ctx, m.ReportID, from, to)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	_ = progress(55)
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.PartyRecapWorkbook(rep, document.CatalogVisibleColumns(specs, m.Params["cols"]), name, period, now)
+	sheet, err := document.PartyRecapSheet(rep, document.CatalogVisibleColumns(specs, m.Params["cols"]), name, period, now)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
-	return data, document.FileName(document.PartyRecapTitle(m.ReportID), now), nil
+	return Lembar{Sheet: sheet, Title: document.PartyRecapTitle(m.ReportID), Company: name}, nil
 }
 
 // kasBank: Laporan Kas & Bank [fromInstant, toInstant] — Arus Kas periode yang
 // sama; `cols` ikut seperti halaman.
-func kasBank(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func kasBank(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	if err := tanpaPembanding(m, "laporan kas & bank"); err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	from, to, err := periodeInstan(m)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
 	cb, err := r.CashBank(ctx, from, to)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	_ = progress(55)
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.CashBankWorkbook(cb, document.CatalogVisibleColumns(contract.CashBankColumns, m.Params["cols"]), name, period, now)
+	sheet, err := document.CashBankSheet(cb, document.CatalogVisibleColumns(contract.CashBankColumns, m.Params["cols"]), name, period, now)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
-	return data, document.FileName(contract.CashBankTitle, now), nil
+	return Lembar{Sheet: sheet, Title: contract.CashBankTitle, Company: name}, nil
 }
 
 // anggaran: Realisasi vs Anggaran. `params.year` + `params.month` (0 =
@@ -680,32 +668,32 @@ func kasBank(ctx context.Context, company *registry.Company, m muatanEkspor, pro
 // [fromInstant, toInstant] = `budgetPeriodRange` — batas Laba Rugi realisasinya.
 // Nilai di luar bentuk itu DITOLAK: penerbit tidak pernah mengirimnya, jadi
 // muatan seperti itu bukan permintaan pengguna.
-func anggaran(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+func anggaran(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error, now time.Time) (Lembar, error) {
 	if err := tanpaPembanding(m, "realisasi vs anggaran"); err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	year, month, err := budgetYearMonth(m.Params["year"], m.Params["month"])
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	from, to, err := periodeInstan(m)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	period, err := document.BudgetPeriod(year, month)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 
 	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	defer r.Close()
 
 	rep, err := r.BudgetRealization(ctx, year, month, from, to)
 	if err != nil {
-		return nil, "", err
+		return Lembar{}, err
 	}
 	if len(rep.UnknownTypes) > 0 {
 		log.Printf("[interactive-go] ⚠ %s: akun bergerak bertipe di luar kontrak: %s",
@@ -715,12 +703,7 @@ func anggaran(ctx context.Context, company *registry.Company, m muatanEkspor, pr
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
-	now := time.Now()
-	data, err := document.BudgetWorkbook(rep, name, period, now)
-	if err != nil {
-		return nil, "", err
-	}
-	return data, document.FileName(contract.BudgetTitle, now), nil
+	return Lembar{Sheet: document.BudgetSheet(rep, name, period, now), Title: contract.BudgetTitle, Company: name}, nil
 }
 
 // budgetYearMonth: tahun 2000–2100 dan bulan 0–12 dalam bentuk desimal polos —

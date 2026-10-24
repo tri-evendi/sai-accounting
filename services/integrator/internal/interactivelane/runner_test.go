@@ -3,6 +3,7 @@ package interactivelane
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 // Muatan pembanding (#557) yang setengah-setengah DITOLAK — mencetak lembar
@@ -47,7 +48,7 @@ func TestCashFlowRejectsComparative(t *testing.T) {
 		"compare":     {Params: withCompare},
 		"instan saja": {Params: period, PriorFromInstant: "2025-01-01T00:00:00Z"},
 	} {
-		if _, _, err := arusKas(context.Background(), nil, m, func(int) error { return nil }); err == nil {
+		if _, err := arusKas(context.Background(), nil, m, func(int) error { return nil }, time.Now()); err == nil {
 			t.Errorf("%s: muatan pembanding diterima", name)
 		}
 	}
@@ -62,7 +63,7 @@ func TestEquityChangesRejectsComparative(t *testing.T) {
 		"compare":     {Params: withCompare},
 		"instan saja": {Params: period, PriorToInstant: "2025-06-30T16:59:59.999Z"},
 	} {
-		if _, _, err := perubahanEkuitas(context.Background(), nil, m, func(int) error { return nil }); err == nil {
+		if _, err := perubahanEkuitas(context.Background(), nil, m, func(int) error { return nil }, time.Now()); err == nil {
 			t.Errorf("%s: muatan pembanding diterima", name)
 		}
 	}

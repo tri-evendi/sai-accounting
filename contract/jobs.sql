@@ -66,6 +66,17 @@ WHERE id = sqlc.arg(id);
 -- name: CancelRequested :one
 SELECT cancel_requested FROM jobs WHERE id = sqlc.arg(id);
 
+-- name: JobOutcome :one
+-- Keadaan pekerjaan LAIN — dibaca `report.package` (jalur `bulk`) yang menunggu
+-- bagian PDF-nya dari `report.package_pdf` (Node). HANYA MEMBACA. `kind` dan
+-- `company_id` ikut supaya pembacanya membuktikan baris itu memang anak yang
+-- diharapkan untuk PT yang sama, bukan id yang kebetulan disebut muatan.
+-- `last_error` lewat COALESCE: kolomnya nullable tetapi dipetakan `string` di
+-- Go (`sqlc.yaml` — Go dulu hanya MENULISnya); pemindaian NULL ke `string` gagal.
+SELECT kind, company_id, status, progress, result_ref,
+       COALESCE(last_error, '')::text AS last_error
+  FROM jobs WHERE id = sqlc.arg(id);
+
 -- name: ReclaimStale :execrows
 -- Ambang basi dihitung SERVER terhadap jam yang menulis `claimed_at`.
 UPDATE jobs

@@ -44,7 +44,7 @@ import "dotenv/config";
 import { runLane, type JobContext } from "./runner";
 import { dalamKonteksPerusahaan } from "./jalur-perusahaan";
 import { provisionCompanyJob } from "./company-provision";
-import { writeJobResult } from "@sai/platform/job-result-store";
+import { writeJobResult, writeJobResultStream } from "@sai/platform/job-result-store";
 import { isExportable, reportById } from "../src/lib/report-catalog";
 import { reportEngine } from "../src/lib/report-engine";
 import { buildReportPayload } from "../src/lib/report-payload";
@@ -56,6 +56,7 @@ import { runReadOnly } from "../src/lib/read-replica";
 import { applyEfakturRecord } from "../src/lib/efaktur-record";
 import { autoSendPostedInvoice } from "../src/lib/invoice-auto-send";
 import { renderReportPdfJob, type ReportPdfJobPayload } from "../src/lib/report-pdf-job";
+import { PACKAGE_PDF_PART_FILENAME, writeReportPackagePdfPart } from "../src/lib/report-package-pdf";
 
 /** Muatan `report.export` — PARAMETER saja. */
 interface MuatanEkspor {
@@ -186,6 +187,29 @@ async function pdfLaporan(ctx: JobContext): Promise<string | null> {
 }
 
 /**
+ * `report.package_pdf` — bagian PDF sebuah paket laporan (09 §5): halaman
+ * ringkasan + satu PDF per laporan, digambar SATU PER SATU dengan pembangun
+ * muatan & generator yang sama dengan tombol PDF Pusat Laporan, dan dialirkan
+ * ke satu ZIP antara (`src/lib/report-package-pdf.ts`). Yang membacanya
+ * pelari `report.package` (Go, jalur `bulk`), yang merangkainya dengan buku
+ * kerja paket menjadi berkas akhir; pintu unduhnya `null`.
+ *
+ * `false` = perusahaan NONAKTIF tetap dikerjakan: hanya MEMBACA.
+ */
+async function bagianPdfPaket(ctx: JobContext): Promise<string | null> {
+  return dalamKonteksPerusahaan(ctx.job.companyId, false, async () => {
+    await ctx.progress(5);
+    return writeJobResultStream(ctx.job.kind, ctx.job.id, PACKAGE_PDF_PART_FILENAME, async (out) => {
+      await writeReportPackagePdfPart(ctx.job.payload, out, {
+        bacaBuku: runReadOnly,
+        progress: ctx.progress,
+        cancelled: ctx.cancelled,
+      });
+    });
+  });
+}
+
+/**
  * `efaktur.record` — hasil PJAP dari jalur `integration` Go ke buku PT
  * (docs/EFAKTUR.md). Di sini karena hanya Node yang menulis basis data
  * perusahaan; jalur `interactive` karena orang di layar Pajak menunggu
@@ -240,6 +264,7 @@ void runLane({
      */
     "report.export": eksporLaporan,
     "report.pdf": pdfLaporan,
+    "report.package_pdf": bagianPdfPaket,
     /*
      * Buku PT baru (Okt 2026). Di jalur ini karena yang menunggu adalah orang
      * di layar `/companies/new` — kontrak `company.provision` menulis kenapa

@@ -46,12 +46,14 @@
  * memutuskan izin apa pun. Izinnya diputuskan rute unduhan.
  */
 
+import { createWriteStream } from "node:fs";
 import { chown, mkdir, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { Writable } from "node:stream";
 
 import { isValidResultRef } from "@sai/core/job-result";
 import type { JobKind } from "@sai/core/generated/job-kinds";
-import { RESULT_OWNER_GID, RESULT_OWNER_UID } from "@sai/core/generated/job-numbers";
+import { RESULT_OWNER_GID, RESULT_OWNER_UID, RESULT_RETENTION_DAYS } from "@sai/core/generated/job-numbers";
 
 /** Akar penyimpanan hasil. Sejajar `data/documents` & `data/audit` — volume. */
 export const RESULTS_ROOT = path.join(process.cwd(), "data", "hasil");
@@ -169,6 +171,47 @@ export async function writeJobResult(
   return ref;
 }
 
+/**
+ * `writeJobResult` untuk berkas yang TIDAK PERNAH utuh di memori — bagian PDF
+ * paket laporan (`report.package_pdf`) menulis entri ZIP satu per satu.
+ * Sifatnya sama: `.partial` lalu `rename`, 0600 di direktori 0700, pemilik
+ * diserahkan sebelum nama sahnya ada. Galat dari `tulis` (termasuk pembatalan)
+ * MEMBUANG berkas sementaranya — tidak ada `.partial` yatim, tidak ada nama sah
+ * yang menunjuk berkas setengah jadi. Padanan Go: `document.WriteResultStream`.
+ */
+export async function writeJobResultStream(
+  kind: JobKind,
+  jobId: number,
+  filename: string,
+  tulis: (out: Writable) => Promise<void>,
+  opsi: OpsiAkar = {}
+): Promise<string> {
+  const ref = `${resultDir(kind, jobId)}/${filename}`;
+  if (!isValidResultRef(ref)) throw new Error(`nama berkas hasil tidak sah: ${filename}`);
+  const absolute = resolveResultPath(ref, opsi);
+  if (absolute === null) throw new Error(`result_ref tidak sah: ${ref}`);
+
+  await mkdir(path.dirname(absolute), { recursive: true, mode: 0o700 });
+  const sementara = `${absolute}.partial`;
+  const out = createWriteStream(sementara, { mode: 0o600 });
+  const tertutup = new Promise<void>((resolve, reject) => {
+    out.once("finish", () => resolve());
+    out.once("error", reject);
+  });
+  try {
+    await tulis(out);
+    out.end();
+    await tertutup;
+  } catch (e) {
+    out.destroy();
+    await rm(sementara, { force: true });
+    throw e;
+  }
+  await serahkanKePembaca(path.dirname(absolute), sementara);
+  await rename(sementara, absolute);
+  return ref;
+}
+
 /** Ukuran berkas hasil, atau `null` bila ia tidak ada / bukan berkas. */
 export async function resultSize(ref: string, opsi: OpsiAkar = {}): Promise<number | null> {
   const absolute = resolveResultPath(ref, opsi);
@@ -269,4 +312,78 @@ export async function pruneOrphanResults(
     dibuang.push(nama);
   }
   return dibuang;
+}
+
+/**
+ * Buang direktori hasil yang lebih tua daripada RETENSI BERKAS
+ * (`contract/kinds.yaml` → `results.retention_days`, bawaan 7 hari — keputusan
+ * pemilik di docs/TATA-KELOLA.md §6: "berkas ekspor dihapus setelah 7 hari").
+ *
+ * ══ BEDANYA DENGAN `pruneOrphanResults` ════════════════════════════════════
+ * Pembersih yatim membuang berkas yang BARISNYA sudah hilang — dan baris `done`
+ * baru hilang sesudah 14 hari. Tanpa pembersih ini berkas ekspor (laporan, PDF
+ * berantre, paket laporan, ekspor data mandiri tenant) hidup selama barisnya
+ * hidup, dua kali lebih lama daripada yang dijanjikan tata kelolanya. Yang ini
+ * memutuskan dari UMUR BERKASNYA saja, jadi ia tidak butuh basis data — dan
+ * karena itu tidak punya bentuk kegagalan "himpunan kosong menghapus semuanya".
+ *
+ * Umurnya `mtime` direktori putaran: ia berubah terakhir kali saat berkas
+ * hasilnya di-`rename` ke nama sahnya (direktori satu-pekerjaan tidak disentuh
+ * lagi sesudahnya). Pekerjaan yang masih berjalan menulis ke direktori yang
+ * baru dibuat, jadi tidak pernah setua retensi.
+ *
+ * Rute unduhan membedakan "sudah dibersihkan karena umur" (410
+ * `result_expired`) dari "tidak ada" (404) lewat `finished_at` barisnya —
+ * `isResultExpired` di bawah.
+ *
+ * @returns nama direktori yang dibuang.
+ */
+export async function pruneExpiredResults(
+  retensiHari: number = RESULT_RETENTION_DAYS,
+  opsi: OpsiAkar & { sekarang?: number } = {}
+): Promise<string[]> {
+  if (!Number.isInteger(retensiHari) || retensiHari < 1) {
+    throw new Error(`retensi berkas hasil tidak sah: ${String(retensiHari)}`);
+  }
+  const root = opsi.akar ?? RESULTS_ROOT;
+  const ambang = (opsi.sekarang ?? Date.now()) - retensiHari * 24 * 60 * 60 * 1000;
+  let entri: string[];
+  try {
+    entri = await readdir(root);
+  } catch {
+    return [];
+  }
+  const dibuang: string[] = [];
+  for (const nama of entri) {
+    /* Hanya direktori putaran KITA (`<kind>-<jobId>`) — selain itu dilewati. */
+    const pisah = nama.lastIndexOf("-");
+    if (pisah <= 0) continue;
+    const id = Number(nama.slice(pisah + 1));
+    if (!Number.isInteger(id) || id <= 0) continue;
+    const penuh = path.join(root, nama);
+    try {
+      const info = await stat(penuh);
+      if (!info.isDirectory() || info.mtimeMs > ambang) continue;
+    } catch {
+      continue;
+    }
+    await rm(penuh, { recursive: true, force: true });
+    dibuang.push(nama);
+  }
+  return dibuang;
+}
+
+/**
+ * Apakah berkas pekerjaan yang selesai pada `finishedAt` sudah lewat retensi?
+ * Dipakai rute unduhan untuk memilih 410 (`result_expired`, "berkasnya sudah
+ * dihapus karena umurnya — minta ulang") alih-alih 404 ketika berkasnya tidak
+ * ada di cakram.
+ */
+export function isResultExpired(
+  finishedAt: Date | null,
+  sekarang: number = Date.now(),
+  retensiHari: number = RESULT_RETENTION_DAYS
+): boolean {
+  if (!finishedAt) return false;
+  return sekarang - finishedAt.getTime() >= retensiHari * 24 * 60 * 60 * 1000;
 }

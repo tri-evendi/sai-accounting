@@ -67,7 +67,14 @@ export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, JobResultPermission
      `report.export`: yang diunduh pengguna satu jenis berkas, siapa pun
      mesin yang menghitungnya. */
   "report.export_go": "report.export",
-  "report.package": "report.export",
+  /* Paket laporan (09 §5): gerbang PERTAMA izin Pusat Laporan (`report.read`,
+     izin halaman `/reports` tempat paketnya diminta); gerbang KEDUA
+     (`src/lib/job-result-gate.ts`) menuntut peminta yang SAMA dan memeriksa
+     ulang izin halaman SETIAP laporan di dalamnya terhadap keadaan hari ini. */
+  "report.package": "report.read",
+  /* Bagian PDF paket: berkas ANTARA yang dibaca pelari `report.package`, tidak
+     pernah diunduh pengguna — tanpa pintu. */
+  "report.package_pdf": null,
   /* PDF laporan berantre (09 §5) — izinnya milik jenis laporannya; lihat
      `PER_REPORT_PERMISSION`. */
   "report.pdf": PER_REPORT_PERMISSION,

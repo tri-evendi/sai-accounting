@@ -121,6 +121,14 @@ describe("registri: empat keputusan per jenis, tak satu pun boleh lupa", () => {
     }
   });
 
+  it("tidak ada pemanggil `/api/reports/pdf` tanpa jenis — rute itu tidak ada", () => {
+    /* Terjadi: `downloadStatementPdf` tetap POST ke `/api/reports/pdf` sesudah
+       rutenya pindah ke `[jenis]`, dan PDF laporan keuangan dijawab 404 dari
+       20 sampai 24 Okt 2026 tanpa satu tes pun merah. */
+    const sumber = tanpaKomentar(readFileSync(join(AKAR_REPO, "src/lib/report-files.ts"), "utf8"));
+    expect(sumber).not.toMatch(/["'`]\/api\/reports\/pdf["'`]/);
+  });
+
   it("`statement` memakai penghitung baris EKSPOR EXCEL, bukan penghitungnya sendiri", () => {
     /*
      * Dua penghitung untuk satu laporan berarti ada ukuran muatan yang ditolak

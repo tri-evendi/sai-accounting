@@ -73,8 +73,28 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.27.0",
+    tanggal: "2026-10-25",
+    ringkas: "Permintaan demo dan penawaran dari situs kini tercatat, dan panduan bentuk usaha dilengkapi gambar.",
+    butir: [
+      {
+        jenis: "baru",
+        teks: "Formulir minta demo atau penawaran di halaman kontak. Setiap permintaan mendapat nomor referensi dan langsung diteruskan ke tim SAI.",
+      },
+      {
+        jenis: "baru",
+        teks: "Panduan baru Bentuk usaha dan modal pemilik, lengkap dengan tangkapan layar.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Nama pemilik usaha perorangan di wisaya setup kini boleh dikosongkan, sesuai petunjuknya.",
+      },
+    ],
+  },
+  {
     versi: "0.26.0",
     tanggal: "2026-10-25",
+    sha: "1b83163",
     ringkas: "Pilihan bentuk usaha: PT, PT Perorangan, CV, Firma, dan usaha perorangan, dengan modal per sekutu dan tutup tahun yang membagi laba.",
     butir: [
       {

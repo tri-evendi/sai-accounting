@@ -56,6 +56,19 @@ export type PartnerIssue =
  * daftar kosong, dan menolak daftar yang tidak kosong tidak perlu: pemanggil
  * yang tidak memakai sekutu memang tidak mengirimnya.
  */
+/**
+ * Usaha perorangan tanpa nama pemilik → satu pemilik "Pemilik" 100%.
+ * Satu-satunya kasus yang boleh ditebak: pemiliknya memang satu dan porsinya
+ * memang seluruhnya. Dipakai wisaya (sebelum validasi di peramban) DAN server
+ * (`setup-equity.ts`), supaya keduanya menilai daftar yang sama.
+ */
+export function withSoleOwnerDefault<T extends PartnerDraft>(form: LegalForm, partners: readonly T[]): T[] {
+  if (equityModelFor(form) === "sole_owner" && partners.length === 0) {
+    return [{ name: "Pemilik", role: null, shareBp: FULL_SHARE_BP } as T];
+  }
+  return [...partners];
+}
+
 export function validatePartners(form: LegalForm, partners: readonly PartnerDraft[]): PartnerIssue[] {
   const model = equityModelFor(form);
   if (model === "retained_earnings") return [];

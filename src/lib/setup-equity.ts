@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
 import { currentCompanyId } from "@/lib/current-company";
 import { getCompanyLegalForm, setCompanyLegalForm } from "@/lib/legal-form-server";
-import { validatePartners, type PartnerIssue } from "@/lib/partners";
+import { validatePartners, withSoleOwnerDefault, type PartnerIssue } from "@/lib/partners";
 import type { EquityTemplateInput } from "@/lib/coa-template";
 import type { SetupEquityPayload } from "@/lib/validations/legal-form";
 import { equityModelFor, FULL_SHARE_BP } from "@sai/core/legal-form";
@@ -60,11 +60,8 @@ export async function resolveSetupEquity(
     role: p.role ?? null,
     shareBp: p.shareBp,
   }));
-  /* Usaha perorangan tanpa nama pemilik → "Pemilik" 100%. Satu-satunya kasus
-     yang boleh ditebak: pemiliknya memang satu, porsinya memang seluruhnya. */
-  if (equityModelFor(legalForm) === "sole_owner" && partners.length === 0) {
-    partners = [{ name: "Pemilik", role: null, shareBp: FULL_SHARE_BP }];
-  }
+  /* Usaha perorangan tanpa nama pemilik → "Pemilik" 100% (aturan bersama). */
+  partners = withSoleOwnerDefault(legalForm, partners);
   if (equityModelFor(legalForm) === "retained_earnings") partners = [];
 
   /* Daftar sekutu yang SUDAH tersimpan (wisaya yang dipulihkan) tidak

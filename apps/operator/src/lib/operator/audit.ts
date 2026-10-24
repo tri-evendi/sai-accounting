@@ -168,7 +168,16 @@ export type OperatorAuditAction =
   | "operator.licence.key.create"
   | "operator.licence.key.rejected"
   | "operator.licence.sign"
-  | "operator.licence.sign.failed";
+  | "operator.licence.sign.failed"
+  /**
+   * PENAWARAN MASUK (`lead_requests`, migration platform 0016). `status` =
+   * status berpindah (id, nomor rujukan, dari → ke); `note` = catatan
+   * ditambahkan (id, nomor rujukan, PANJANG catatannya — bukan isinya: isinya
+   * sudah tersimpan di barisnya, dan jejak tidak boleh menyalin data pribadi
+   * prospek yang nanti dianonimkan retensi).
+   */
+  | "operator.lead.status"
+  | "operator.lead.note";
 
 export interface OperatorAuditEntry {
   id: string;

@@ -379,4 +379,11 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.landingLinkInvalid": "Tautan harus diawali https:// atau berupa jalur di situs ini, mis. /pricing.",
   "validation.landingIndonesianRequired": "Teks bahasa Indonesia wajib diisi; bahasa lain yang kosong memakai teks ini.",
   "validation.landingCityRequired": "Kota wajib diisi",
+  // Formulir penawaran/demo publik (migration platform 0016).
+  "validation.phoneInvalid":
+    "Nomor WhatsApp/telepon belum benar. Tulis seperti 0812-3456-7890 atau +62 812 3456 7890.",
+  "validation.leadCompanyCountInvalid": "Jumlah perusahaan berupa angka 1–1000.",
+  "validation.leadMessageTooLong": "Pesan terlalu panjang (maksimal 2000 karakter).",
+  "validation.leadConsentRequired": "Centang persetujuan dihubungi dulu supaya kami bisa menindaklanjuti.",
+  "validation.leadNoteRequired": "Catatan wajib diisi (minimal 2 karakter).",
 };

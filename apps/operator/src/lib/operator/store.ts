@@ -877,6 +877,9 @@ export interface OperatorOverviewPlatform {
    *  tabelnya baru ada sejak migration platform 0011, dan pemasangan yang
    *  belum memigrasikannya tidak boleh kehilangan ringkasan karenanya. */
   openActivationRequests?: number;
+  /** Penawaran masuk berstatus `baru` (migration platform 0016). Opsional,
+   *  dengan alasan yang sama dengan `openActivationRequests`. */
+  newLeads?: number;
 }
 
 export interface OperatorOverview {
@@ -1050,6 +1053,13 @@ export async function operatorOverview(
       });
     } catch (error) {
       console.error("[operator-store] permintaan aktivasi tak terhitung:", error);
+    }
+    /* Penawaran masuk — batas gagal sendiri, alasan yang sama (migration
+       platform 0016 mungkin belum diterapkan). */
+    try {
+      platform.newLeads = await deps.platform.leadRequest.count({ where: { status: "baru" } });
+    } catch (error) {
+      console.error("[operator-store] penawaran masuk tak terhitung:", error);
     }
   }
 

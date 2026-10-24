@@ -292,6 +292,11 @@ tenant), tanpa menuntut perusahaan aktif. Halaman ini mengerjakan hal yang sama
 dengan skrip di bawah (buat basis data, terapkan skema, daftarkan) sambil
 menampilkan kemajuannya per tahap.
 
+Formulirnya juga menanyakan **bentuk usaha** (`companies.legal_form`, bawaan
+`pt`; lihat [`DATABASE.md`](./DATABASE.md) §9.2). Pilihan itu menentukan templat
+ekuitas yang disemai wisaya penyiapan, dan masih bisa diganti di langkah
+Identitas wisaya selama bagan akun belum disemai.
+
 Syaratnya: pengguna basis data aplikasi harus boleh membuat basis data. Di
 PostgreSQL hak itu adalah `CREATEDB` pada role aplikasi:
 
@@ -339,8 +344,13 @@ membacanya sebagai sudah diterapkan. Ini juga dijaga
 
 ```bash
 docker compose run --rm migrate bun run create-company -- \
-  --slug pt-b --name "PT Bumi Baru" [--admin budi]
+  --slug pt-b --name "PT Bumi Baru" [--admin budi] [--bentuk-usaha cv]
 ```
+
+`--bentuk-usaha` (alias `--legal-form`): `pt` (bawaan), `pt-perorangan`, `cv`,
+`firma`, `perorangan` (atau `ud`), `lainnya`. Nilai yang tidak dikenal
+menghentikan skrip. Daftar sekutu CV/Firma TIDAK diberikan di sini; ia diisi di
+wisaya penyiapan.
 
 Role basis datanya harus berhak `CREATEDB`; bila tidak, buat basis datanya
 manual (lihat di atas), lalu jalankan dengan `--database <nama>`.

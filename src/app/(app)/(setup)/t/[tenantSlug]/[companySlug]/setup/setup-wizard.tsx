@@ -40,7 +40,7 @@ import {
   rowsToDrafts,
   type PartnerRow as OwnerRow,
 } from "@/components/settings/partners-editor";
-import { validatePartners } from "@/lib/partners";
+import { validatePartners, withSoleOwnerDefault } from "@/lib/partners";
 import {
   equityModelFor,
   isLegalForm,
@@ -696,7 +696,7 @@ export function SetupWizard({
     /* Pemilik/sekutu: aturan yang SAMA dengan server (`validatePartners`).
        Hanya selama templatnya belum disemai — sesudahnya isiannya terkunci. */
     if (current === "identity" && !equityLocked) {
-      const issues = validatePartners(legalForm, rowsToDrafts(legalForm, owners));
+      const issues = validatePartners(legalForm, withSoleOwnerDefault(legalForm, rowsToDrafts(legalForm, owners)));
       if (issues.length > 0) {
         errors["legal-form"] = issues.map((k) => t(LEGAL_FORM_ERROR_KEYS[k])).join(" ");
       }

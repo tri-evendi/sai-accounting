@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@/lib/phone";
+import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@sai/core/phone";
 import { buildInvoicePdfData, type InvoiceRowForPdf } from "@/lib/pdf/invoice-pdf-data";
 
 describe("normalisasi nomor WhatsApp", () => {

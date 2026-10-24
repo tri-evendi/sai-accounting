@@ -42,6 +42,16 @@
  * "dibalas dalam 1×24 jam" — tak ada kode maupun kebijakan tertulis di repo ini
  * yang menjaminnya (§KLAIM HARUS PUNYA SUMBER berlaku di luar pendaratan juga).
  *
+ * ══ FORMULIR YANG MENCATAT (migration platform 0016) ═════════════════════
+ * Sampai formulir ini ada, layar ini hanya memajang tombol WhatsApp & surel —
+ * tidak ada yang tercatat, jadi prospek yang menekan lalu urung mengirim pesan
+ * hilang tanpa jejak. Sekarang ajakan UTAMA-nya formulir singkat
+ * (`./lead-form.tsx` → `/api/leads` → `lead_requests` → konsol `/leads`), dan
+ * tombol WhatsApp/surel/pemesanan demo turun menjadi jalan lain di bawahnya
+ * (`outline`): satu primer per layar, dan primernya kini tombol kirim.
+ * Sumbernya: `quote` untuk `?quote=1`, `contact_page` selainnya, atau nama
+ * tombol dari `?from=<nama>` (disaring `sanitizeLeadSource`).
+ *
  * ⚠ Tombol di halaman pendaratan TIDAK diubah, dan itu disengaja: setiap tombol
  * berisi penuh di `components/landing/**` wajib menuju `/register`
  * (`tests/button-emphasis.test.ts` — satu ajakan yang diulang, bukan empat
@@ -59,7 +69,9 @@ import { resolveContactChannels, resolveSelfServeSignupOpen } from "@sai/platfor
 import { getLocale, getT } from "@sai/platform/i18n/server";
 import { QUOTE_PARAM } from "@/lib/landing-ask";
 import { landingSettings, resolveLandingWhatsappUrl } from "@sai/platform/landing-settings";
+import { sanitizeLeadSource } from "@sai/core/lead-request";
 
+import { LeadForm } from "./lead-form";
 import { RegisterForm } from "./register-form";
 
 export const dynamic = "force-dynamic";
@@ -79,7 +91,8 @@ export default async function RegisterPage({
   /* `?quote=1` = pengunjung MEMINTA PENAWARAN (harga publik disembunyikan,
      `quoteContactHref`): layar penawaran dirender walau pendaftaran terbuka.
      Tanpa parameter perilakunya tidak berubah. */
-  const mintaPenawaran = (await searchParams)[QUOTE_PARAM] !== undefined;
+  const params = await searchParams;
+  const mintaPenawaran = params[QUOTE_PARAM] !== undefined;
   const terbuka = await resolveSelfServeSignupOpen();
   if (terbuka && !mintaPenawaran) return <RegisterForm />;
 
@@ -92,6 +105,11 @@ export default async function RegisterPage({
     resolveLandingWhatsappUrl(await getLocale()),
     landingSettings(),
   ]);
+
+  /* Sumber baris `lead_requests`: nama tombol dari `?from=` (disaring), atau
+     sumber bawaan layar ini. */
+  const from = sanitizeLeadSource(Array.isArray(params.from) ? params.from[0] : params.from);
+  const source = from ?? (mintaPenawaran ? "quote" : "contact_page");
 
   return (
     <AuthShell
@@ -123,18 +141,36 @@ export default async function RegisterPage({
           <li>{t("auth.register.quoteStep3")}</li>
         </ol>
 
+        {/* AJAKAN UTAMA: formulir yang mencatat (lihat kepala berkas). */}
+        <LeadForm
+          defaultKind={mintaPenawaran ? "quote" : "demo"}
+          source={source}
+          whatsappBaseUrl={kanal.whatsappUrl}
+        />
+
+        <p
+          style={{
+            margin: 0,
+            textAlign: "center",
+            fontSize: "var(--ant-font-size-sm)",
+            color: "var(--ant-color-text-secondary)",
+          }}
+        >
+          {t("auth.lead.orContact")}
+        </p>
+
         {/* Kanal yang BENAR-BENAR terpasang saja — `contactChannels()`
             memulangkan hanya yang nilainya sah, jadi tidak ada tombol yang
             menjanjikan jalan yang tidak ada. */}
         {waUrl && (
-          <Button href={waUrl} target="_blank" rel="noreferrer" variant="primary">
+          <Button href={waUrl} target="_blank" rel="noreferrer" variant="outline">
             <WhatsAppOutlined aria-hidden="true" />
             {t("auth.register.closedWhatsapp")}
           </Button>
         )}
         {/* Tautan pemesanan demo (konsol `/landing`) — langkah pertama dari
-            tiga di atas, langsung ke kalender. `outline`: WhatsApp tetap satu-
-            satunya primer layar ini. https saja, tab baru, tanpa `opener`. */}
+            tiga di atas, langsung ke kalender. `outline`: tombol kirim formulir
+            satu-satunya primer layar ini. https saja, tab baru, tanpa `opener`. */}
         {demoBookingUrl && (
           <Button href={demoBookingUrl} target="_blank" rel="noopener noreferrer" variant="outline">
             <CalendarOutlined aria-hidden="true" />

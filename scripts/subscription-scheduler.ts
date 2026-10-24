@@ -100,6 +100,7 @@ import { billingModeIsAutomatic } from "@sai/billing/platform-constants";
 import { sendMail } from "@sai/platform/mailer-core";
 /* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
  * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */
+import { applyLeadRetention } from "@sai/platform/lead-retention";
 import { runReconciliation } from "@sai/platform/platform-reconciliation";
 import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 
@@ -788,6 +789,24 @@ async function main() {
     }
   } catch (e) {
     errors.push(`retensi-uji-coba: ${e}`);
+  }
+
+  /* ── 4c. Retensi PENAWARAN MASUK (migration platform 0016, UU PDP) ────────
+   * `selesai`/`spam` dianonimkan 12 bulan sesudah ditangani; `baru`/
+   * `dihubungi` yang terbengkalai 24 bulan sesudah masuk (lalu ditutup).
+   * Bukan penghapusan baris: statistik corongnya tetap. Tanpa sakelar — data
+   * pribadi prospek tidak punya alasan disimpan lebih lama
+   * (`docs/TATA-KELOLA.md` §6). Tabel yang belum ada (0016 belum diterapkan)
+   * dilaporkan sebagai galat putaran, seperti langkah lain. */
+  try {
+    const retensi = await applyLeadRetention(platform, now);
+    if (retensi.closed + retensi.abandoned > 0) {
+      summary.transitions.push(
+        `retensi lead: ${retensi.closed} selesai/spam + ${retensi.abandoned} terbengkalai dianonimkan`
+      );
+    }
+  } catch (e) {
+    errors.push(`retensi-lead: ${e}`);
   }
 
   /* ── 5. Sinkronisasi usage_counters dari jumlah SESUNGGUHNYA di kendali ──

@@ -310,6 +310,14 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
        Alasan yang sama dengan `tenantSettings.price`. Bahasa Mandarin berbeda
        (ia memakai koma lebar ，). */
     "landing.compareRow",
+    /* Formulir penawaran publik (migration platform 0016): "Demo", "Spam",
+       dan "Status" adalah kata yang sama di kedua bahasa; contoh nama
+       perusahaan adalah NAMA DIRI badan hukum Indonesia — calon customer di
+       mana pun mengetik nama PT-nya apa adanya. */
+    "auth.lead.kindDemo",
+    "auth.lead.companyPlaceholder",
+    "operator.leads.statusSpam",
+    "operator.leads.colStatus",
   ]),
   zh: new Set([
     /* e-Faktur PJAP (docs/EFAKTUR.md): "PJAP" singkatan resmi DJP, dan
@@ -339,6 +347,8 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // "WhatsApp" adalah NAMA DIRI (merek) — sama di ketiga bahasa. Ia label
     // kanal di riwayat kirim faktur (issue #465).
     "invoiceSend.channelWhatsapp",
+    // Contoh nama PT — nama diri, lihat catatan di daftar `en`.
+    "auth.lead.companyPlaceholder",
   ]),
 };
 

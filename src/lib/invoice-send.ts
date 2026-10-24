@@ -39,7 +39,7 @@ import { getCompanyContext } from "@/lib/company-context";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { serverPdfCompany } from "@/lib/pdf-company";
 import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
-import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@/lib/phone";
+import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@sai/core/phone";
 import { userNamesByIds } from "@/lib/users-directory";
 import { getT } from "@sai/platform/i18n/server";
 import { formatCurrency, formatDate } from "@sai/core/utils";

@@ -73,8 +73,28 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.25.0",
+    tanggal: "2026-10-25",
+    ringkas: "Undangan pengguna kembali berfungsi di semua perusahaan, dan panduan pemakaian kini bergambar.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks: "Mengundang pengguna ke perusahaan yang baru dibuat tidak lagi gagal dengan pesan peran tidak dikenal.",
+      },
+      {
+        jenis: "baru",
+        teks: "Panduan pemakaian dilengkapi tangkapan layar, mulai dari masuk akun, panel akun, sampai pekerjaan di perusahaan.",
+      },
+      {
+        jenis: "ubah",
+        teks: "Istilah di aplikasi kini berlaku untuk semua bentuk usaha: PT, PT Perorangan, CV, Firma, dan usaha perorangan.",
+      },
+    ],
+  },
+  {
     versi: "0.24.0",
     tanggal: "2026-10-24",
+    sha: "6c606f4",
     ringkas: "Paket laporan: unduh laporan satu periode sekaligus dalam satu berkas.",
     butir: [
       {

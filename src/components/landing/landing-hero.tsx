@@ -34,8 +34,9 @@ import {
 import { LandingStats } from "@/components/landing/landing-stats";
 import { ButtonLink } from "@sai/ui/button";
 import { LandingAskButton } from "@/components/landing/landing-ask-button";
-import { landingSettings } from "@sai/platform/landing-settings";
-import { getT } from "@sai/platform/i18n/server";
+import { landingMedia, landingSettings } from "@sai/platform/landing-settings";
+import { LandingHeroScreenshot } from "@/components/landing/landing-screens";
+import { getLocale, getT } from "@sai/platform/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS } from "@sai/core/registration";
 import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
@@ -46,6 +47,9 @@ export async function LandingHero() {
      Satu keputusan, satu tempat (`lib/landing-ask.ts`). */
   const ask = landingAsk(await resolveSelfServeSignupOpen());
   const { demoBookingUrl } = await landingSettings();
+  /* Gambar utama unggahan operator (konsol `/landing/media`) menggantikan
+     purwarupa yang digambar kode — hanya bila ada. */
+  const [{ heroImage }, locale] = await Promise.all([landingMedia(), getLocale()]);
 
   return (
     <section
@@ -210,7 +214,7 @@ export async function LandingHero() {
               lipatan; kartu ponsel menjorok 16px ke bawah kerangka, dan
               `paddingBottom` menampungnya supaya tidak menabrak strip bukti. */}
           <div style={{ minWidth: 0, paddingBottom: "var(--ant-padding)" }}>
-            <LandingHeroMock />
+            {heroImage ? <LandingHeroScreenshot shot={heroImage} locale={locale} /> : <LandingHeroMock />}
           </div>
         </div>
 

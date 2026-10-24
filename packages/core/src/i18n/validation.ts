@@ -378,4 +378,5 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.landingHttpsUrl": "Tautan harus diawali https:// dan menuju alamat publik.",
   "validation.landingLinkInvalid": "Tautan harus diawali https:// atau berupa jalur di situs ini, mis. /pricing.",
   "validation.landingIndonesianRequired": "Teks bahasa Indonesia wajib diisi; bahasa lain yang kosong memakai teks ini.",
+  "validation.landingCityRequired": "Kota wajib diisi",
 };

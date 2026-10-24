@@ -187,7 +187,13 @@
     "demoCta": "Jadwalkan demo",
     "announcementLabel": "Pengumuman",
     "announcementMore": "Selengkapnya",
-    "announcementDismiss": "Tutup pengumuman"
+    "announcementDismiss": "Tutup pengumuman",
+    "clientLogosHeading": "Dipakai oleh",
+    "eyebrowTestimonials": "Kata pengguna",
+    "testimonialsHeading": "Apa kata mereka yang sudah memakainya",
+    "eyebrowPartners": "Mitra resmi",
+    "partnersHeading": "Mitra implementasi di kota Anda",
+    "partnersBody": "Butuh bantuan memindahkan data atau melatih tim? Mitra resmi kami siap membantu."
   },
   "common": {
     "skipToContent": "Langsung ke isi",
@@ -4410,7 +4416,8 @@
     "retentionConfirmRequired": "Ketik HAPUS untuk menyalakan penghapusan otomatis.",
     "landingHttpsUrl": "Tautan harus diawali https:// dan menuju alamat publik.",
     "landingLinkInvalid": "Tautan harus diawali https:// atau berupa jalur di situs ini, mis. /pricing.",
-    "landingIndonesianRequired": "Teks bahasa Indonesia wajib diisi; bahasa lain yang kosong memakai teks ini."
+    "landingIndonesianRequired": "Teks bahasa Indonesia wajib diisi; bahasa lain yang kosong memakai teks ini.",
+    "landingCityRequired": "Kota wajib diisi"
   },
   "taxSettings": {
     "sectionTitle": "PPN",
@@ -4790,7 +4797,8 @@
       "statusNotices": "Pengumuman status",
       "brand": "Logo produk",
       "licences": "Lisensi on-premise",
-      "landing": "Tampilan halaman depan"
+      "landing": "Tampilan halaman depan",
+      "landingMedia": "Gambar & bukti sosial"
     },
     "attention": {
       "heading": "Perlu ditangani",
@@ -6067,7 +6075,69 @@
         "faqReset": "Kembalikan ke daftar bawaan",
         "faqResetTitle": "Kembalikan ke daftar bawaan?",
         "faqResetBody": "Daftar tersimpan dibuang; halaman kembali memakai daftar pertanyaan bawaan dari kamus."
-      }
+      },
+        "landingMedia": {
+          "heading": "Gambar & bukti sosial",
+          "description": "Tangkapan layar, gambar pratinjau tautan, testimoni, logo klien, dan mitra resmi di halaman depan. Seksi bukti sosial hanya muncul bila ada butir yang ditampilkan.",
+          "screensHeading": "Tangkapan layar & pratinjau tautan",
+          "screensDescription": "Tanpa unggahan, purwarupa yang digambar kode tetap tampil dan kartu pratinjau tautan memakai gambar bawaan.",
+          "heroImage": "Gambar utama (hero)",
+          "galleryHeading": "Galeri di seksi modul (maksimal 6)",
+          "galleryItem": "Gambar galeri {n}",
+          "galleryAdd": "Tambah gambar galeri",
+          "ogImage": "Gambar pratinjau tautan (WhatsApp, LinkedIn, dll.) untuk halaman depan dan harga",
+          "altId": "Teks alternatif (Indonesia)",
+          "altEn": "Teks alternatif (Inggris)",
+          "altZh": "Teks alternatif (Mandarin)",
+          "upload": "Unggah gambar",
+          "replace": "Ganti gambar",
+          "removeImage": "Lepas gambar",
+          "uploaded": "Gambar diunggah. Simpan formulir agar tampil di halaman depan.",
+          "hint": "PNG, JPEG, atau WebP, maksimal {kb} KB, sisi terpendek minimal {min} px. SVG dan gambar bergerak ditolak; metadata (EXIF, lokasi) dibuang otomatis.",
+          "hintOg": "PNG, rasio 1,91:1 (mis. 1200 × 630), lebar minimal 600 px, maksimal 1024 KB.",
+          "imageRequired": "Gambar wajib diunggah.",
+          "testimonialsHeading": "Testimoni",
+          "testimonialsDescription": "Kutipan pengguna sungguhan. Seksi testimoni muncul bila ada minimal satu yang ditampilkan.",
+          "logosHeading": "Logo klien",
+          "logosDescription": "Deretan logo di bawah bagian pembuka. Pastikan Anda berhak memajang logo klien.",
+          "partnersHeading": "Mitra resmi",
+          "partnersDescription": "Daftar mitra implementasi di halaman depan (nama, kota, logo, tautan).",
+          "testimonialTitle": "Testimoni {n}",
+          "logoTitle": "Logo {n}",
+          "partnerTitle": "Mitra {n}",
+          "addTestimonial": "Tambah testimoni",
+          "addLogo": "Tambah logo",
+          "addPartner": "Tambah mitra",
+          "removeItem": "Hapus butir",
+          "published": "Tampilkan di halaman depan",
+          "emptyList": "Belum ada butir. Seksi ini tidak tampil di halaman depan.",
+          "fixErrors": "Ada isian yang belum benar. Periksa butir yang ditandai.",
+          "quoteId": "Kutipan (Indonesia)",
+          "quoteEn": "Kutipan (Inggris)",
+          "quoteZh": "Kutipan (Mandarin)",
+          "personName": "Nama",
+          "personRole": "Jabatan & perusahaan (opsional)",
+          "photo": "Foto (opsional)",
+          "clientName": "Nama klien",
+          "partnerName": "Nama mitra",
+          "partnerCity": "Kota",
+          "link": "Tautan https:// (opsional)",
+          "logo": "Logo",
+          "errImageRef": "Salah satu gambar tidak ditemukan atau jenisnya tidak cocok. Unggah ulang gambarnya.",
+          "referralsHeading": "Mitra yang tercatat di tenant",
+          "referralsNote": "Hanya untuk pengingat di konsol — nama yang diketik saat membuat tenant. Tidak pernah tampil di halaman publik.",
+          "referralsEmpty": "Belum ada tenant yang mencatat mitra.",
+          "referralsRow": "{name} — {count} tenant",
+          "err": {
+            "empty": "Pilih berkas gambar dulu.",
+            "too_large": "Berkas lebih besar dari {kb} KB.",
+            "not_image": "Berkas ini bukan PNG, JPEG, atau WebP.",
+            "animated": "Gambar bergerak tidak diterima.",
+            "too_small": "Gambar terlalu kecil: sisi terpendek minimal {min} px.",
+            "too_big_dimensions": "Gambar terlalu besar: sisi terpanjang maksimal {max} px.",
+            "og_shape": "Gambar pratinjau tautan harus PNG dengan rasio sekitar 1,91:1 dan lebar minimal 600 px."
+          }
+        }
   },
   "docs": {
     "title": "Dokumentasi",

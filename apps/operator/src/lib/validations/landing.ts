@@ -25,8 +25,17 @@ import {
   WHATSAPP_MESSAGE_MAX,
   parseAnnouncementHref,
   parseDemoBookingUrl,
+  parseHttpsUrl,
   wibLocalToIso,
 } from "@sai/core/landing-settings";
+import {
+  ALT_TEXT_MAX,
+  GALLERY_MAX,
+  LANDING_LIST_MAX,
+  PERSON_NAME_MAX,
+  PERSON_ROLE_MAX,
+  TESTIMONIAL_QUOTE_MAX,
+} from "@sai/core/landing-media";
 
 /** Jawaban server action `/landing` — kalimat dalam bahasa pengguna. Tinggal
  *  di sini (bukan di `actions.ts`) supaya formulir tidak mengimpor rute. */
@@ -124,3 +133,79 @@ export const landingFaqSchema = z.object({
 });
 export type LandingFaqFormInput = z.infer<typeof landingFaqSchema>;
 export type LandingFaqItemFormInput = z.infer<typeof landingFaqItemSchema>;
+
+/* ══ BUKTI SOSIAL & GAMBAR (konsol `/landing/media`, migration platform 0015) ══
+ * Rujukan gambar dikirim sebagai ID saja; sidik & ukurannya diambil server
+ * dari baris `landing_images` (`resolveLandingImageRefs`) — kiriman formulir
+ * tidak pernah dipercaya untuk itu. */
+
+const imageId = z.number().int().positive();
+const itemKey = z.string().regex(FAQ_KEY_PATTERN);
+const optionalHttps = z
+  .string()
+  .trim()
+  .max(DEMO_BOOKING_URL_MAX)
+  .refine((v) => v.length === 0 || parseHttpsUrl(v) !== null, { message: vmsg("validation.landingHttpsUrl") });
+const uniqueKeys = <T extends { key: string }>(items: T[]) => new Set(items.map((i) => i.key)).size === items.length;
+
+export const landingTestimonialSchema = z.object({
+  key: itemKey,
+  published: z.boolean(),
+  quoteId: z.string().trim().min(1, vmsg("validation.landingIndonesianRequired")).max(TESTIMONIAL_QUOTE_MAX),
+  quoteEn: optionalText(TESTIMONIAL_QUOTE_MAX),
+  quoteZh: optionalText(TESTIMONIAL_QUOTE_MAX),
+  name: z.string().trim().min(1, vmsg("validation.nameRequired")).max(PERSON_NAME_MAX),
+  role: optionalText(PERSON_ROLE_MAX),
+  photoId: imageId.nullable(),
+});
+export const landingTestimonialsSchema = z.object({
+  items: z.array(landingTestimonialSchema).max(LANDING_LIST_MAX).refine(uniqueKeys),
+});
+export type LandingTestimonialFormInput = z.infer<typeof landingTestimonialSchema>;
+export type LandingTestimonialsFormInput = z.infer<typeof landingTestimonialsSchema>;
+
+export const landingClientLogoSchema = z.object({
+  key: itemKey,
+  published: z.boolean(),
+  name: z.string().trim().min(1, vmsg("validation.nameRequired")).max(PERSON_NAME_MAX),
+  href: optionalHttps,
+  logoId: imageId,
+});
+export const landingClientLogosSchema = z.object({
+  items: z.array(landingClientLogoSchema).max(LANDING_LIST_MAX).refine(uniqueKeys),
+});
+export type LandingClientLogoFormInput = z.infer<typeof landingClientLogoSchema>;
+export type LandingClientLogosFormInput = z.infer<typeof landingClientLogosSchema>;
+
+export const landingPartnerSchema = z.object({
+  key: itemKey,
+  published: z.boolean(),
+  name: z.string().trim().min(1, vmsg("validation.nameRequired")).max(PERSON_NAME_MAX),
+  city: z.string().trim().min(1, vmsg("validation.landingCityRequired")).max(PERSON_NAME_MAX),
+  href: optionalHttps,
+  logoId: imageId.nullable(),
+});
+export const landingPartnersSchema = z.object({
+  items: z.array(landingPartnerSchema).max(LANDING_LIST_MAX).refine(uniqueKeys),
+});
+export type LandingPartnerFormInput = z.infer<typeof landingPartnerSchema>;
+export type LandingPartnersFormInput = z.infer<typeof landingPartnersSchema>;
+
+export const landingScreenshotSchema = z.object({
+  imageId,
+  altId: z.string().trim().min(1, vmsg("validation.landingIndonesianRequired")).max(ALT_TEXT_MAX),
+  altEn: optionalText(ALT_TEXT_MAX),
+  altZh: optionalText(ALT_TEXT_MAX),
+});
+export const landingScreensSchema = z.object({
+  hero: landingScreenshotSchema.nullable(),
+  gallery: z.array(landingScreenshotSchema).max(GALLERY_MAX),
+  ogImageId: imageId.nullable(),
+});
+export type LandingScreenshotFormInput = z.infer<typeof landingScreenshotSchema>;
+export type LandingScreensFormInput = z.infer<typeof landingScreensSchema>;
+
+/** Jawaban unggah: rujukan gambar baru bila berhasil. */
+export interface LandingUploadResult extends LandingActionResult {
+  image?: { id: number; sha256: string; width: number; height: number };
+}

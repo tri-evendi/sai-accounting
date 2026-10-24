@@ -1180,6 +1180,16 @@ model LandingSetting {
   /// Daftar tanya-jawab. NULL = daftar bawaan dari kamus.
   faqItemsJson String? @map("faq_items_json") @db.Text
 
+  /// Bukti sosial & gambar (migration platform 0015) — teks JSON yang
+  /// divalidasi `@sai/core/landing-media`. NULL = seksi/gambar tidak ada,
+  /// purwarupa yang digambar kode dan gambar OG bawaan tetap dipakai.
+  testimonialsJson String? @map("testimonials_json") @db.Text
+  clientLogosJson  String? @map("client_logos_json") @db.Text
+  partnersJson     String? @map("partners_json") @db.Text
+  heroImageJson    String? @map("hero_image_json") @db.Text
+  galleryJson      String? @map("gallery_json") @db.Text
+  ogImageJson      String? @map("og_image_json") @db.Text
+
   /// Nama akun operator yang terakhir menyimpan.
   updatedBy String @map("updated_by") @db.VarChar(100)
 
@@ -1187,4 +1197,33 @@ model LandingSetting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("landing_settings")
+}
+
+/// GAMBAR HALAMAN DEPAN unggahan operator (konsol `/landing/media`, migration
+/// platform 0015). Pola `BrandAsset`: isi di basis data, format dibaca dari isi
+/// berkas (PNG/JPEG/WebP — SVG tidak pernah), metadata dibuang sebelum
+/// disimpan. Baris TIDAK PERNAH diubah: sidiknya dirujuk dari JSON
+/// `LandingSetting` dan dari URL yang di-cache peramban selamanya.
+model LandingImage {
+  id Int @id @default(autoincrement())
+
+  /// `hero` | `gallery` | `og` | `testimonial` | `client_logo` | `partner_logo`
+  /// — kosakata ditutup CHECK; menentukan batas ukuran.
+  kind String @db.VarChar(20)
+
+  mimeType String @map("mime_type") @db.VarChar(20)
+  content  Bytes
+  sha256   String @db.Char(64)
+  width    Int
+  height   Int
+  byteSize Int    @map("byte_size")
+
+  /// Nama operator yang mengunggah.
+  createdBy String @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([kind, createdAt])
+  @@map("landing_images")
 }

@@ -92,6 +92,17 @@ export type OperatorAuditAction =
   | "operator.landing.announcement"
   | "operator.landing.faq"
   /**
+   * GAMBAR & BUKTI SOSIAL (konsol `/landing/media`, migration platform 0015).
+   * `image` = unggahan (id, jenis, sidik, format, ukuran — bukan isinya);
+   * daftar = kunci, nama, dan sakelar tampil sebelum/sesudah; `screens` = id
+   * gambar hero/galeri/OG sebelum/sesudah.
+   */
+  | "operator.landing.image"
+  | "operator.landing.testimonials"
+  | "operator.landing.client_logos"
+  | "operator.landing.partners"
+  | "operator.landing.screens"
+  /**
    * AKUN OPERATOR (migration kendali 0004). `details` memuat nama akun
    * sasaran, peran sebelum/sesudah, dan aktif sebelum/sesudah — TIDAK PERNAH
    * kata sandi atau rahasia TOTP yang diterbitkan (keduanya hanya tampil

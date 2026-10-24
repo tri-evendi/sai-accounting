@@ -35,6 +35,7 @@
     "./job-backoff": "./src/job-backoff.ts",
     "./job-result": "./src/job-result.ts",
     "./labels": "./src/labels.ts",
+    "./landing-media": "./src/landing-media.ts",
     "./landing-settings": "./src/landing-settings.ts",
     "./licence": "./src/licence.ts",
     "./licence-register": "./src/licence-register.ts",

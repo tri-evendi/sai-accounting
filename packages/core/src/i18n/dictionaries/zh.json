@@ -187,7 +187,13 @@
     "demoCta": "预约演示",
     "announcementLabel": "公告",
     "announcementMore": "了解更多",
-    "announcementDismiss": "关闭公告"
+    "announcementDismiss": "关闭公告",
+    "clientLogosHeading": "他们在使用",
+    "eyebrowTestimonials": "用户评价",
+    "testimonialsHeading": "用户怎么说",
+    "eyebrowPartners": "官方合作伙伴",
+    "partnersHeading": "您所在城市的实施合作伙伴",
+    "partnersBody": "需要帮助迁移数据或培训团队？我们的官方合作伙伴随时为您提供协助。"
   },
   "common": {
     "skipToContent": "跳到正文",
@@ -4410,7 +4416,8 @@
     "retentionConfirmRequired": "输入 HAPUS 以开启自动删除。",
     "landingHttpsUrl": "链接必须以 https:// 开头并指向公开地址。",
     "landingLinkInvalid": "链接必须以 https:// 开头，或是本站的路径，例如 /pricing。",
-    "landingIndonesianRequired": "必须填写印尼语文本；其他语言留空时使用该文本。"
+    "landingIndonesianRequired": "必须填写印尼语文本；其他语言留空时使用该文本。",
+    "landingCityRequired": "必须填写城市"
   },
   "taxSettings": {
     "sectionTitle": "增值税（PPN）",
@@ -4790,7 +4797,8 @@
       "statusNotices": "状态公告",
       "brand": "产品标志",
       "licences": "本地部署许可证",
-      "landing": "首页展示"
+      "landing": "首页展示",
+      "landingMedia": "图片与社会认同"
     },
     "attention": {
       "heading": "需要处理",
@@ -6067,7 +6075,69 @@
         "faqReset": "恢复默认列表",
         "faqResetTitle": "恢复默认列表？",
         "faqResetBody": "已保存的列表将被丢弃；页面恢复使用词典中的默认问题。"
-      }
+      },
+        "landingMedia": {
+          "heading": "图片与社会认同",
+          "description": "首页上的截图、链接预览图、用户评价、客户标志和官方合作伙伴。社会认同版块仅在至少有一项显示时出现。",
+          "screensHeading": "截图与链接预览",
+          "screensDescription": "未上传时，继续显示代码绘制的示意图，链接预览卡片使用默认图片。",
+          "heroImage": "主图（首屏）",
+          "galleryHeading": "模块版块中的图库（最多 6 张）",
+          "galleryItem": "图库图片 {n}",
+          "galleryAdd": "添加图库图片",
+          "ogImage": "首页和价格页的链接预览图（WhatsApp、LinkedIn 等）",
+          "altId": "替代文本（印尼语）",
+          "altEn": "替代文本（英语）",
+          "altZh": "替代文本（中文）",
+          "upload": "上传图片",
+          "replace": "更换图片",
+          "removeImage": "移除图片",
+          "uploaded": "图片已上传。保存表单后才会在首页显示。",
+          "hint": "PNG、JPEG 或 WebP，最大 {kb} KB，最短边至少 {min} 像素。不接受 SVG 和动图；元数据（EXIF、位置）会自动删除。",
+          "hintOg": "PNG，比例 1.91:1（例如 1200 × 630），宽度至少 600 像素，最大 1024 KB。",
+          "imageRequired": "必须上传图片。",
+          "testimonialsHeading": "用户评价",
+          "testimonialsDescription": "真实用户的引言。至少显示一条时才会出现用户评价版块。",
+          "logosHeading": "客户标志",
+          "logosDescription": "首屏下方的一排标志。请确认您有权展示客户的标志。",
+          "partnersHeading": "官方合作伙伴",
+          "partnersDescription": "首页上列出的实施合作伙伴（名称、城市、标志、链接）。",
+          "testimonialTitle": "评价 {n}",
+          "logoTitle": "标志 {n}",
+          "partnerTitle": "合作伙伴 {n}",
+          "addTestimonial": "添加评价",
+          "addLogo": "添加标志",
+          "addPartner": "添加合作伙伴",
+          "removeItem": "删除此项",
+          "published": "在首页显示",
+          "emptyList": "暂无项目。此版块不会在首页显示。",
+          "fixErrors": "部分字段尚不正确，请检查标记的项目。",
+          "quoteId": "引言（印尼语）",
+          "quoteEn": "引言（英语）",
+          "quoteZh": "引言（中文）",
+          "personName": "姓名",
+          "personRole": "职位与公司（可选）",
+          "photo": "照片（可选）",
+          "clientName": "客户名称",
+          "partnerName": "合作伙伴名称",
+          "partnerCity": "城市",
+          "link": "https:// 链接（可选）",
+          "logo": "标志",
+          "errImageRef": "某张图片不存在或类型不符，请重新上传。",
+          "referralsHeading": "租户中记录的合作伙伴",
+          "referralsNote": "仅在控制台中作提醒：创建租户时输入的名称，绝不会显示在公开页面。",
+          "referralsEmpty": "尚无租户记录合作伙伴。",
+          "referralsRow": "{name} — {count} 个租户",
+          "err": {
+            "empty": "请先选择图片文件。",
+            "too_large": "文件大于 {kb} KB。",
+            "not_image": "此文件不是 PNG、JPEG 或 WebP。",
+            "animated": "不接受动图。",
+            "too_small": "图片太小：最短边至少 {min} 像素。",
+            "too_big_dimensions": "图片太大：最长边最多 {max} 像素。",
+            "og_shape": "链接预览图必须是 PNG，比例约 1.91:1，宽度至少 600 像素。"
+          }
+        }
   },
   "docs": {
     "title": "使用文档",

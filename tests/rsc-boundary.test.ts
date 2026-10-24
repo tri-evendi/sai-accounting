@@ -363,8 +363,16 @@ import { join } from "node:path";
  *     bilah pengumuman (menulis cookie + menyembunyikan bilah). Bilahnya
  *     sendiri tetap server component; pendaratan tetap tanpa pulau client
  *     lain selain sakelar bahasa/tema.
+ * 218 → 221 (24 Okt 2026, gambar & bukti sosial — konsol `/landing/media`):
+ *   + `components/operator/landing-image-field` — kolom unggah + pratinjau
+ *     (memanggil server action unggah, menyimpan rujukan di state formulir).
+ *   + `components/operator/landing-proof-form` — penyunting daftar testimoni /
+ *     logo klien / mitra (`useFieldArray`).
+ *   + `components/operator/landing-screens-form` — hero, galeri, gambar OG.
+ *     Halaman `/landing/media` tetap server; seksi bukti sosial di pendaratan
+ *     tetap server component tanpa satu pun pulau client baru.
  */
-const AMBANG_KLIEN = 218;
+const AMBANG_KLIEN = 221;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -547,6 +555,10 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/components/operator/landing-announcement-form.tsx",
   "apps/operator/src/components/operator/landing-contact-form.tsx",
   "apps/operator/src/components/operator/landing-faq-form.tsx",
+  /* Gambar & bukti sosial (konsol `/landing/media`) — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/landing-image-field.tsx",
+  "apps/operator/src/components/operator/landing-proof-form.tsx",
+  "apps/operator/src/components/operator/landing-screens-form.tsx",
   "apps/operator/src/components/operator/landing-sections-form.tsx",
   /* Register lisensi on-premise — lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/licence-register-panel.tsx",

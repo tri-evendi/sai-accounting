@@ -93,3 +93,41 @@ export function trialNoticeMail(
   });
   return { subject, text: `${sections.join("\n\n\n")}\n\n— SAI Accounting` };
 }
+
+/**
+ * Surel PEMBERITAHUAN PENGHAPUSAN tenant uji coba beku (H-14 / H-3, migration
+ * platform 0012). Sama bentuknya dengan pemberitahuan akhir uji coba: tiga
+ * bahasa dalam satu surel, kalimat dari kamus (`billing.retentionNotice.*`).
+ * Isinya yang tidak boleh hilang: TANGGAL hapus, TAUTAN ekspor (hak akses &
+ * portabilitas UU PDP, `docs/COMPLIANCE.md` §2), dan jalan untuk mencegahnya
+ * (minta aktivasi / hubungi kami).
+ */
+export function retentionNoticeMail(
+  dictionaries: Record<(typeof LANGS)[number], Dictionary>,
+  input: {
+    deleteDate: string;
+    daysLeft: number;
+    exportUrl: string | null;
+    contact: { email?: string; whatsappUrl?: string };
+  }
+): { subject: string; text: string } {
+  const values = { date: input.deleteDate, days: input.daysLeft, url: input.exportUrl ?? "" };
+  const subject = translate(dictionaries.id, "billing.retentionNotice.subject", values);
+  const sections = LANGS.map((lang, i) => {
+    const d = dictionaries[lang];
+    const heading = i === 0 ? "" : `— ${translate(d, "billing.trialNotice.langLabel")} —\n\n`;
+    return (
+      heading +
+      [
+        translate(d, "billing.trialNotice.greeting"),
+        translate(d, "billing.retentionNotice.body", values),
+        input.exportUrl
+          ? translate(d, "billing.retentionNotice.export", values)
+          : translate(d, "billing.retentionNotice.exportNoLink"),
+        translate(d, "billing.retentionNotice.keep"),
+        contactLine(d, input.contact),
+      ].join("\n\n")
+    );
+  });
+  return { subject, text: `${sections.join("\n\n\n")}\n\n— SAI Accounting` };
+}

@@ -72,6 +72,8 @@ describe("countsTowardMrr", () => {
 
   it("`cancelled` tidak berulang lagi; `past_due` masih berjalan", () => {
     expect(countsTowardMrr(sub({ status: "cancelled" }))).toBe(false);
+    /* Uji coba beku (alur demo-first) tidak menagih apa pun — bukan MRR. */
+    expect(countsTowardMrr(sub({ status: "trial_ended" }))).toBe(false);
     /* Mencabut `past_due` membuat MRR turun saat seseorang terlambat bayar lalu
        naik lagi saat melunasi — angka yang bergoyang tanpa ada yang berubah. */
     expect(countsTowardMrr(sub({ status: "past_due" }))).toBe(true);

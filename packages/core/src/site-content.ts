@@ -245,8 +245,10 @@ export const SITE_CONTENT_SECTIONS: readonly SiteContentSection[] = [
     /* `quote*` ikut ke sini: ia ajakan yang dipakai hero, kartu paket, DAN
        penutup saat pendaftaran mandiri ditutup (`lib/landing-ask.ts`). Satu
        kalimat yang muncul di tiga tempat paling masuk akal disunting di satu
-       bagian bernama "Ajakan", bukan dititipkan ke salah satu dari ketiganya. */
-    prefixes: ["cta", "quote"],
+       bagian bernama "Ajakan", bukan dititipkan ke salah satu dari ketiganya.
+       `demo*` (alur demo-first, 24 Okt 2026) sama alasannya: "Jadwalkan demo"
+       dipakai hero DAN bilah navigasi saat pendaftaran ditutup. */
+    prefixes: ["cta", "quote", "demo"],
   },
   {
     id: "footer",

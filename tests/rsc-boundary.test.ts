@@ -346,8 +346,12 @@ import { join } from "node:path";
  *   + `components/operator/activation-requests` — daftar permintaan aktivasi
  *     dengan satu tindakan beralasan ("tandai ditangani"). Daftarnya dibaca
  *     server (`/tenants`, `/tenants/[id]`) dan dioper sebagai baris serial.
+ * 211 → 212 (24 Okt 2026, retensi uji coba beku):
+ *   + `components/operator/trial-retention-form` — sakelar hapus otomatis (bawaan
+ *     MATI) + masa retensi, konfirmasi ketik-HAPUS. Halaman `/settings` tetap
+ *     server; daftar kandidatnya dirender di sana.
  */
-const AMBANG_KLIEN = 211;
+const AMBANG_KLIEN = 212;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -552,6 +556,8 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/components/operator/tenant-actions.tsx",
   /* Bantuan pengguna — formulir alasan per tindakan. Lihat `AMBANG_KLIEN`. */
   "apps/operator/src/components/operator/tenant-user-support.tsx",
+  /* Retensi uji coba beku — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/trial-retention-form.tsx",
   "components/auth/auth-shell.tsx",
   "components/auth/signed-in-as.tsx",
   "components/dashboard/dashboard-export-actions.tsx",

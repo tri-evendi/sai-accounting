@@ -715,6 +715,17 @@ model SiteSetting {
   /// jadi setiap perubahannya tercatat di jejak audit beserta nilai lamanya.
   ppnEnabled Boolean? @map("ppn_enabled")
 
+  /// Hapus otomatis tenant UJI COBA BEKU setelah masa retensi? (migration
+  /// platform 0012, alur demo-first). `null` = pakai `TRIAL_AUTO_DELETION`
+  /// (hanya `on` yang menyalakan) — bawaannya MATI. Selama mati penjadwal hanya
+  /// melaporkan kandidatnya. Penghapusan = mesin UU PDP yang sudah ada
+  /// (anonimisasi + nonaktif; buku utuh sampai `retention_until`).
+  trialAutoDeletion Boolean? @map("trial_auto_deletion")
+
+  /// Berapa hari tenant uji coba boleh beku sebelum dihapus. `null` = pakai
+  /// `TRIAL_RETENTION_DAYS`, lalu 90. Batas 30–3650 ditegakkan kode.
+  trialRetentionDays Int? @map("trial_retention_days")
+
   /// Nama akun operator yang terakhir menyimpan.
   updatedBy String @map("updated_by") @db.VarChar(100)
 

@@ -116,11 +116,15 @@ export function monthlyEquivalent(price: number, cycle: string): number {
  * IKUT — ia masih langganan yang berjalan, hanya tagihannya tertunggak, dan
  * mencabutnya dari MRR akan membuat angka itu turun pada hari seseorang
  * terlambat bayar lalu naik lagi saat ia melunasi.
+ *
+ * `trial_ended` TIDAK (alur demo-first, 24 Okt 2026): uji coba yang habis beku
+ * hanya-baca dan tidak menagih apa pun sampai diaktifkan — tidak ada uang
+ * berulang di belakangnya, apa pun mode penagihannya.
  */
 export function countsTowardMrr(sub: RevenueSubscription): boolean {
   if (sub.billingMode === "none") return false;
   if (!billingModeIsAutomatic(sub.billingMode) && sub.billingMode !== "manual") return false;
-  return sub.status !== "cancelled";
+  return sub.status !== "cancelled" && sub.status !== "trial_ended";
 }
 
 const HARI_MS = 24 * 60 * 60 * 1000;

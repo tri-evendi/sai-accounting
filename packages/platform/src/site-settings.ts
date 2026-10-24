@@ -49,7 +49,13 @@ import {
 /* Di-ekspor ulang supaya pemanggil lama tidak perlu tahu pemecahannya; INTI-nya
  * hidup di `site-settings-core.ts` sebab penjadwal (`tsx`, di luar Next) juga
  * membacanya dan tidak bisa memuat modul ber-`server-only`. */
-export { effectiveSetting, ppnEnabledFrom, signupOpenFrom } from "@sai/core/site-settings-core";
+export {
+  effectiveSetting,
+  ppnEnabledFrom,
+  signupOpenFrom,
+  trialAutoDeletionFrom,
+  trialRetentionDaysFrom,
+} from "@sai/core/site-settings-core";
 export type { SiteSettingsRow } from "@sai/core/site-settings-core";
 
 /** Tag cache baca (berlaku di dalam satu proses). */
@@ -199,4 +205,31 @@ export async function resolveSelfServeSignupOpen(): Promise<boolean> {
  */
 export async function resolvePpnEnabled(): Promise<boolean> {
   return ppnEnabledFrom(await siteSettings(), process.env);
+}
+
+/**
+ * Simpan HANYA setelan retensi uji coba beku (migration platform 0012) —
+ * formulirnya terpisah dari kontak & gerbang, jadi penulisannya pun terpisah:
+ * menyimpan sakelar penghapusan tidak boleh ikut menulis ulang nomor WhatsApp
+ * atau gerbang pendaftaran yang tidak disentuh siapa pun.
+ *
+ * `null` = kembalikan ke environment. Baris belum ada → dibuat dengan medan
+ * lain `null` (= tetap ikut environment), bukan dengan nilai karangan.
+ */
+export async function saveTrialRetention(input: {
+  autoDeletion: boolean | null;
+  retentionDays: number | null;
+  actor: string;
+}): Promise<void> {
+  const data = {
+    trialAutoDeletion: input.autoDeletion,
+    trialRetentionDays: input.retentionDays,
+    updatedBy: input.actor,
+  };
+  await platformDb.siteSetting.upsert({
+    where: { singleton: 1 },
+    create: { singleton: 1, ...data },
+    update: data,
+  });
+  await bumpCacheSignal(platformDb, "site-settings");
 }

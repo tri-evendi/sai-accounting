@@ -33,10 +33,11 @@ import { requireOperatorActionSession } from "@op/lib/operator/guard";
 import { clientIpFrom } from "@sai/core/operator-plane";
 import {
   saveSiteSettings,
+  saveTrialRetention,
   siteSettingsForOperator,
   resetSiteSettings,
 } from "@sai/platform/site-settings";
-import { siteSettingsSchema } from "@op/lib/validations/operator";
+import { siteSettingsSchema, trialRetentionSchema } from "@op/lib/validations/operator";
 
 export interface OperatorSettingsResult {
   ok: boolean;
@@ -159,4 +160,52 @@ export async function operatorResetSiteSettings(): Promise<OperatorSettingsResul
 
   segarkanPermukaan();
   return { ok: true, message: t("operator.settings.resetDone") };
+}
+
+/**
+ * RETENSI UJI COBA BEKU (migration platform 0012, alur demo-first): sakelar
+ * hapus otomatis + jumlah harinya.
+ *
+ * Izinnya `site.settings` — owner SAJA (matriks `roles.ts`): menyalakannya
+ * membuat penjadwal MENGHAPUS tenant, dan itu tidak bisa dibalik. Menyalakan
+ * menuntut kata `HAPUS` diketik (skema); jejak operator mencatat nilai lama
+ * dan baru.
+ */
+export async function operatorSaveTrialRetention(
+  input: unknown
+): Promise<OperatorSettingsResult> {
+  const t = await getT();
+  const session = await requireOperatorActionSession("site.settings");
+  if (!session) return { ok: false, message: t("operator.actions.denied") };
+
+  const parsed = trialRetentionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t("validation.invalidInput") };
+
+  const sebelum = await siteSettingsForOperator();
+  const lama = sebelum === "unreachable" || sebelum === null ? null : sebelum;
+  const autoDeletion =
+    parsed.data.autoDeletion === "env" ? null : parsed.data.autoDeletion === "on";
+  const retentionDays = parsed.data.retentionDays === 0 ? null : parsed.data.retentionDays;
+
+  try {
+    await saveTrialRetention({ autoDeletion, retentionDays, actor: session.operator.name });
+  } catch (error) {
+    console.error("[operator-settings] retensi uji coba gagal disimpan:", error);
+    return { ok: false, message: t("operator.settings.errSave") };
+  }
+
+  await writeOperatorAuditLog({
+    operator: session.operator.name,
+    action: "operator.settings.trial_retention",
+    ipAddress: clientIpFrom(await headers()),
+    details: {
+      autoDeletionFrom: lama?.trialAutoDeletion ?? null,
+      autoDeletionTo: autoDeletion,
+      retentionDaysFrom: lama?.trialRetentionDays ?? null,
+      retentionDaysTo: retentionDays,
+    },
+  });
+
+  revalidatePath("/settings");
+  return { ok: true, message: t("operator.retention.saved") };
 }

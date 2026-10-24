@@ -36,7 +36,7 @@ describe("keputusan janji pendaratan", () => {
   it("kedua keadaan memulangkan kunci yang BENAR-BENAR ada di kamus", () => {
     for (const open of [true, false]) {
       const ask = landingAsk(open);
-      for (const key of [ask.heroCta, ask.cardCta, ask.priceNote, ask.ctaNote, ask.faqTrialAnswer]) {
+      for (const key of [ask.heroCta, ask.cardCta, ask.navCta, ask.priceNote, ask.ctaNote, ask.faqTrialAnswer]) {
         /* `translate` memulangkan kuncinya sendiri bila kalimatnya tidak ada. */
         expect(translate(dictionary, key), `${key} (open=${open})`).not.toBe(key);
       }
@@ -62,9 +62,21 @@ describe("keputusan janji pendaratan", () => {
     }
   });
 
-  it("TERTUTUP: ajakan hero & kartu memakai kunci yang SAMA — satu ajakan, bukan dua", () => {
+  it("TERTUTUP (alur demo-first): hero & bilah = Jadwalkan demo, kartu & penutup = Minta penawaran", () => {
     const ask = landingAsk(false);
-    expect(ask.cardCta).toBe(ask.heroCta);
+    expect(ask.heroCta).toBe("landing.demoCta");
+    expect(ask.navCta).toBe("landing.demoCta");
+    expect(ask.cardCta).toBe("landing.quoteCta");
+    /* Tidak satu pun ajakan tertutup berbunyi "Coba gratis". */
+    for (const key of [ask.heroCta, ask.cardCta, ask.navCta]) {
+      expect(translate(dictionary, key).toLowerCase()).not.toContain("coba gratis");
+    }
+  });
+
+  it("bilah navigasi ikut keputusan yang SAMA — tidak ada 'Daftar' saat pendaftaran ditutup", () => {
+    expect(landingAsk(true).navCta).toBe("landing.signUp");
+    const nav = readFileSync(join(LANDING, "landing-nav.tsx"), "utf8");
+    expect(nav).toContain("landingAsk(await resolveSelfServeSignupOpen()).navCta");
   });
 
   it("catatan harga TIDAK dihapus saat tertutup — ruangnya tetap menjelaskan", () => {

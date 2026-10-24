@@ -42,10 +42,18 @@ import {
   ppnEnabledFrom,
   signupOpenFrom,
   siteSettingsForOperator,
+  trialAutoDeletionFrom,
+  trialRetentionDaysFrom,
 } from "@sai/platform/site-settings";
+import { TrialRetentionForm } from "@op/components/operator/trial-retention-form";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { trialRetentionForOperator, type TrialRetentionRow } from "@op/lib/operator/store";
+import { formatDateMedium as formatDate } from "@sai/core/utils";
 import {
   operatorResetSiteSettings,
   operatorSaveSiteSettings,
+  operatorSaveTrialRetention,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -112,6 +120,41 @@ export default async function OperatorSettingsPage() {
     payment: row?.manualPaymentInstructions != null,
   };
 
+  /* ── Retensi uji coba beku (migration platform 0012) ─────────────────────
+     Nilai BERLAKU dihitung dengan fungsi yang SAMA dengan penjadwal. */
+  const retentionDays = trialRetentionDaysFrom(row, process.env);
+  const autoDeletionOn = trialAutoDeletionFrom(row, process.env);
+  const retentionRows = await trialRetentionForOperator(retentionDays);
+  const retentionColumns: SaiColumns<TrialRetentionRow> = [
+    {
+      key: "tenant",
+      title: t("operator.tenants.colName"),
+      align: "left",
+      render: (_v, r) => `${r.tenantName} (${r.tenantSlug})`,
+    },
+    {
+      key: "ended",
+      title: t("operator.retention.colEnded"),
+      align: "left",
+      render: (_v, r) => formatDate(r.trialEndedAt),
+    },
+    {
+      key: "delete",
+      title: t("operator.retention.colDelete"),
+      align: "left",
+      render: (_v, r) =>
+        r.deleteAt
+          ? formatDate(r.deleteAt)
+          : t("operator.retention.notNotified", { date: formatDate(r.baseDeleteAt) }),
+    },
+    {
+      key: "notices",
+      title: t("operator.retention.colNotices"),
+      align: "left",
+      render: (_v, r) => (r.noticesSent.length ? r.noticesSent.map((k) => k.split(":")[0]).join(", ") : "—"),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -121,6 +164,7 @@ export default async function OperatorSettingsPage() {
       {!operatorCan(operator.role, "site.settings") ? (
         <ConsoleNotice>{t("operator.roleCannotEdit")}</ConsoleNotice>
       ) : (
+      <>
       <ConsolePanel>
       <SiteSettingsForm
         initial={initial}
@@ -131,6 +175,45 @@ export default async function OperatorSettingsPage() {
         reset={operatorResetSiteSettings}
       />
       </ConsolePanel>
+      {/* Retensi uji coba beku — sakelar BAWAAN MATI; selama mati penjadwal
+          hanya melaporkan kandidat di tabel bawah. */}
+      <ConsolePanel
+        title={t("operator.retention.heading")}
+        description={
+          autoDeletionOn
+            ? t("operator.retention.descriptionOn", { days: retentionDays })
+            : t("operator.retention.descriptionOff", { days: retentionDays })
+        }
+      >
+        <TrialRetentionForm
+          initial={{
+            autoDeletion: gateValue(row?.trialAutoDeletion),
+            retentionDays: row?.trialRetentionDays ?? 0,
+          }}
+          envValues={{
+            autoDeletion: trialAutoDeletionFrom(null, process.env),
+            retentionDays: trialRetentionDaysFrom(null, process.env),
+          }}
+          save={operatorSaveTrialRetention}
+        />
+      </ConsolePanel>
+      <ConsolePanel
+        title={`${t("operator.retention.candidatesHeading")} (${retentionRows?.length ?? 0})`}
+        footnote={t("operator.retention.candidatesNote")}
+        flush
+      >
+        {retentionRows === null ? (
+          <ConsoleNotice>{t("operator.tenant.billingUnavailable")}</ConsoleNotice>
+        ) : (
+          <StaticTable
+            columns={retentionColumns}
+            rows={retentionRows}
+            rowKey={(r) => r.tenantId}
+            empty={<p style={{ padding: "var(--ant-padding-lg)", margin: 0 }}>{t("operator.retention.candidatesEmpty")}</p>}
+          />
+        )}
+      </ConsolePanel>
+      </>
       )}
     </div>
   );

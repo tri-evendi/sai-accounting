@@ -61,6 +61,8 @@ import { ButtonLink } from "@sai/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { APP_NAME } from "@sai/core/constants";
 import { getLocale, getT } from "@sai/platform/i18n/server";
+import { landingAsk } from "@/lib/landing-ask";
+import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
 
 /**
  * Tautan seksi: warna sekunder, penuh + bergaris saat hover (aturan hover ada
@@ -269,8 +271,11 @@ export async function LandingNav() {
           <ButtonLink href="/login" variant="ghost">
             {t("landing.signIn")}
           </ButtonLink>
+          {/* Label mengikuti gerbang pendaftaran (`landingAsk`): tertutup =
+              "Jadwalkan demo" (alur demo-first). Tujuannya tetap `/register`,
+              yang saat tertutup menjadi halaman kontak. */}
           <ButtonLink href="/register" variant="primary">
-            {t("landing.signUp")}
+            {t(landingAsk(await resolveSelfServeSignupOpen()).navCta)}
           </ButtonLink>
 
           {/* ══ MENU PONSEL — `<details>`, tanpa JavaScript ══════════════════

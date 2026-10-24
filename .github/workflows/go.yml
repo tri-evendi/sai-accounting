@@ -29,9 +29,12 @@
 name: Go
 
 on:
+  # Only on promotion PRs into `main` (owner decision, 24 Oct 2026): merges into
+  # `develop` no longer wait for CI, so the main session runs `bun run verify`
+  # (and the Go gates) before every release instead. `main` keeps `verify` as a
+  # required status check, so nothing reaches production images unchecked.
   pull_request:
-  push:
-    branches: [develop, main]
+    branches: [main]
 
 concurrency:
   group: go-${{ github.ref }}

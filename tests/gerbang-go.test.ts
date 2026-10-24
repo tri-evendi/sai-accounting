@@ -37,12 +37,13 @@ describe("gerbang Go harus BERJALAN", () => {
     expect(yaml).not.toMatch(/^\s*paths(-ignore)?:/m);
   });
 
-  it("berjalan pada `pull_request` DAN pada push ke develop/main", () => {
-    /* Hanya `pull_request` berarti hasil GABUNGAN tak pernah diuji — dan
-       satu-satunya build yang pernah gagal di repo ini gagal di hasil
-       gabungan sementara setiap cabangnya hijau sendiri-sendiri. */
-    expect(yaml).toMatch(/pull_request:/);
-    expect(yaml).toMatch(/branches: \[develop, main\]/);
+  it("berjalan pada PR promosi ke `main`", () => {
+    /* Keputusan pemilik 24 Okt 2026: merge ke `develop` tidak menunggu CI;
+       gerbang ini berjalan pada PR ke `main`. Hasil GABUNGAN tetap teruji —
+       `pull_request` menjalankan commit gabungan `develop` ke `main`, dan
+       satu-satunya build yang pernah gagal di repo ini gagal di hasil gabungan
+       sementara setiap cabangnya hijau sendiri-sendiri. */
+    expect(yaml).toMatch(/pull_request:\s*\n\s*branches: \[main\]/);
   });
 
   it("empat langkah gerbangnya ada, bukan tiga", () => {

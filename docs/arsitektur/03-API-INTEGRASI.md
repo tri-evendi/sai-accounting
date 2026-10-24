@@ -20,21 +20,22 @@ dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
 Tidak ada gRPC, GraphQL, WebSocket, atau SSE. Layanan berkoordinasi lewat basis
 data bersama — termasuk **antrean pekerjaan**, yang adalah satu tabel (`jobs` di
 basis data kendali), bukan broker: [04 §8.9](./04-ALIRAN-DATA.md) dan
-[02 §5](./02-LAYANAN-INFRA.md). Pemindahan pembuatan dokumen ke server masih
-dirancang di [09 §5](./09-RANCANGAN-LAYANAN.md).
+[02 §5](./02-LAYANAN-INFRA.md). Pembuatan dokumen ada di server — riwayat dan
+keputusannya di [09 §5](./09-RANCANGAN-LAYANAN.md).
 
 ### Dokumen & hasil pekerjaan — tiga rute, satu aturan
 
-Sejak tahap 1c pembuatan dokumen ada di SERVER (rancangan §5), dan permukaannya
-tiga rute. Semuanya bertenant (`/api/t/{tenant}/{company}/…`) kecuali yang
-menerima muatan laporan lewat `apiFetch`:
+Sejak tahap 1c pembuatan dokumen ada di SERVER (rancangan §5), dan peramban
+tidak menggambar satu PDF pun. Semua rute bertenant (`/api/t/{tenant}/{company}/…`)
+kecuali dua rute laporan yang dipanggil lewat `apiFetch`:
 
 | Rute | Masukan | Izin |
 |---|---|---|
-| `POST /api/reports/pdf` | muatan laporan (sama dengan tombol Excel) | `report.export` |
+| `POST /api/reports/pdf/statement` | muatan laporan keuangan jadi (sama dengan tombol Excel) | `report.export` |
+| `POST /api/reports/pdf/{stock\|opname\|finance}` | **PARAMETER** (`{}` · `{ date, showSystemQty }` · saringan Kas & Bank); muatannya dihitung server dari buku PT. Di atas ambang penyerahan ia **202** beserta `jobId` (`report.pdf`) | per JENIS = izin halamannya: `inventory.read`, `inventory.write`, `cash.read` |
 | `POST /api/reports/export` | muatan laporan; di atas ambang penyerahan ia **202** beserta `jobId` | `report.export` + izin laporannya (#355) |
 | `GET /api/t/…/documents/pdf/{jenis}/{id}` | **ID saja**, tanpa badan | per JENIS: `invoice.read`, `contract.read`, `document.read`, `return.read` |
-| `GET /api/t/…/jobs/{kind}/{id}/result` | ID pekerjaan | per `kind` + gerbang kedua dari muatannya |
+| `GET /api/t/…/jobs/{kind}/{id}/result` | ID pekerjaan (`report.pdf`: + `?jenis=`) | per `kind` — untuk `report.pdf` per JENIS LAPORAN, dicocokkan dengan muatan barisnya — + gerbang kedua dari muatannya |
 
 **Aturan yang mengikat ketiganya: kertasnya diturunkan dari BUKU.** Rute dokumen
 menerima ID dan memuat barisnya sendiri; ia `GET` tanpa badan, jadi jalur
@@ -188,7 +189,7 @@ platform · autentikasi & infra. Daftar lengkap per rute beserta izinnya:
 | Halaman · API internal | HTML (RSC) · JSON |
 | `/api/v1` | JSON + `meta` |
 | `/api/health` | JSON; **503 hanya bila keadaan intrinsik container ini buruk** — lihat [02 §14](./02-LAYANAN-INFRA.md) |
-| Ekspor laporan | XLSX (`exceljs`) **di server** · PDF (`jspdf`) **di peramban** · ZIP (`jszip`) **di server, di-stream** |
+| Ekspor laporan | XLSX (`exceljs`) **di server** · PDF (`jspdf`) **di server** (sinkron, atau pekerjaan `report.pdf` di atas ambang) · ZIP (`jszip`) **di server, di-stream** |
 | Lampiran surel | PDF faktur dibuat **di server** dengan modul `jspdf` yang sama |
 | Berkas dokumen | Byte lewat route bertenant, bukan berkas statis |
 

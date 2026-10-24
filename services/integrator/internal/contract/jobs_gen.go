@@ -50,6 +50,7 @@ const (
 	KindReportExport             JobKind = "report.export"
 	KindReportExportGo           JobKind = "report.export_go"
 	KindReportPackage            JobKind = "report.package"
+	KindReportPdf                JobKind = "report.pdf"
 	KindScheduleTick             JobKind = "schedule.tick"
 	KindSchemaMigrate            JobKind = "schema.migrate"
 	KindTenantBackup             JobKind = "tenant.backup"
@@ -97,6 +98,7 @@ var JobKinds = map[JobKind]KindSpec{
 	KindReportExport:             {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindReportExportGo:           {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindReportPackage:            {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
+	KindReportPdf:                {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindScheduleTick:             {Lane: LaneSchedule, MaxAttempts: 1, WritesLedger: false},
 	KindSchemaMigrate:            {Lane: LaneSchema, MaxAttempts: 1, WritesLedger: false},
 	KindTenantBackup:             {Lane: LaneTenant, MaxAttempts: 2, WritesLedger: false},
@@ -139,7 +141,7 @@ var JobLanes = map[JobLane]LaneSpec{
 var KindsByLane = map[JobLane][]JobKind{
 	LaneBulk:        {KindImportProcess, KindMailBatch, KindReportPackage, KindTenantDataExport},
 	LaneIntegration: {KindIntegrationBankFeed, KindIntegrationEfakturCancel, KindIntegrationEfakturPoll, KindIntegrationEfakturSubmit},
-	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindDocumentInvoiceSend, KindEfakturRecord, KindReportExport, KindReportExportGo},
+	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindDocumentInvoiceSend, KindEfakturRecord, KindReportExport, KindReportExportGo, KindReportPdf},
 	LaneLedger:      {KindLedgerDunning, KindLedgerRecurring},
 	LaneSchedule:    {KindScheduleTick},
 	LaneSchema:      {KindSchemaMigrate},

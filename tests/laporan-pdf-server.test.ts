@@ -1,20 +1,23 @@
 /**
  * PENJAGA laporan PDF di server (rancangan §5, tahap 1c) — dan ini yang menutup
- * §5 untuk peramban: **nol** generator `src/lib/pdf/` tersisa di sana.
+ * §5 untuk peramban: **nol** generator `src/lib/pdf/` tersisa di sana, dan
+ * sejak tiga laporan terakhir (stok, opname, kas) memakai pembangun muatan di
+ * server, peramban juga tidak lagi MERAKIT muatannya.
  *
- * ══ KENAPA LAPORAN MEMAKAI MUATAN SEMENTARA DOKUMEN MEMAKAI ID ════════════
- * Pembelahannya satu pertanyaan — siapa yang menerima kertasnya — dan kedua
- * jawabannya dijaga di berkas yang berbeda, sebab keduanya aturan yang
- * berlawanan arah:
- *
+ * ══ DUA ATURAN YANG DIJAGA DI DUA BERKAS ═══════════════════════════════════
  *   • `tests/dokumen-satuan-server.test.ts` menjaga bahwa DOKUMEN diturunkan
- *     dari BUKU. Ia diserahkan ke pihak luar dan disimpan sebagai bukti;
- *   • berkas INI menjaga bahwa LAPORAN diturunkan dari MUATAN. Ia dicetak oleh
- *     orang yang sedang menatap halamannya, dan yang wajib dijamin justru
- *     kebalikannya: kertasnya sama dengan LAYARNYA.
+ *     dari BUKU, dari ID-nya. Ia diserahkan ke pihak luar dan disimpan sebagai
+ *     bukti;
+ *   • berkas INI menjaga sifat rute LAPORAN: izin per jenis, urutan
+ *     pemeriksaan, satu pembangkitan, dan penyerahan ke antrean menurut
+ *     ukuran. Tiga laporannya kini berbadan PARAMETER — muatannya dihitung
+ *     server dari buku PT dengan pembaca yang sama dengan halamannya
+ *     (`src/lib/report-pdf-payload.ts`); hanya `statement` yang masih
+ *     mengirim muatan jadi.
  *
- * Yang membuat keduanya bukan kontradiksi adalah satu kenyataan: laporan di
- * sini tidak dikirim ke siapa pun dan tidak pernah menjadi bukti.
+ * Perilakunya di bawah route handler sungguhan — isi kertas = isi dari muatan
+ * rakitan peramban lama, antrean, otorisasi — di
+ * `tests/laporan-pdf-parameter.test.ts`.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -74,6 +77,8 @@ describe("registri: empat keputusan per jenis, tak satu pun boleh lupa", () => {
       const spec = REPORT_PDF[jenis];
       expect(PERMISSIONS, `${jenis}: izinnya ada di matriks`).toContain(spec.permission);
       expect(typeof spec.schema.safeParse, `${jenis}: bentuknya`).toBe("function");
+      expect(["parameter", "muatan"], `${jenis}: asal muatannya`).toContain(spec.sumber);
+      expect(typeof spec.muatan, `${jenis}: pembangun muatannya`).toBe("function");
       expect(typeof spec.barisnya, `${jenis}: penghitung barisnya`).toBe("function");
       expect(typeof spec.slug, `${jenis}: nama berkasnya`).toBe("function");
     }
@@ -176,11 +181,17 @@ describe("rute: urutan pemeriksaan adalah penjaganya", () => {
     expect(badan).toBeGreaterThan(izin);
   });
 
-  it("BENTUK divalidasi sebelum barisnya dihitung, dan keduanya sebelum digambar", () => {
+  it("BENTUK divalidasi sebelum buku dibaca, buku sebelum barisnya dihitung, semuanya sebelum digambar", () => {
+    /* `spec.muatan(` MEMBACA buku PT untuk tiga jenis berbadan parameter —
+       badan yang tak lolos bentuk tidak boleh membuat satu kueri pun berjalan. */
+    const izin = ruteTanpaKomentar.indexOf("requireApiPermission(");
     const bentuk = ruteTanpaKomentar.indexOf("safeParse(");
+    const muatan = ruteTanpaKomentar.indexOf("spec.muatan(");
     const baris = ruteTanpaKomentar.indexOf("spec.barisnya(");
     const gambar = ruteTanpaKomentar.indexOf("spec.gambar(");
-    expect(baris).toBeGreaterThan(bentuk);
+    expect(bentuk).toBeGreaterThan(izin);
+    expect(muatan).toBeGreaterThan(bentuk);
+    expect(baris).toBeGreaterThan(muatan);
     expect(gambar).toBeGreaterThan(baris);
   });
 
@@ -245,15 +256,70 @@ describe("klien: satu pengambil, satu permintaan", () => {
     expect(tanpaKomentar(tombol).match(/generate\(\)/g) ?? []).toHaveLength(1);
   });
 
-  it("tombol beranda mengirim muatan yang SUDAH diambilnya", () => {
-    /* Ongkos perjalanan gandanya disebut apa adanya di berkasnya; yang dijaga
-       di sini adalah ia tidak menggambar sendiri lagi. */
-    const beranda = readFileSync(
-      join(AKAR_REPO, "src/components/dashboard/dashboard-export-actions.tsx"),
-      "utf8"
+  it("tombol beranda mengirim JENIS saja — tidak lagi mengambil barisnya lebih dulu", () => {
+    /* Perjalanan ganda (baris turun dari `/api/inventory` / `/api/finance`, lalu
+       naik lagi sebagai muatan) hilang: muatannya dihitung rute. */
+    const beranda = tanpaKomentar(
+      readFileSync(join(AKAR_REPO, "src/components/dashboard/dashboard-export-actions.tsx"), "utf8")
     );
-    expect(tanpaKomentar(beranda)).toContain('fetchReportPdfBlob("stock"');
-    expect(tanpaKomentar(beranda)).toContain('fetchReportPdfBlob("finance"');
-    expect(tanpaKomentar(beranda)).not.toMatch(/generate(Stock|Finance)\w*PDF/);
+    expect(beranda).toContain('fetchReportPdfBlob("stock", {})');
+    expect(beranda).toContain('fetchReportPdfBlob("finance", {})');
+    expect(beranda).not.toMatch(/\/api\/(inventory|finance)\b/);
+    expect(beranda).not.toMatch(/generate(Stock|Finance)\w*PDF/);
+  });
+
+  it("tombol halaman mengirim PARAMETER, bukan barisnya", () => {
+    const tombol = tanpaKomentar(
+      readFileSync(join(AKAR_REPO, "src/components/shared/pdf-export-buttons.tsx"), "utf8")
+    );
+    expect(tombol).toContain('fetchReportPdfBlob("stock", {})');
+    expect(tombol).toContain('fetchReportPdfBlob("opname", { date, showSystemQty })');
+    expect(tombol).toContain('fetchReportPdfBlob("finance", filters)');
+    expect(tombol).not.toMatch(/\{ items[,\s}]|\{ balances, transactions \}/);
+  });
+
+  it("202 dari rute PDF ditunggu di rute hasil, dengan `?jenis=`", () => {
+    const i = files.indexOf("export async function fetchReportPdfBlob(");
+    const badan = files.slice(i, files.indexOf("\n}", i));
+    expect(badan).toContain("res.status === 202");
+    expect(badan).toContain("tungguHasil(antre.jobId, antre.kind, undefined, { jenis })");
+  });
+});
+
+describe("rute: kecil sinkron, besar diserahkan ke antrean (09 §5)", () => {
+  it("menyerahkan LEBIH DULU, menolak kemudian — urutan yang sama dengan ekspor Excel", () => {
+    const serah = ruteTanpaKomentar.indexOf(
+      'if (spec.sumber === "parameter" && baris > EXPORT_QUEUE_HANDOFF_ROWS)'
+    );
+    const tolak = ruteTanpaKomentar.indexOf("if (baris > EXPORT_MAX_ROWS)");
+    expect(serah, "percabangan penyerahan tidak ada").toBeGreaterThan(-1);
+    expect(tolak).toBeGreaterThan(serah);
+  });
+
+  it("yang diterbitkan PARAMETER (badan), bukan muatan — dan tanpa `dedupeKey`", () => {
+    const i = ruteTanpaKomentar.indexOf("await publishJob({");
+    const badan = ruteTanpaKomentar.slice(i, ruteTanpaKomentar.indexOf("});", i));
+    expect(badan).toContain('kind: "report.pdf"');
+    expect(badan).toContain("companyId: authz.companyId");
+    expect(badan).toContain("payload: { jenis, params: badan }");
+    expect(badan).not.toMatch(/muatan|dedupeKey/);
+  });
+
+  it("hanya jenis berbadan parameter yang bisa diserahkan", () => {
+    expect(REPORT_PDF.statement.sumber).toBe("muatan");
+    expect(REPORT_PDF.stock.sumber).toBe("parameter");
+    expect(REPORT_PDF.opname.sumber).toBe("parameter");
+    expect(REPORT_PDF.finance.sumber).toBe("parameter");
+  });
+
+  it("pekerjanya memakai jalan yang SAMA — satu pembangkitan, registri yang sama", () => {
+    const job = tanpaKomentar(readFileSync(join(AKAR_REPO, "src/lib/report-pdf-job.ts"), "utf8"));
+    expect(job).toContain("REPORT_PDF[jenis]");
+    expect(job).toContain("spec.muatan(");
+    expect(job).toContain("serverPdfCompany(");
+    expect(job.match(/output\("arraybuffer"\)/g) ?? []).toHaveLength(1);
+    const pekerja = readFileSync(join(AKAR_REPO, "workers/interactive.ts"), "utf8");
+    expect(pekerja).toMatch(/"report\.pdf": pdfLaporan/);
+    expect(pekerja).toContain("renderReportPdfJob(");
   });
 });

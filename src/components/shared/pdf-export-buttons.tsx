@@ -4,8 +4,6 @@ import { useState } from "react";
 import { businessISODate } from "@sai/core/business-date";
 import { Button } from "@sai/ui/button";
 import { FileExcelOutlined } from "@ant-design/icons";
-import type { ClientInventoryItem } from "@/lib/inventory";
-import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@sai/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
@@ -71,19 +69,20 @@ export function ShippingDocButton({
   );
 }
 
-export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }) {
+export function StockReportPDFButton({ empty }: { empty: boolean }) {
   const t = useT();
-  /* DARI SERVER sejak tahap 1c (rancangan §5). Muatannya dikirim, bukan dimuat
-     ulang dari ID: lembar ini dicetak oleh orang yang sedang menatap
-     halamannya, dan yang harus dijamin adalah kertasnya sama dengan LAYARNYA.
-     Uraiannya di `lib/validations/report-pdf.ts`. */
+  /* DARI SERVER, dan sejak 09 §5 ditutup ia tidak mengirim apa pun: muatannya
+     dihitung rute dari buku PT dengan kueri dan ringkasan yang SAMA dengan
+     halaman Stok (`src/lib/report-pdf-payload.ts`). Halaman karena itu tidak
+     lagi mengoper seluruh daftar barang ke peramban hanya untuk tombol ini —
+     cukup satu boolean untuk `disabled`. */
   return (
     <PdfDocumentButton
       label={t("pdf.previewStock")}
       title={t("pdf.titleStockReport")}
       filename={`Stock_Report_${businessISODate(new Date())}.pdf`}
-      disabled={items.length === 0}
-      generate={() => fetchReportPdfBlob("stock", { items })}
+      disabled={empty}
+      generate={() => fetchReportPdfBlob("stock", {})}
     />
   );
 }
@@ -96,11 +95,11 @@ export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }
  * lihat alasan hitung-buta di `lib/pdf/opname-sheet-pdf.ts`.
  */
 export function OpnameSheetPDFButton({
-  items,
+  empty,
   date,
   showSystemQty,
 }: {
-  items: { name: string; unit: string | null; currentStock: number }[];
+  empty: boolean;
   date: string;
   showSystemQty: boolean;
 }) {
@@ -110,33 +109,40 @@ export function OpnameSheetPDFButton({
       label={t("inventory.opnameSheetButton")}
       title={t("inventory.opnameSheetTitle")}
       filename={`Lembar_Hitung_Stok_${date}.pdf`}
-      disabled={items.length === 0}
-      /* DARI SERVER sejak tahap 1c. `showSystemQty` ikut dikirim — ia yang
-         memutuskan hitung-buta, dan keputusan itu milik orang yang mencetaknya,
-         bukan milik rutenya. */
-      generate={() => fetchReportPdfBlob("opname", { items, date, showSystemQty })}
+      disabled={empty}
+      /* DARI SERVER. Yang dikirim hanya dua PILIHAN orang yang mencetaknya —
+         tanggal hitung dan hitung-buta (`showSystemQty`); daftar barang beserta
+         saldonya dihitung rute dari buku, dengan pembaca yang SAMA dengan
+         halaman opname (`opnameStockLevels`). */
+      generate={() => fetchReportPdfBlob("opname", { date, showSystemQty })}
     />
   );
 }
 
-export function FinanceReportPDFButton({
-  balances,
-  transactions,
-}: {
-  balances: FinanceBalanceRow[];
-  transactions: FinanceReportRow[];
-}) {
+/**
+ * Saringan halaman Kas & Bank — bunyi yang SAMA dengan URL-nya. Kosong = tanpa
+ * saringan (seluruh buku kas), bentuk yang dipakai tombol beranda.
+ */
+export interface FinanceReportFilters {
+  type?: string;
+  currency?: string;
+  year?: string;
+  month?: string;
+}
+
+export function FinanceReportPDFButton({ filters }: { filters: FinanceReportFilters }) {
   const t = useT();
-  /* DARI SERVER sejak tahap 1c. Keduanya dikirim sebagaimana halaman
-     menghitungnya: saldo per jenis & mata uang DAN transaksinya — dua bagian
-     di satu lembar, dan menurunkan yang satu dari yang lain di rute berarti
-     penjumlahan kedua yang bisa berbeda dari yang tampil di layar. */
+  /* DARI SERVER, dan yang dikirim SARINGANNYA, bukan barisnya: saldo per jenis
+     & mata uang dan transaksinya dihitung rute dari buku PT dengan aturan
+     saringan yang SAMA dengan halaman ini (`financeFilter`). Buku kas setahun
+     (18.000+ baris) tidak lagi menyeberang ke peramban dua kali, dan yang
+     melewati ambang penyerahan dikerjakan antrean. */
   return (
     <PdfDocumentButton
       label={t("pdf.previewFinance")}
       title={t("pdf.titleFinanceReport")}
       filename={`Finance_Report_${businessISODate(new Date())}.pdf`}
-      generate={() => fetchReportPdfBlob("finance", { balances, transactions })}
+      generate={() => fetchReportPdfBlob("finance", filters)}
     />
   );
 }

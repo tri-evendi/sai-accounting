@@ -1,30 +1,30 @@
 /**
- * Bentuk muatan untuk tiga laporan yang dulu digambar PERAMBAN.
+ * Bentuk badan & muatan tiga laporan yang dulu digambar PERAMBAN.
  *
- * ══ KENAPA LAPORAN MEMAKAI MUATAN, SEMENTARA DOKUMEN MEMAKAI ID ════════════
- * Pembelahannya bukan selera, dan ia satu pertanyaan: **siapa yang menerima
- * kertasnya.**
+ * ══ BADANNYA PARAMETER, MUATANNYA DIHITUNG SERVER ═════════════════════════
+ * Sampai tahap 1c ditutup, tombolnya mengirim MUATAN jadi (seluruh daftar
+ * barang, seluruh buku kas) dan rute hanya menggambarnya. Sekarang tombolnya
+ * mengirim PARAMETER — saringan halaman Kas & Bank, tanggal & pilihan
+ * hitung-buta lembar opname, dan untuk Laporan Stok tidak ada sama sekali —
+ * dan muatannya dihitung di server oleh pembaca yang SAMA dengan halamannya
+ * (`src/lib/report-pdf-payload.ts`).
  *
- *   • **Dokumen** (faktur, kontrak, surat jalan, retur) diserahkan ke pihak
- *     LUAR dan disimpan sebagai bukti. Rutenya karena itu menerima ID dan
- *     memuat barisnya sendiri — syarat audit §5 baru berarti sesuatu bila angka
- *     di atas kertas bukan angka yang dikirim peramban.
+ * Dua alasan, dan keduanya dari 09 §5:
  *
- *   • **Laporan** di berkas ini dicetak oleh orang yang sedang MENATAPNYA, dari
- *     halaman yang angkanya sudah dihitung server. Yang harus dijamin justru
- *     kebalikannya: kertasnya sama dengan LAYARNYA. Menghitung ulang di rute
- *     membuka celah di mana cetakan berbeda dari layar karena satu transaksi
- *     masuk di antaranya — dan orang yang mencetaknya tidak akan pernah tahu.
+ *   • laporan besar bisa DISERAHKAN ke antrean. Pekerjaan hidup di basis data
+ *     KENDALI dan hanya boleh membawa parameter (#104); muatan tanpa asal
+ *     tidak bisa dihitung ulang siapa pun;
+ *   • angka di atas kertas tidak lagi ditentukan apa yang dikirim peramban.
  *
- * Presedennya `statementPayloadSchema`, yang sudah berlaku sejak laporan
- * keuangan pindah: muatan, bukan ID.
+ * Skema muatan di bawah TETAP ada: ia bentuk yang dimakan generatornya, dan
+ * tes memakainya untuk membuktikan muatan server sama dengan yang dulu dirakit
+ * peramban.
  *
- * ⚠ Konsekuensinya diterima dengan sadar: muatan datang dari klien, jadi
- * seseorang bisa mencetak lembar stok dengan angka yang ia karang sendiri. Yang
- * membuat itu bukan kerugian: ketiga laporan ini TIDAK dikirim ke siapa pun dan
- * tidak pernah menjadi bukti — dan siapa pun yang mau mengarang angka sudah
- * bisa melakukannya dengan mengedit PDF-nya sesudah dicetak. Yang dijaga rute
- * ini adalah apa yang bisa dijaganya: izin, batas ukuran, dan bentuk.
+ * ⚠ Skema parameter `.strict()`. Tab lama yang masih memegang tombol versi
+ * sebelumnya mengirim `{ items }` / `{ balances, transactions }`; tanpa
+ * `.strict()` badan itu lolos sebagai "tanpa saringan" dan mencetak laporan
+ * yang BERBEDA dari layarnya tanpa satu galat pun. Dengan `.strict()` ia
+ * dijawab 400, dan muat ulang halaman memperbaikinya.
  */
 import { z } from "zod";
 
@@ -84,6 +84,34 @@ export const financeReportPayloadSchema = z.object({
     })
   ),
 });
+
+/* ── Parameter (badan permintaan) ──────────────────────────────────────── */
+
+/** Laporan Stok tidak punya parameter: halamannya memang tanpa periode. */
+export const stockReportParamsSchema = z.object({}).strict();
+
+export const opnameSheetParamsSchema = z
+  .object({
+    /* Dicetak apa adanya di kepala lembarnya — ia sudah diformat formulir yang
+       memintanya, dan memformat ulang di sini berarti dua pemformat untuk satu
+       tanggal. */
+    date: teks(40),
+    showSystemQty: z.boolean(),
+  })
+  .strict();
+
+/* Saringan halaman Kas & Bank, dengan bunyi yang SAMA dengan URL-nya. Nilai
+   yang tak sah tidak ditolak di sini — `financeFilter` memperlakukannya persis
+   seperti halaman (diabaikan), supaya alamat yang diedit tangan tidak mencetak
+   laporan yang berbeda dari layarnya. */
+const saringan = teks(40).optional();
+export const financeReportParamsSchema = z
+  .object({ type: saringan, currency: saringan, year: saringan, month: saringan })
+  .strict();
+
+export type StockReportParams = z.infer<typeof stockReportParamsSchema>;
+export type OpnameSheetParams = z.infer<typeof opnameSheetParamsSchema>;
+export type FinanceReportParams = z.infer<typeof financeReportParamsSchema>;
 
 export type StockReportPayload = z.infer<typeof stockReportPayloadSchema>;
 export type OpnameSheetPayload = z.infer<typeof opnameSheetPayloadSchema>;

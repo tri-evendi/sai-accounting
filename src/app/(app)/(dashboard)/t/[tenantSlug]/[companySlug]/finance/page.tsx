@@ -36,10 +36,9 @@ import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { cashTypeLabels, monthNames } from "@/lib/i18n/labels";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { LearnMore } from "@sai/ui/learn-more";
-import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
-import { toFinanceReportRows } from "@/lib/finance-report-rows";
+import { financeBalances, financeFilter, financeMovements } from "@/lib/report-pdf-payload";
 import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
-import { businessDate, businessParts } from "@sai/core/business-date";
+import { businessParts } from "@sai/core/business-date";
 
 export const dynamic = "force-dynamic";
 
@@ -79,40 +78,17 @@ export default async function FinancePage({
   const page = parsePageParam(filters.page);
   const perPage = 10;
 
-  // Build filters
-  const where: Record<string, unknown> = {};
-  if (filters.type) where.type = filters.type;
-  if (filters.currency) where.currency = filters.currency;
-
-  // Sanitized: hand-edited URLs must not put NaN into the query. A month
-  // chosen with year "Semua tahun" cannot mean "Maret every year" in one
-  // range — it defaults to the current year, and the Year select below shows
-  // that, so the filter applied is always the filter displayed.
-  const yearNum = filters.year ? Number.parseInt(filters.year, 10) : NaN;
-  const monthNum = filters.month ? Number.parseInt(filters.month, 10) : NaN;
-  const monthValid = Number.isFinite(monthNum) && monthNum >= 1 && monthNum <= 12;
-  const effectiveYear = Number.isFinite(yearNum)
-    ? yearNum
-    : monthValid
-      ? businessParts(new Date()).year
-      : null;
-  if (effectiveYear != null) {
-    // Batas bulan/tahun menurut kalender Jakarta (`@sai/core/business-date`).
-    const startDate = monthValid
-      ? businessDate(effectiveYear, monthNum - 1, 1)
-      : businessDate(effectiveYear, 0, 1);
-    const endDate = monthValid
-      ? businessDate(effectiveYear, monthNum, 1)
-      : businessDate(effectiveYear + 1, 0, 1);
-    where.date = { gte: startDate, lt: endDate };
-  }
+  // Saringan: aturan yang SAMA dengan Laporan Kas & Bank-nya
+  // (`/api/reports/pdf/finance`) — `financeFilter` di `report-pdf-payload.ts`.
+  // Tahun/bulan yang diedit tangan tidak mengirim NaN ke kueri, dan bulan yang
+  // dipilih bersama "Semua tahun" berarti bulan itu di tahun berjalan; Select
+  // Tahun di bawah menampilkannya, jadi saringan yang diterapkan selalu yang
+  // ditampilkan.
+  const { where, effectiveYear, monthValid, monthNum } = financeFilter(filters);
 
   // All transactions for balance calculation, paginated for table
   const [allTransactions, transactions, totalCount] = await Promise.all([
-    prisma.cashMovement.findMany({
-      where,
-      orderBy: { date: "desc" },
-    }),
+    financeMovements(filters),
     prisma.cashMovement.findMany({
       where,
       orderBy: { date: "desc" },
@@ -127,23 +103,9 @@ export default async function FinancePage({
   const reconStatus = await bankReconciliationStatus();
   const reconByCurrency = new Map(reconStatus.map((r) => [r.currency, r]));
 
-  // Calculate balances per type & currency (from ALL filtered transactions)
-  const balanceMap = new Map<string, { type: string; currency: string; debit: number; credit: number }>();
-
-  for (const tx of allTransactions) {
-    const key = `${tx.type}_${tx.currency}`;
-    const existing = balanceMap.get(key) || { type: tx.type, currency: tx.currency, debit: 0, credit: 0 };
-    existing.debit += Number(tx.debit);
-    existing.credit += Number(tx.credit);
-    balanceMap.set(key, existing);
-  }
-
-  const balances = Array.from(balanceMap.values());
-  const financeBalances: FinanceBalanceRow[] = balances.map((b) => ({
-    ...b,
-    balance: b.debit - b.credit,
-  }));
-  const financeTransactions: FinanceReportRow[] = toFinanceReportRows(allTransactions);
+  // Saldo per jenis & mata uang dari SELURUH baris tersaring — fungsi yang
+  // sama dengan bagian pertama Laporan Kas & Bank-nya.
+  const balances = financeBalances(allTransactions);
 
   const currentYear = businessParts(new Date()).year;
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -252,7 +214,14 @@ export default async function FinancePage({
         title={<TermTooltip term="kas_bank">{t("finance.title")}</TermTooltip>}
         actions={
           <>
-            <FinancePageActions balances={financeBalances} transactions={financeTransactions} />
+            <FinancePageActions
+              filters={{
+                type: filters.type,
+                currency: filters.currency,
+                year: filters.year,
+                month: filters.month,
+              }}
+            />
             {/* Aksi utama layar ini (#267): mencatat transaksi kas/bank adalah
                 satu-satunya hal yang MENGIKAT; ekspor & saringan membaca. */}
             <ButtonLink href="/finance/new" variant="primary">
@@ -375,7 +344,7 @@ export default async function FinancePage({
           </Card>
         ) : (
           balances.map((b) => {
-            const balance = b.debit - b.credit;
+            const balance = b.balance;
             const recon = b.type === "bank" ? reconByCurrency.get(b.currency) : undefined;
             return (
               <Card key={`${b.type}_${b.currency}`}>

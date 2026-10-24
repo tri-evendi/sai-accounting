@@ -21,6 +21,7 @@ import { join } from "node:path";
 import { AKAR_REPO, tanpaKomentar } from "./akar-sumber";
 import {
   JOB_RESULT_PERMISSION,
+  PER_REPORT_PERMISSION,
   isDownloadableKind,
   isValidResultRef,
   jobResultHref,
@@ -55,8 +56,25 @@ describe("peta izin: setiap jenis menyatakan siapa yang berhak", () => {
        peran pengguna. */
     for (const [kind, izin] of Object.entries(JOB_RESULT_PERMISSION)) {
       if (izin === null) continue;
+      /* Penanda per-laporan bukan izin: izinnya milik jenis laporan di muatan
+         (`REPORT_PDF[jenis].permission`), dan itu dijaga
+         `tests/laporan-pdf-server.test.ts`. */
+      if (izin === PER_REPORT_PERMISSION) continue;
       expect(PERMISSIONS, `${kind} → ${izin}`).toContain(izin);
     }
+  });
+
+  it("penanda per-laporan dipakai TEPAT satu jenis: `report.pdf`", () => {
+    const pemakai = Object.entries(JOB_RESULT_PERMISSION)
+      .filter(([, izin]) => izin === PER_REPORT_PERMISSION)
+      .map(([kind]) => kind);
+    expect(pemakai).toEqual(["report.pdf"]);
+    /* Rute menurunkan izinnya dari `?jenis=` SEBELUM membaca barisnya, lalu
+       menolak baris yang muatannya menyebut jenis lain. */
+    expect(rute).toContain("izinJenis === PER_REPORT_PERMISSION");
+    expect(rute).toContain("jenis: jenisLaporan");
+    const gerbang = readFileSync(join(AKAR_REPO, "src/lib/job-result-gate.ts"), "utf8");
+    expect(gerbang).toContain("if (diminta.jenis !== jenis) return false;");
   });
 
   it("ekspor laporan dan dokumen menuntut izin yang BERBEDA", () => {

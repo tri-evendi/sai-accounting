@@ -1,14 +1,12 @@
 import { parsePageParam } from "@sai/core/utils";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
-import { prisma } from "@/lib/prisma";
+import { inventorySummaries } from "@/lib/report-pdf-payload";
 import {
   countStockHealth,
-  summarizeInventory,
   toLowStockAlerts,
   getStockLevel,
   getStockBadgeVariant,
-  toClientInventory,
   type StockLevel,
 } from "@/lib/inventory";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
@@ -96,17 +94,12 @@ export default async function InventoryPage({
    * dipakai perhitungannya, jadi `id`, `item_id`, `note`, `cost_center_id`, dan
    * stempel waktunya tidak perlu ikut menyeberang. Beranda — yang jauh lebih
    * sering dibuka — sudah tidak memuat gerakan sama sekali.
+   *
+   * Kuerinya kini hidup di `inventorySummaries` — SATU kueri dengan Laporan
+   * Stok-nya (`/api/reports/pdf/stock`), supaya kertas dan tabel ini tidak
+   * bisa berbeda karena dua salinan.
    */
-  const allItems = await prisma.item.findMany({
-    include: {
-      stockMovements: {
-        select: { quantity: true, type: true, date: true, unitCost: true },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
-
-  const allInventory = summarizeInventory(allItems);
+  const allInventory = await inventorySummaries();
   const stockHealth = countStockHealth(allInventory);
   const lowStockAlerts = toLowStockAlerts(allInventory);
 
@@ -228,7 +221,7 @@ export default async function InventoryPage({
         description={t("inventory.lowStockNote", { threshold: LOW_STOCK_THRESHOLD })}
         actions={
           <>
-            <InventoryPageActions items={toClientInventory(allInventory)} />
+            <InventoryPageActions empty={allInventory.length === 0} />
             {/* Halaman ini menjawab "berapa yang saya punya SEKARANG" dan sengaja
                 tanpa periode; pertanyaan "apa yang bergerak bulan lalu" dijawab
                 Kartu Stok, yang punya saldo awal & akhir sendiri (issue #126). */}

@@ -23,7 +23,13 @@ kata sandinya datang dari bundel serah-terima.
 
 ## 0. Langkah pemilik SAI — SEKALI, sebelum customer on-premise pertama
 
-Kode hari ini memuat `LICENCE_PUBLIC_KEY_PEM = "BELUM-DISETEL"`
+✅ **Selesai 24 Okt 2026 (jalur luring)** — kunci publik ditanam di
+`packages/core/src/licence.ts`; kunci privat di laptop pemilik
+(`~/sai-licence-key/sai-licence-key.pem`, cadangkan luring di dua tempat).
+Lisensi ditandatangani dengan `bun run licence:issue`. Langkah di bawah
+dicatat untuk riwayat dan untuk rotasi kunci.
+
+Sebelumnya kode memuat `LICENCE_PUBLIC_KEY_PEM = "BELUM-DISETEL"`
 (`packages/core/src/licence.ts`). Selama itu **tidak ada berkas lisensi yang
 bisa sah**: pemasangan tetap berjalan dan buku tetap terbuka, tetapi modul
 dibatasi ke inti dan batasnya 1 perusahaan / 3 pengguna. Gejalanya terlihat di

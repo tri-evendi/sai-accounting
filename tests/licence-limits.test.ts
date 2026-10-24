@@ -81,7 +81,9 @@ describe("pemberitahuan lisensi — fakta, bukan gerbang", () => {
   });
 
   it("kunci publik placeholder terbaca sebagai BELUM ditanam", () => {
-    expect(licenceKeyInstalled()).toBe(false);
+    // Kunci produksi ditanam 24 Okt 2026; placeholder tetap harus dikenali.
+    expect(licenceKeyInstalled("BELUM-DISETEL")).toBe(false);
+    expect(licenceKeyInstalled()).toBe(true);
     expect(licenceKeyInstalled("-----BEGIN PUBLIC KEY-----")).toBe(true);
   });
 });

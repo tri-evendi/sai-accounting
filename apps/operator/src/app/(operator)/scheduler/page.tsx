@@ -351,7 +351,6 @@ export default async function OperatorSchedulerPage() {
    * Panel outbox (09 §4): satu baris per buku dari jejak relay. Umurnya dalam
    * DETIK, sama dengan ambangnya — alasan kolom umur antrean di atas.
    */
-  const sekarang = Date.now();
   const outboxColumns: SaiColumns<OutboxRelayBookView> = [
     {
       key: "book",
@@ -369,13 +368,7 @@ export default async function OperatorSchedulerPage() {
       key: "age",
       title: t("operator.scheduler.outboxColAge"),
       align: "right",
-      render: (_v, b) => (
-        <span style={TABULAR}>
-          {b.oldestUnpublishedAt === null
-            ? "—"
-            : Math.max(0, Math.floor((sekarang - b.oldestUnpublishedAt.getTime()) / 1000))}
-        </span>
-      ),
+      render: (_v, b) => <span style={TABULAR}>{b.ageSeconds === null ? "—" : b.ageSeconds}</span>,
     },
     {
       key: "pass",

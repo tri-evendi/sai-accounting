@@ -112,6 +112,25 @@ describe("readOutboxRelay", () => {
     expect(snap.books.map((b) => b.slug)).toEqual(["pt-a"]);
     expect(snap.health.status).toBe("ok");
   });
+
+  it("umur baris tertua dihitung di lib terhadap `now`, bukan di halaman", async () => {
+    const klien = {
+      outboxRelayBook: {
+        findMany: async () => [
+          { ...buku({ companyId: 1, oldestUnpublishedAt: detikLalu(42) }), publishedLastPass: 0 },
+          { ...buku({ companyId: 2, oldestUnpublishedAt: null }), publishedLastPass: 0 },
+        ],
+      },
+      company: {
+        findMany: async () => [
+          { id: 1, slug: "pt-a" },
+          { id: 2, slug: "pt-b" },
+        ],
+      },
+    };
+    const snap = await readOutboxRelay(klien as never, SEKARANG);
+    expect(snap.books.map((b) => b.ageSeconds)).toEqual([42, null]);
+  });
 });
 
 describe("permukaan", () => {

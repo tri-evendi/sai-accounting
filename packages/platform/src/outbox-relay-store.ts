@@ -20,6 +20,8 @@ import { outboxHealth, type OutboxHealth, type OutboxRelayBookRow } from "@sai/c
 export interface OutboxRelayBookView extends OutboxRelayBookRow {
   slug: string;
   publishedLastPass: number;
+  /** Umur baris tertua yang belum terbit terhadap `now`, detik; `null` = tidak ada. */
+  ageSeconds: number | null;
 }
 
 export interface OutboxRelaySnapshot {
@@ -48,6 +50,13 @@ export async function readOutboxRelay(
   const slugOf = new Map(companies.map((c) => [c.id, c.slug]));
   const books = rows
     .filter((r) => slugOf.has(r.companyId))
-    .map((r) => ({ ...r, slug: slugOf.get(r.companyId)! }));
+    .map((r) => ({
+      ...r,
+      slug: slugOf.get(r.companyId)!,
+      ageSeconds:
+        r.oldestUnpublishedAt === null
+          ? null
+          : Math.max(0, Math.floor((now.getTime() - r.oldestUnpublishedAt.getTime()) / 1000)),
+    }));
   return { health: outboxHealth(books, now), books };
 }

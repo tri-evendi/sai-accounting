@@ -9,7 +9,7 @@
 -- dari konsol operator dan dari pemilih perusahaan, dan wisaya membacanya
 -- untuk memilih templat ekuitas. Yang mengikuti BUKU (daftar sekutu, porsi
 -- laba, akun modal/prive) tinggal di basis data perusahaan — lihat company
--- 0006_company_partners.
+-- 0007_company_partners.
 --
 -- ══ NILAI ════════════════════════════════════════════════════════════════
 --   pt · pt_perorangan · cv · firma · perorangan (usaha perorangan / UD) ·

@@ -357,7 +357,7 @@ bukan di buku: pembaca kesehatan tidak boleh menyapu setiap buku PT.
 
 ---
 
-### 9.2 Bentuk usaha — `companies.legal_form` (kendali 0014) + `company_partners` (buku 0006)
+### 9.2 Bentuk usaha — `companies.legal_form` (kendali 0014) + `company_partners` (buku 0007)
 
 Keputusan pemilik 24 Okt 2026: selain PT, buku harus benar untuk PT
 Perorangan, CV, Firma, dan usaha perorangan (UD).

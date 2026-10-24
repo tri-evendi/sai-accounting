@@ -72,8 +72,8 @@ describe("migration expand-only", () => {
     );
   });
 
-  it("company 0006: tabel baru company_partners dengan FK akun RESTRICT", () => {
-    const sql = baca("prisma/postgresql/company/0006_company_partners/migration.sql");
+  it("company 0007: tabel baru company_partners dengan FK akun RESTRICT", () => {
+    const sql = baca("prisma/postgresql/company/0007_company_partners/migration.sql");
     expect(sql).toContain('CREATE TABLE "company_partners"');
     expect(sql).toMatch(/capital_account_id_fkey[\s\S]*ON DELETE RESTRICT/);
     expect(sql).toMatch(/"share_bp" >= 0 AND "share_bp" <= 10000/);

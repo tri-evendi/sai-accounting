@@ -1684,7 +1684,7 @@ model YearClose {
   @@map("year_closes")
 }
 
-/// PEMILIK / SEKUTU dan porsi labanya (bentuk usaha, company 0006).
+/// PEMILIK / SEKUTU dan porsi labanya (bentuk usaha, company 0007).
 ///
 /// CV/Firma: satu baris per sekutu, masing-masing dengan akun Modal & Prive
 /// sendiri. Usaha perorangan: satu baris "Pemilik" (100%). PT: TIDAK ADA baris

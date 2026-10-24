@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.22.2",
+    tanggal: "2026-10-24",
+    ringkas: "Pembaruan keamanan pada layanan latar; tidak ada perubahan pada tampilan.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks: "Layanan latar diperbarui untuk menutup celah keamanan pada pengolahan data terkompresi (CVE-2026-111497).",
+      },
+    ],
+  },
+  {
     versi: "0.22.1",
     tanggal: "2026-10-24",
+    sha: "6bed782",
     ringkas: "Layanan latar memakai memori jauh lebih sedikit, dan lisensi on-premise kini bisa diterbitkan; tidak ada perubahan pada tampilan.",
     butir: [
       {

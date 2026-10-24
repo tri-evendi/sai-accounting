@@ -77,6 +77,9 @@ export const CONTROL_MODEL_DECISIONS = {
   SchemaMigrationRun: "exclude",
   Job: "exclude",
   RuntimeSample: "exclude",
+  /* Jejak relay outbox per buku (09 §4) — keadaan relay server SaaS. Baris
+     `outbox` yang belum terbit ikut di dump buku dan direlay di on-premise. */
+  OutboxRelayBook: "exclude",
 } as const satisfies Record<string, "include" | "exclude">;
 
 export type ControlModel = keyof typeof CONTROL_MODEL_DECISIONS;

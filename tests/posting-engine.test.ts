@@ -811,6 +811,22 @@ describe("idempotency, repost and unpost", () => {
     expect(tx._journals).toHaveLength(1);
   });
 
+  it("menulis SATU peristiwa invoice.posted di transaksi posting — posting ulang tidak menulis lagi (09 §4)", async () => {
+    const tx = invoiceClient();
+    const first = await postForSource({ sourceType: "invoice", sourceId: 7, tx });
+    expect(tx._outbox).toHaveLength(1);
+    expect(tx._outbox[0]).toMatchObject({
+      eventType: "invoice.posted",
+      aggregateType: "invoice",
+      aggregateId: 7,
+      dedupeKey: "invoice.posted:7",
+      payload: { invoiceId: 7, journalId: first!.id },
+    });
+    await postForSource({ sourceType: "invoice", sourceId: 7, tx });
+    await repostForSource({ sourceType: "invoice", sourceId: 7, tx });
+    expect(tx._outbox).toHaveLength(1);
+  });
+
   it("repost reverses the old journal and posts a fresh one", async () => {
     const tx = invoiceClient();
     const original = await postForSource({ sourceType: "invoice", sourceId: 7, tx });

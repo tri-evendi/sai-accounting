@@ -28,8 +28,12 @@ export const IDLE_MS = 2000;
 
 export const DONE_RETENTION_DAYS = 14;
 
+/** BAWAAN — dipakai jalur yang tidak punya `alarm:` terukur (`JOB_LANES[*].alarm`). */
 export const QUEUE_AGE_WARN_SECONDS = 420;
 export const QUEUE_AGE_LATE_SECONDS = 600;
+
+/** Sampel minimum agar jalur boleh punya ambang sendiri — ditegakkan generator. */
+export const ALARM_MIN_SAMPLES = 200;
 
 /**
  * Denyut pagar jalur tunggal-instans — dipakai `workers/runner.ts` untuk

@@ -97,6 +97,11 @@ next-env.d.ts
 # dari repo dan baru ketahuan pada hari penukaran. Pola yang persis sama dengan
 # dua baris di atas, yang masing-masing lahir dari kejadian yang sama.
 !prisma/postgresql/**/*.sql
+# Kueri sumber `sqlc` (09 §3.5): `contract/jobs.sql` + `contract/trail.sql`.
+# Kejadian KEEMPAT pola yang sama (23 Okt 2026): tertelan `*.sql` di atas,
+# bangkitan + `sqlc.sum`-nya ter-commit tanpa sumbernya, dan `contract:gen
+# --cek` merah di CI saja. Dijaga `tests/services-go.test.ts`.
+!contract/*.sql
 
 # transient agent worktrees
 /.claude/worktrees/

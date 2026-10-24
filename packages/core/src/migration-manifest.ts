@@ -13,7 +13,7 @@
  */
 export const MIGRATION_TERAKHIR = {
   control: "0012_outbox_relay_books",
-  platform: "0009_cache_signals",
+  platform: "0010_drop_site_contents",
   company: "0005_outbox",
 } as const;
 

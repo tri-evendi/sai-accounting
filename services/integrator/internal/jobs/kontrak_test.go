@@ -91,6 +91,29 @@ func TestPenjagaTipeMenolakNilaiAsing(t *testing.T) {
 	}
 }
 
+func TestAmbangAlarmPerJalurKonsisten(t *testing.T) {
+	// 09 §11: ambang per jalur terukur ATAU bawaan — tidak pernah setengah.
+	// Jalur bawaan tanpa batas durasi; jalur terukur ditopang sampel cukup.
+	for lane, spec := range contract.JobLanes {
+		a := spec.Alarm
+		if a.QueueAgeWarn >= a.QueueAgeLate {
+			t.Errorf("jalur %q: peringatan %v tidak sebelum terlambat %v", lane, a.QueueAgeWarn, a.QueueAgeLate)
+		}
+		if a.Measured {
+			if a.Samples < contract.AlarmMinSamples {
+				t.Errorf("jalur %q: ambang terukur atas %d sampel (< %d)", lane, a.Samples, contract.AlarmMinSamples)
+			}
+			continue
+		}
+		if a.QueueAgeWarn != contract.QueueAgeWarn || a.QueueAgeLate != contract.QueueAgeLate {
+			t.Errorf("jalur %q: bawaan tapi ambangnya %v/%v", lane, a.QueueAgeWarn, a.QueueAgeLate)
+		}
+		if a.DurationP95Warn != 0 || a.Samples != 0 {
+			t.Errorf("jalur %q: bawaan tapi punya batas durasi %v / sampel %d", lane, a.DurationP95Warn, a.Samples)
+		}
+	}
+}
+
 func TestJalurTenantDanSchemaTunggalInstans(t *testing.T) {
 	// Dua pelari `tenant` = dua dump menulis ke satu kunci objek, dan yang
 	// terakhir menang. Dua pelari `schema` = dua migration bertabrakan.

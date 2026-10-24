@@ -32,18 +32,17 @@
  */
 
 import * as kontrak from "./generated/job-numbers";
+import { JOB_LANES, type JobLane, type JobLaneAlarm } from "./generated/job-kinds";
 
 /**
- * Peringatan pada tujuh menit, bunyi pada sepuluh.
+ * Ambang BAWAAN: peringatan pada tujuh menit, bunyi pada sepuluh.
  *
- * Satu pasang ambang untuk SEMUA jalur, dan itu keputusan yang disengaja.
- * Ambang per-jalur memang lebih benar — `report.export` yang menunggu tujuh
- * menit buruk karena ada orang menatap layar, sementara `ledger.recurring`
- * yang menunggu tujuh menit tidak berarti apa-apa untuk batch harian — tetapi
- * tujuh angka yang dikarang tanpa pengukuran adalah tujuh ambang yang akan
- * berteriak untuk hal normal atau diam untuk hal gawat, dan dua-duanya lebih
- * buruk daripada satu angka yang jujur. Pemecahannya menunggu histogram durasi
- * pekerjaan di §11, bukan menunggu rapat.
+ * Sejak 23 Okt 2026 ambangnya PER JALUR (09 §11) — tetapi hanya jalur yang
+ * sampelnya cukup (≥ `ALARM_MIN_SAMPLES`, ditegakkan generator) yang punya
+ * angka sendiri. Sisanya memakai pasangan ini, dan itu disengaja: ambang yang
+ * dikarang atas tiga pekerjaan akan berteriak untuk hal normal atau diam untuk
+ * hal gawat, dan dua-duanya lebih buruk daripada satu angka bawaan yang jujur.
+ * Ambang efektif setiap jalur: `laneAlarm()`.
  *
  * Angkanya di `contract/kinds.yaml` dan dibangkitkan ke kedua bahasa: probe
  * kesehatan dan pelari yang tidak sepakat tentang kapan antrean disebut
@@ -52,6 +51,27 @@ import * as kontrak from "./generated/job-numbers";
  */
 export const QUEUE_AGE_WARN_SECONDS = kontrak.QUEUE_AGE_WARN_SECONDS;
 export const QUEUE_AGE_LATE_SECONDS = kontrak.QUEUE_AGE_LATE_SECONDS;
+export const ALARM_MIN_SAMPLES = kontrak.ALARM_MIN_SAMPLES;
+
+/** Ambang untuk jalur yang tidak dikenal kontrak (`(tak dikenal)`): bawaan. */
+const BAWAAN: JobLaneAlarm = {
+  queueAgeWarnSeconds: QUEUE_AGE_WARN_SECONDS,
+  queueAgeLateSeconds: QUEUE_AGE_LATE_SECONDS,
+  durationP95WarnMs: null,
+  measured: false,
+  samples: 0,
+};
+
+/**
+ * Ambang efektif satu jalur — terukur bila kontrak punya `alarm:` untuknya,
+ * bawaan bila tidak. Satu-satunya pembaca `JOB_LANES[*].alarm` di TypeScript:
+ * probe kesehatan, `watch:health` (lewat probe), dan konsol membaca dari sini.
+ */
+export function laneAlarm(lane: string): JobLaneAlarm {
+  return (JOB_LANES as Record<string, { alarm: JobLaneAlarm } | undefined>)[lane]?.alarm ?? BAWAAN;
+}
+
+export type { JobLane, JobLaneAlarm };
 
 export type QueueHealthStatus =
   /** Tidak ada pekerjaan menunggu. Ambang TIDAK berlaku — lihat catatan di atas. */
@@ -70,14 +90,17 @@ export interface LaneQueueHealth {
   /** Umur pekerjaan tertua yang menunggu, dalam detik. `null` bila tak ada. */
   ageSeconds: number | null;
   status: QueueHealthStatus;
+  /** Ambang yang DIPAKAI untuk vonis di atas — per jalur, jadi ikut dilaporkan. */
+  warnAfterSeconds: number;
+  lateAfterSeconds: number;
+  /** `false` = ambang bawaan, sebab sampel jalur ini belum cukup. */
+  measured: boolean;
 }
 
 export interface QueueHealth {
   status: QueueHealthStatus;
+  /** Setiap jalur membawa ambangnya sendiri (`warnAfterSeconds`/`lateAfterSeconds`). */
   lanes: LaneQueueHealth[];
-  /** Ambang ikut dilaporkan supaya pembacanya tidak menebak. */
-  warnAfterSeconds: number;
-  lateAfterSeconds: number;
 }
 
 /**
@@ -94,17 +117,23 @@ export function laneQueueHealth(
   oldestQueuedAt: Date | null,
   now: Date = new Date()
 ): LaneQueueHealth {
+  const a = laneAlarm(lane);
+  const ambang = {
+    warnAfterSeconds: a.queueAgeWarnSeconds,
+    lateAfterSeconds: a.queueAgeLateSeconds,
+    measured: a.measured,
+  };
   if (waiting <= 0 || oldestQueuedAt === null) {
-    return { lane, waiting: Math.max(0, waiting), ageSeconds: null, status: "idle" };
+    return { lane, waiting: Math.max(0, waiting), ageSeconds: null, status: "idle", ...ambang };
   }
   const ageSeconds = Math.max(0, Math.floor((now.getTime() - oldestQueuedAt.getTime()) / 1000));
   const status: QueueHealthStatus =
-    ageSeconds >= QUEUE_AGE_LATE_SECONDS
+    ageSeconds >= ambang.lateAfterSeconds
       ? "late"
-      : ageSeconds >= QUEUE_AGE_WARN_SECONDS
+      : ageSeconds >= ambang.warnAfterSeconds
         ? "warn"
         : "ok";
-  return { lane, waiting, ageSeconds, status };
+  return { lane, waiting, ageSeconds, status, ...ambang };
 }
 
 /** Urutan keparahan — dipakai untuk meringkas banyak jalur menjadi satu kata. */
@@ -123,10 +152,30 @@ const KEPARAHAN: Record<QueueHealthStatus, number> = { idle: 0, ok: 1, warn: 2, 
 export function queueHealth(lanes: LaneQueueHealth[]): QueueHealth {
   let status: QueueHealthStatus = "idle";
   for (const l of lanes) if (KEPARAHAN[l.status] > KEPARAHAN[status]) status = l.status;
-  return {
-    status,
-    lanes,
-    warnAfterSeconds: QUEUE_AGE_WARN_SECONDS,
-    lateAfterSeconds: QUEUE_AGE_LATE_SECONDS,
-  };
+  return { status, lanes };
+}
+
+/**
+ * Sampel minimum DI JENDELA metrik agar p95 satu jalur dinilai terhadap
+ * ambangnya. Lebih longgar daripada `ALARM_MIN_SAMPLES` (yang menyetel
+ * ambangnya), sebab yang dinilai di sini satu jendela 15 menit, bukan sebaran
+ * berhari-hari — tetapi p95 atas tiga pekerjaan tetap bukan fakta.
+ */
+export const DURATION_MIN_WINDOW_SAMPLES = 10;
+
+/**
+ * Vonis durasi satu jalur atas p95 jendela metriknya.
+ *
+ *  - `unset`        — jalur ini belum punya ambang durasi (sampel kontrak belum cukup);
+ *  - `insufficient` — ambang ada, tetapi jendela ini kurang sampel;
+ *  - `slow`         — p95 jendela MELEWATI ambang;
+ *  - `ok`           — di bawahnya.
+ */
+export type DurationVerdict = "unset" | "insufficient" | "slow" | "ok";
+
+export function laneDurationVerdict(lane: string, p95Ms: number | null, samples: number): DurationVerdict {
+  const batas = laneAlarm(lane).durationP95WarnMs;
+  if (batas === null) return "unset";
+  if (p95Ms === null || samples < DURATION_MIN_WINDOW_SAMPLES) return "insufficient";
+  return p95Ms > batas ? "slow" : "ok";
 }

@@ -37,6 +37,12 @@
  *   • packages/db/src/generated/db-instances.ts
  *   • services/integrator/internal/contract/dbinstances_gen.go
  *
+ * 09 §3.5 menambah `contract/jobs.sql` + `contract/trail.sql` → `sqlc` →
+ * `services/integrator/internal/controlsql/` (kueri Go bertipe atas basis
+ * data kendali). Langkahnya di `scripts/contract-sqlc.ts`; `--cek`-nya
+ * membandingkan SIDIK, tidak menjalankan `sqlc` (gerbang tanpa Go/jaringan).
+ * `-- --sqlc` memaksa `sqlc` dijalankan walau masukannya tidak berubah.
+ *
  * Angka dipisahkan dari kosakata karena pembacanya berbeda: kosakata dibaca
  * penerbit dan pelari, angka dibaca pelari dan permukaan kesehatan. Di Go
  * keduanya satu berkas, sebab satu paket Go memang satu unit impor.
@@ -55,6 +61,7 @@
 import { load } from "js-yaml";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { sqlcCheck, sqlcGenerate } from "./contract-sqlc";
 
 import { COMPANY_NAME } from "@sai/core/constants";
 import { BUSINESS_TIME_ZONE } from "@sai/core/business-date";
@@ -225,11 +232,33 @@ const TUJUAN_TATA_LETAK_STOK_GO = join(
 
 const CEK = process.argv.includes("--cek");
 
+/**
+ * Ambang alarm TERUKUR satu jalur (09 §11). Tanpa kunci ini jalurnya memakai
+ * bawaan `numbers.queue_age_*` dan TIDAK punya ambang durasi — keadaan yang
+ * benar untuk jalur yang sampelnya belum cukup.
+ */
+interface LaneAlarm {
+  queue_age_warn_seconds: number;
+  queue_age_late_seconds: number;
+  /** Batas p95 durasi pekerjaan jalur ini; tanpa kunci = tidak dinilai. */
+  duration_p95_warn_ms?: number;
+  /** Jumlah pekerjaan yang menopang angka di atas — WAJIB ≥ ALARM_MIN_SAMPLES. */
+  samples: number;
+  /** Jendela data sumbernya, `YYYY-MM-DD/YYYY-MM-DD` — untuk pembaca, bukan mesin. */
+  window: string;
+}
+/**
+ * Sampel minimum agar sebuah jalur BOLEH punya ambang sendiri. Dengan 200,
+ * p99 masih ditopang dua pengamatan di atasnya; di bawahnya persentil ekor
+ * adalah satu baris yang kebetulan, bukan sebaran (09 §11).
+ */
+const ALARM_MIN_SAMPLES = 200;
 interface Lane {
   description: string;
   single_instance: boolean;
   /** Pagar memori per pekerjaan (MiB heap Go); tanpa kunci = tanpa pagar. */
   memory_fence_mib?: number;
+  alarm?: LaneAlarm;
 }
 /** Butir kunci idempotensi denyut — SELALU UTC. */
 const SCHEDULE_GRAINS = ["hour", "day"] as const;
@@ -399,6 +428,32 @@ function baca(): Kontrak {
     if (f !== undefined && (!Number.isInteger(f) || f < 64)) {
       salah.push(`jalur \`${nama}\`: memory_fence_mib harus bilangan bulat ≥ 64 (kini: ${String(f)})`);
     }
+    /* Ambang per-jalur hanya boleh LAHIR dari pengukuran yang cukup: ambang
+       yang dikarang atas tiga pekerjaan berteriak untuk hal normal, dan itu
+       lebih buruk daripada bawaan yang jujur (09 §11). */
+    const a = lane.alarm;
+    if (a !== undefined) {
+      for (const kunci of ["queue_age_warn_seconds", "queue_age_late_seconds", "samples"] as const) {
+        if (!Number.isInteger(a[kunci]) || a[kunci] < 1) {
+          salah.push(`jalur \`${nama}\`: alarm.${kunci} harus bilangan bulat ≥ 1 (kini: ${String(a[kunci])})`);
+        }
+      }
+      if (a.queue_age_warn_seconds >= a.queue_age_late_seconds) {
+        salah.push(`jalur \`${nama}\`: alarm.queue_age_warn_seconds tidak di bawah queue_age_late_seconds`);
+      }
+      if (a.duration_p95_warn_ms !== undefined && (!Number.isInteger(a.duration_p95_warn_ms) || a.duration_p95_warn_ms < 1)) {
+        salah.push(`jalur \`${nama}\`: alarm.duration_p95_warn_ms harus bilangan bulat ≥ 1`);
+      }
+      if (Number.isInteger(a.samples) && a.samples < ALARM_MIN_SAMPLES) {
+        salah.push(
+          `jalur \`${nama}\`: alarm atas ${a.samples} sampel — minimum ${ALARM_MIN_SAMPLES}. ` +
+            "Jalur yang sampelnya belum cukup memakai bawaan `numbers.queue_age_*`."
+        );
+      }
+      if (typeof a.window !== "string" || !/^\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}$/.test(a.window)) {
+        salah.push(`jalur \`${nama}\`: alarm.window harus \`YYYY-MM-DD/YYYY-MM-DD\` (kini: ${String(a.window)})`);
+      }
+    }
   }
 
   const n = k.numbers;
@@ -560,6 +615,26 @@ const JANGAN_SUNTING = (versi: number, perintah: string) => `DIBANGKITKAN DARI \
  *
  * Kontrak versi ${versi}.`;
 
+/** Ambang efektif satu jalur: terukur bila ada `alarm:`, bawaan bila tidak. */
+function ambangJalur(k: Kontrak, nama: string) {
+  const a = k.lanes[nama]!.alarm;
+  return a === undefined
+    ? {
+        warn: k.numbers.queue_age_warn_seconds,
+        late: k.numbers.queue_age_late_seconds,
+        durasiMs: null as number | null,
+        terukur: false,
+        sampel: 0,
+      }
+    : {
+        warn: a.queue_age_warn_seconds,
+        late: a.queue_age_late_seconds,
+        durasiMs: a.duration_p95_warn_ms ?? null,
+        terukur: true,
+        sampel: a.samples,
+      };
+}
+
 function bangkitkan(k: Kontrak): string {
   const kinds = Object.keys(k.kinds).sort();
   const lanes = Object.keys(k.lanes).sort();
@@ -577,7 +652,13 @@ function bangkitkan(k: Kontrak): string {
   const barisLane = lanes
     .map((nama) => {
       const d = k.lanes[nama]!;
-      return `  ${nama}: { singleInstance: ${d.single_instance === true}, memoryFenceMiB: ${d.memory_fence_mib ?? 0} },`;
+      const a = ambangJalur(k, nama);
+      return (
+        `  ${nama}: {\n    singleInstance: ${d.single_instance === true},\n` +
+        `    memoryFenceMiB: ${d.memory_fence_mib ?? 0},\n` +
+        `    alarm: { queueAgeWarnSeconds: ${a.warn}, queueAgeLateSeconds: ${a.late}, ` +
+        `durationP95WarnMs: ${a.durasiMs ?? "null"}, measured: ${a.terukur}, samples: ${a.sampel} },\n  },`
+      );
     })
     .join("\n");
 
@@ -624,11 +705,26 @@ export const JOB_KINDS: Readonly<Record<JobKind, JobKindSpec>> = {
 ${barisKind}
 };
 
+/**
+ * Ambang alarm satu jalur (09 §11). \`measured: false\` = bawaan
+ * \`numbers.queue_age_*\` karena sampelnya belum cukup (< ${ALARM_MIN_SAMPLES}); ambang
+ * durasinya kemudian \`null\` (tidak dinilai), bukan angka karangan.
+ */
+export interface JobLaneAlarm {
+  queueAgeWarnSeconds: number;
+  queueAgeLateSeconds: number;
+  durationP95WarnMs: number | null;
+  measured: boolean;
+  /** Pekerjaan yang menopang ambang terukur; 0 untuk bawaan. */
+  samples: number;
+}
+
 export interface JobLaneSpec {
   /** Lebih dari satu proses jalur ini adalah kesalahan konfigurasi. */
   singleInstance: boolean;
   /** Pagar memori per pekerjaan, MiB heap; 0 = tanpa pagar. */
   memoryFenceMiB: number;
+  alarm: JobLaneAlarm;
 }
 
 export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
@@ -714,8 +810,12 @@ export const IDLE_MS = ${n.idle_ms};
 
 export const DONE_RETENTION_DAYS = ${n.done_retention_days};
 
+/** BAWAAN — dipakai jalur yang tidak punya \`alarm:\` terukur (\`JOB_LANES[*].alarm\`). */
 export const QUEUE_AGE_WARN_SECONDS = ${n.queue_age_warn_seconds};
 export const QUEUE_AGE_LATE_SECONDS = ${n.queue_age_late_seconds};
+
+/** Sampel minimum agar jalur boleh punya ambang sendiri — ditegakkan generator. */
+export const ALARM_MIN_SAMPLES = ${ALARM_MIN_SAMPLES};
 
 /**
  * Denyut pagar jalur tunggal-instans — dipakai \`workers/runner.ts\` untuk
@@ -851,9 +951,13 @@ function bangkitkanGo(k: Kontrak): string {
   const petaLane = ratakan(
     lanes.map((nama) => {
       const d = k.lanes[nama]!;
+      const a = ambangJalur(k, nama);
       return {
         kiri: `Lane${pengenalGo(nama)}:`,
-        kanan: `{SingleInstance: ${d.single_instance === true}, MemoryFenceMiB: ${d.memory_fence_mib ?? 0}},`,
+        kanan:
+          `{SingleInstance: ${d.single_instance === true}, MemoryFenceMiB: ${d.memory_fence_mib ?? 0}, ` +
+          `Alarm: LaneAlarm{QueueAgeWarn: ${a.warn} * time.Second, QueueAgeLate: ${a.late} * time.Second, ` +
+          `DurationP95Warn: ${a.durasiMs ?? 0} * time.Millisecond, Measured: ${a.terukur}, Samples: ${a.sampel}}},`,
       };
     })
   );
@@ -958,6 +1062,18 @@ type LaneSpec struct {
 \tSingleInstance bool
 \t// MemoryFenceMiB: pagar memori per pekerjaan (MiB heap Go); 0 = tanpa pagar.
 \tMemoryFenceMiB int
+\tAlarm          LaneAlarm
+}
+
+// LaneAlarm: ambang alarm satu jalur (09 §11). Measured=false berarti bawaan
+// QueueAgeWarn/QueueAgeLate karena sampelnya belum cukup; DurationP95Warn
+// kemudian 0 (tidak dinilai).
+type LaneAlarm struct {
+\tQueueAgeWarn    time.Duration
+\tQueueAgeLate    time.Duration
+\tDurationP95Warn time.Duration
+\tMeasured        bool
+\tSamples         int
 }
 
 // JobLanes memetakan setiap jalur ke sifatnya.
@@ -1053,8 +1169,14 @@ const (
 
 \tDoneRetentionDays = ${n.done_retention_days}
 
+\t// Bawaan ambang umur antrean — untuk jalur tanpa \`alarm:\` terukur
+\t// (JobLanes[*].Alarm memuat nilai efektif setiap jalur).
 \tQueueAgeWarn = ${n.queue_age_warn_seconds} * time.Second
 \tQueueAgeLate = ${n.queue_age_late_seconds} * time.Second
+
+\t// AlarmMinSamples: sampel minimum agar jalur boleh punya ambang sendiri
+\t// (JobLanes[*].Alarm.Measured) — ditegakkan generator.
+\tAlarmMinSamples = ${ALARM_MIN_SAMPLES}
 
 \t// Denyut pagar jalur tunggal-instans (\`jobs.LaneLock\`; padanan Node
 \t// \`@sai/db/session-lock\`). Dijamin generator:
@@ -2820,13 +2942,14 @@ if (CEK) {
     }
     if (readFileSync(jalur, "utf8") !== isi) basi.push(`${jalur} BASI`);
   }
+  basi.push(...sqlcCheck(AKAR));
   if (basi.length > 0) {
-    console.error("✗ berkas bangkitan tidak sinkron dengan contract/*.yaml:");
+    console.error("✗ berkas bangkitan tidak sinkron dengan contract/*:");
     for (const b of basi) console.error(`  • ${b}`);
     console.error("  Jalankan `bun run contract:gen` lalu commit hasilnya.");
     process.exit(1);
   }
-  console.log(`✓ kontrak dan ${berkas.length} berkas bangkitannya sinkron.`);
+  console.log(`✓ kontrak dan ${berkas.length} berkas bangkitannya sinkron (+ sidik sqlc).`);
   process.exit(0);
 }
 
@@ -2835,6 +2958,7 @@ for (const { jalur, isi } of berkas) {
   writeFileSync(jalur, isi);
   console.log(`✓ ${jalur}`);
 }
+console.log(sqlcGenerate(AKAR, process.argv.includes("--sqlc")));
 console.log(
   `  ${Object.keys(kontrak.kinds).length} kind · ${Object.keys(kontrak.lanes).length} jalur · ` +
     `${kontrak.statuses.length} status · ${KUNCI_ANGKA.length} angka · ` +

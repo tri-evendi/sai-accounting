@@ -69,6 +69,24 @@ lanes:
   ledger:
     description: pekerjaan yang MENULIS buku besar — pintu posting tunggal (I-2)
     single_instance: true
+    # Ambang alarm TERUKUR (09 §11) — satu-satunya jalur dengan sampel cukup
+    # (≥ 200, ditegakkan generator). Produksi `sai_control.jobs` 21–23 Okt 2026,
+    # 992 `ledger.recurring` (880 di antaranya ditulis sebelum PR #741 dengan
+    # `run_after` UTC lawan `started_at` WIB: tunggunya dikoreksi −25.200 dtk):
+    #   tunggu (started_at − run_after) p50 2,1 · p95 5,7 · p99 8,3 · maks 14,8 dtk
+    #   durasi (finished_at − started_at) p95 443 ms (112 baris pasca-#741: 965 ms;
+    #   runtime_samples, 576 sampel: 552 ms) · maks 1.580 ms
+    # Aturan (09 §11): warn = maks(10 × p99 tunggu, 2 × upkeep) = 120;
+    # late = maks(20 × maks tunggu, 5 × upkeep) = 300; durasi = 10 × p95
+    # tertinggi dari ketiga sumber, dibulatkan ke 5 dtk = 10.000 ms.
+    # SETEL ULANG bila p99 tunggu > 12 dtk (10 × p99 melewati lantai 120):
+    # ledakan di awal jam tumbuh bersama jumlah dokumen berulang.
+    alarm:
+      queue_age_warn_seconds: 120
+      queue_age_late_seconds: 300
+      duration_p95_warn_ms: 10000
+      samples: 992
+      window: 2026-10-21/2026-10-23
   integration:
     description: integrasi luar (e-faktur, feed bank); tidak menyentuh pembukuan
     single_instance: false
@@ -401,7 +419,9 @@ numbers:
   # Retensi baris `done`. `dead` dan `failed` TIDAK pernah dipangkas.
   done_retention_days: 14
 
-  # Ambang umur antrean — satu pasang untuk semua jalur.
+  # Ambang umur antrean BAWAAN — dipakai setiap jalur yang tidak punya
+  # `alarm:` terukur di `lanes:` (sampelnya < 200: interactive, bulk,
+  # schedule, tenant, schema, integration per 23 Okt 2026, 09 §11).
   queue_age_warn_seconds: 420
   queue_age_late_seconds: 600
 

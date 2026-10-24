@@ -17,11 +17,13 @@ import "server-only";
  *     jalur tulis ke yang tayang: `publishSiteContentDrafts`.
  *   • `site_content_previews`: hash token pratinjau berumur pendek.
  *
- * ══ DUAL-WRITE KE `site_contents` (paruh expand) ═════════════════════════
- * Setiap perubahan pada yang tayang juga ditulis ke tabel lama di transaksi
- * yang sama, supaya image sebelum migration 0008 (yang hanya membaca
- * `site_contents`) menampilkan kalimat yang sama bila rilis ini di-rollback.
- * Dicabut bersama tabelnya di migration contract berikutnya.
+ * ══ `site_contents` SUDAH DICABUT (paruh contract, migration platform 0010) ═
+ * Rilis 0.18.0 (migration 0008) menulis setiap perubahan pada yang tayang
+ * juga ke tabel lama, supaya image sebelum 0008 tetap benar bila di-rollback.
+ * Sesudah 0.18.x berjalan di produksi tanpa satu image pun yang membaca tabel
+ * itu, dual-write-nya dicabut dan tabelnya di-DROP (0010, didaftarkan di
+ * `KONTRAKSI_DIIZINKAN`, tests/expand-contract.test.ts). Konsekuensinya:
+ * rollback ke image SEBELUM 0.18.0 kini menampilkan kalimat bawaan kamus.
  *
  * ══ GAGAL-LUNAK DI JALUR PUBLIK ═══════════════════════════════════════════
  * Yang gagal dibaca di sini adalah kalimat pemasaran. Platform yang mati
@@ -359,24 +361,18 @@ export interface PublishResult {
 }
 
 /**
- * Tulis satu perubahan ke yang tayang, beserta salinannya di `site_contents`.
- * `value = null` = kembali ke bawaan (baris dihapus di kedua tabel).
+ * Tulis satu perubahan ke yang tayang. `value = null` = kembali ke bawaan
+ * (barisnya dihapus).
  */
 async function applyPublished(tx: Tx, change: ContentChange, actor: string) {
   const { locale, key, value } = change;
   if (value === null) {
     await tx.siteContentEntry.deleteMany({ where: { locale, key, status: "published" } });
-    await tx.siteContent.deleteMany({ where: { locale, key } });
     return;
   }
   await tx.siteContentEntry.upsert({
     where: { locale_key_status: { locale, key, status: "published" } },
     create: { locale, key, status: "published", value, updatedBy: actor },
-    update: { value, updatedBy: actor },
-  });
-  await tx.siteContent.upsert({
-    where: { locale_key: { locale, key } },
-    create: { locale, key, value, updatedBy: actor },
     update: { value, updatedBy: actor },
   });
 }
@@ -411,7 +407,7 @@ async function recordPublication(
 
 /**
  * Terbitkan SEMUA draf dalam satu transaksi: yang tayang berubah, satu
- * penerbitan + revisinya tercatat, draf terhapus, `site_contents` ikut.
+ * penerbitan + revisinya tercatat, draf terhapus.
  *
  * Draf untuk kunci yang sudah tidak ada di kamus (`isEditable` false) tidak
  * diterbitkan dan tetap tinggal sebagai draf; konsol menampilkannya sebagai
@@ -483,7 +479,6 @@ export async function purgeSiteContentKeys(keys: readonly string[], actor: strin
       publicationId = await recordPublication(tx, "purge", changes, actor, null);
     }
     await tx.siteContentEntry.deleteMany({ where: { key: { in: valid } } });
-    await tx.siteContent.deleteMany({ where: { key: { in: valid } } });
     return { publicationId, changes };
   });
   if (result.changes.length > 0) await bumpCacheSignal(platformDb, "site-content");

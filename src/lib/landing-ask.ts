@@ -20,7 +20,7 @@
  *   • tiga bahasa (`tests/i18n.test.ts` menuntut kelengkapannya), dan kalimat
  *     yang dipaku di sini akan tetap berbahasa Indonesia bagi pembaca en/zh;
  *   • kunci `landing.*` BISA DISUNTING OPERATOR dari `/operator/content`
- *     (tabel `site_contents`). Kalimat yang dipaku di kode diam-diam lolos
+ *     (tabel `site_content_entries`). Kalimat yang dipaku di kode diam-diam lolos
  *     dari permukaan yang dibuat untuk menyuntingnya.
  *
  * ══ MURNI: MENERIMA BOOLEAN, TIDAK MEMBACANYA SENDIRI ══════════════════════

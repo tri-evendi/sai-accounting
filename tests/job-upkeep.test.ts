@@ -17,11 +17,16 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  ALARM_MIN_SAMPLES,
+  DURATION_MIN_WINDOW_SAMPLES,
   QUEUE_AGE_LATE_SECONDS,
   QUEUE_AGE_WARN_SECONDS,
+  laneAlarm,
+  laneDurationVerdict,
   laneQueueHealth,
   queueHealth,
 } from "@sai/core/queue-health";
+import { JOB_LANES } from "@sai/core/generated/job-kinds";
 import { DONE_RETENTION_DAYS, LEASE_STALE_MS } from "@sai/core/job-backoff";
 import { UPKEEP_MS } from "../workers/runner";
 
@@ -110,10 +115,61 @@ describe("ringkasan lintas jalur: TERBURUK, bukan rata-rata", () => {
     expect(queueHealth([]).status).toBe("idle");
   });
 
-  it("ambang ikut dilaporkan supaya pembacanya tidak menebak", () => {
-    const v = queueHealth([]);
-    expect(v.warnAfterSeconds).toBe(QUEUE_AGE_WARN_SECONDS);
-    expect(v.lateAfterSeconds).toBe(QUEUE_AGE_LATE_SECONDS);
+  it("ambang ikut dilaporkan PER JALUR supaya pembacanya tidak menebak", () => {
+    const v = laneQueueHealth("ledger", 0, null, kini);
+    expect(v.warnAfterSeconds).toBe(laneAlarm("ledger").queueAgeWarnSeconds);
+    expect(v.lateAfterSeconds).toBe(laneAlarm("ledger").queueAgeLateSeconds);
+    const asing = laneQueueHealth("(tak dikenal)", 0, null, kini);
+    expect(asing.warnAfterSeconds).toBe(QUEUE_AGE_WARN_SECONDS);
+    expect(asing.lateAfterSeconds).toBe(QUEUE_AGE_LATE_SECONDS);
+    expect(asing.measured).toBe(false);
+  });
+});
+
+describe("ambang per jalur (09 §11): terukur atau bawaan, tidak pernah dikarang", () => {
+  const kini = new Date("2026-10-20T10:00:00Z");
+  const lalu = (detik: number) => new Date(kini.getTime() - detik * 1000);
+
+  it("setiap jalur punya ambang, peringatan SEBELUM bunyi", () => {
+    for (const [lane, spec] of Object.entries(JOB_LANES)) {
+      expect(spec.alarm.queueAgeWarnSeconds, lane).toBeLessThan(spec.alarm.queueAgeLateSeconds);
+    }
+  });
+
+  it("ambang terukur ditopang sampel cukup; bawaan tidak punya ambang durasi", () => {
+    for (const [lane, spec] of Object.entries(JOB_LANES)) {
+      const a = spec.alarm;
+      if (a.measured) {
+        expect(a.samples, lane).toBeGreaterThanOrEqual(ALARM_MIN_SAMPLES);
+      } else {
+        expect(a.queueAgeWarnSeconds, lane).toBe(QUEUE_AGE_WARN_SECONDS);
+        expect(a.queueAgeLateSeconds, lane).toBe(QUEUE_AGE_LATE_SECONDS);
+        expect(a.durationP95WarnMs, lane).toBeNull();
+        expect(a.samples, lane).toBe(0);
+      }
+    }
+  });
+
+  it("jalur `ledger` memakai ambang terukurnya, bukan pasangan bawaan", () => {
+    const a = laneAlarm("ledger");
+    expect(a.measured).toBe(true);
+    expect(laneQueueHealth("ledger", 1, lalu(a.queueAgeWarnSeconds - 1), kini).status).toBe("ok");
+    expect(laneQueueHealth("ledger", 1, lalu(a.queueAgeWarnSeconds), kini).status).toBe("warn");
+    expect(laneQueueHealth("ledger", 1, lalu(a.queueAgeLateSeconds), kini).status).toBe("late");
+    // Umur yang sama di jalur ber-ambang bawaan masih lancar.
+    if (a.queueAgeLateSeconds < QUEUE_AGE_WARN_SECONDS) {
+      expect(laneQueueHealth("bulk", 1, lalu(a.queueAgeLateSeconds), kini).status).toBe("ok");
+    }
+  });
+
+  it("vonis durasi: tanpa ambang `unset`, sampel jendela kurang `insufficient`", () => {
+    const batas = laneAlarm("ledger").durationP95WarnMs!;
+    expect(batas).toBeGreaterThan(0);
+    expect(laneDurationVerdict("bulk", 999_999, 1000)).toBe("unset");
+    expect(laneDurationVerdict("ledger", batas + 1, DURATION_MIN_WINDOW_SAMPLES - 1)).toBe("insufficient");
+    expect(laneDurationVerdict("ledger", null, 0)).toBe("insufficient");
+    expect(laneDurationVerdict("ledger", batas, DURATION_MIN_WINDOW_SAMPLES)).toBe("ok");
+    expect(laneDurationVerdict("ledger", batas + 1, DURATION_MIN_WINDOW_SAMPLES)).toBe("slow");
   });
 });
 

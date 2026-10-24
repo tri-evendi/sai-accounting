@@ -56,6 +56,8 @@ const PERNAH_ADA: Readonly<Record<string, string>> = {
     "Pindah ke basis data KENDALI di #104 (multi-perusahaan): pengguna adalah milik akun, bukan milik satu buku.",
   cash_accounts: "Dicabut — digantikan akun bertipe `cash_bank` di bagan akun.",
   stock: "Dicabut — saldo stok dihitung dari mutasi, bukan disimpan sebagai tabel tersendiri.",
+  site_contents:
+    "Dicabut (platform 0010, paruh contract) — digantikan `site_content_entries` (draf → terbit + riwayat, platform 0008).",
 };
 
 /* Pengutip identifier: backtick (arsip MariaDB) ATAU tanda kutip ganda (PostgreSQL). */

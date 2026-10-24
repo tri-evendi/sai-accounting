@@ -69,6 +69,8 @@ import { METRICS_WINDOW_MINUTES, drainMinutes, type LaneMetrics } from "@sai/pla
 import {
   QUEUE_AGE_LATE_SECONDS,
   QUEUE_AGE_WARN_SECONDS,
+  laneAlarm,
+  laneDurationVerdict,
   type LaneQueueHealth,
   type QueueHealthStatus,
 } from "@sai/core/queue-health";
@@ -317,6 +319,21 @@ export default async function OperatorSchedulerPage() {
         <span style={TABULAR}>{lane.ageSeconds === null ? "—" : lane.ageSeconds}</span>
       ),
     },
+    {
+      key: "threshold",
+      /* Ambang PER JALUR (09 §11): "peringatan / terlambat" dalam detik, satuan
+         yang sama dengan kolom umur. Jalur yang sampelnya belum cukup memakai
+         bawaan dan ditandai — supaya angka bawaan tidak terbaca sebagai hasil
+         pengukuran. */
+      title: t("operator.scheduler.queueColThreshold"),
+      align: "right",
+      render: (_v, lane) => (
+        <span style={TABULAR}>
+          {`${lane.warnAfterSeconds} / ${lane.lateAfterSeconds}`}
+          {lane.measured ? "" : ` ${t("operator.scheduler.queueThresholdDefault")}`}
+        </span>
+      ),
+    },
   ];
 
   /*
@@ -363,7 +380,24 @@ export default async function OperatorSchedulerPage() {
       key: "p95",
       title: t("operator.scheduler.metricsColP95"),
       align: "right",
-      render: (_v, m) => angkaAtauStrip(m.p95Ms),
+      /* Lencana HANYA bila p95 jendela melewati batas jalurnya dengan sampel
+         cukup (`laneDurationVerdict`, 09 §11) — teks ikut lencana, warna bukan
+         sinyal tunggal (MASTER.md). Jalur tanpa batas terukur: kolom batas `—`. */
+      render: (_v, m) =>
+        laneDurationVerdict(m.lane, m.p95Ms, m.samples) === "slow" ? (
+          <span style={{ display: "inline-flex", gap: SPACE_XS, alignItems: "center" }}>
+            {angkaAtauStrip(m.p95Ms)}
+            <Badge variant="warning">{t("operator.scheduler.metricsP95Slow")}</Badge>
+          </span>
+        ) : (
+          angkaAtauStrip(m.p95Ms)
+        ),
+    },
+    {
+      key: "p95Limit",
+      title: t("operator.scheduler.metricsColP95Limit"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(laneAlarm(m.lane).durationP95WarnMs),
     },
     {
       key: "p99",

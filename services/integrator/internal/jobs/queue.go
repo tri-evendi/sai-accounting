@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/contract"
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/controlsql"
 )
 
 // ══ KLAIM WAJIB SATU PERNYATAAN ════════════════════════════════════════════
@@ -23,10 +24,15 @@ import (
 // berarti dua dump menulis ke satu kunci objek. Pernyataan di bawah memilih dan
 // menulis dalam satu pernyataan, jadi celah itu tidak ada.
 //
-// ══ PARAMETER SELALU TERIKAT ═══════════════════════════════════════════════
+// ══ SQL-NYA DI `contract/jobs.sql`, BUKAN DI SINI (09 §3.5) ════════════════
 //
-// Tidak ada `fmt.Sprintf` ke dalam teks kueri di berkas ini. Satu-satunya hal
-// yang dirangkai ke SQL adalah nama kolom yang ditulis tangan di sini.
+// Teks kueri antrean dibangkitkan `sqlc` dari `contract/jobs.sql` ke paket
+// `internal/controlsql` (bun run contract:gen). Berkas ini memegang ATURAN di
+// sekitar kuerinya — pemeriksaan kontrak, batas pesan, backoff, makna nol
+// baris — dan memanggil fungsi bertipe bangkitan. Parameter selalu terikat;
+// tidak ada teks yang dirangkai ke SQL. Pengecualiannya pagar jalur
+// (`TryLaneLock`, `lanelock.go`): itu fungsi sesi PostgreSQL atas SATU koneksi
+// yang dipegang, bukan kueri tabel.
 //
 // ══ JAM KOLOM `jobs` ADALAH JAM BASIS DATA — GO TIDAK PERNAH MENGIRIM INSTAN ══
 //
@@ -77,18 +83,16 @@ type Job struct {
 // Queue adalah sambungan SQL ke tabel `jobs` di basis data kendali.
 type Queue struct {
 	pool *pgxpool.Pool
+	sql  *controlsql.Queries
 }
 
 // New membungkus kolam koneksi kendali.
-func New(pool *pgxpool.Pool) *Queue { return &Queue{pool: pool} }
+func New(pool *pgxpool.Pool) *Queue { return &Queue{pool: pool, sql: controlsql.New(pool)} }
 
 // ErrNoJob dipulangkan Claim ketika tidak ada yang menunggu. Ia bukan
 // kegagalan, dan karena itu diberi nama sendiri alih-alih `nil, nil`: pemanggil
 // yang lupa memeriksa `nil` pada bentuk kedua akan dereference pointer kosong.
 var ErrNoJob = errors.New("tidak ada pekerjaan yang menunggu")
-
-const kolomPulang = `id, kind, tenant_id, company_id, payload, status, attempts,
-	       max_attempts, cancel_requested, result_ref`
 
 // Claim mengambil satu pekerjaan dari daftar `kind` yang DIKLAIM pekerja ini.
 //
@@ -149,29 +153,16 @@ func (q *Queue) Claim(
 		daftar = append(daftar, string(k))
 	}
 
-	row := q.pool.QueryRow(ctx, `
-		UPDATE jobs SET status = 'claimed', claimed_at = now(), claimed_by = $2,
-		                updated_at = now()
-		WHERE id = (
-		  SELECT id FROM jobs
-		  WHERE status = 'queued'
-		    AND run_after <= now()
-		    AND kind = ANY($1)
-		  ORDER BY priority DESC, run_after
-		  FOR UPDATE SKIP LOCKED
-		  LIMIT 1
-		)
-		RETURNING `+kolomPulang, daftar, workerID)
-
-	var j Job
-	err := row.Scan(&j.ID, &j.Kind, &j.TenantID, &j.CompanyID, &j.Payload, &j.Status,
-		&j.Attempts, &j.MaxAttempts, &j.CancelRequested, &j.ResultRef)
+	// SATU pernyataan (`UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED)`)
+	// — `contract/jobs.sql` → ClaimJob.
+	r, err := q.sql.ClaimJob(ctx, controlsql.ClaimJobParams{WorkerID: workerID, Kinds: daftar})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNoJob
 	}
 	if err != nil {
 		return nil, fmt.Errorf("klaim jalur %s: %w", lane, err)
 	}
+	j := Job(r)
 	return &j, nil
 }
 
@@ -230,13 +221,14 @@ func (q *Queue) Publish(ctx context.Context, p Publication) (int64, bool, error)
 	}
 	// Jeda dikirim sebagai DURASI; `now()` server yang menjadikannya waktu —
 	// bentuk yang sama dengan `Fail` (lihat "JAM KOLOM `jobs`" di atas).
-	var id int64
-	err := q.pool.QueryRow(ctx, `
-		INSERT INTO jobs (kind, company_id, payload, status, dedupe_key, max_attempts, run_after, updated_at)
-		VALUES ($1, $2, $3::jsonb, 'queued', $4, $5, now() + $6::bigint * interval '1 microsecond', now())
-		ON CONFLICT (dedupe_key) DO NOTHING
-		RETURNING id`, string(p.Kind), p.CompanyID, string(p.Payload), p.DedupeKey, spec.MaxAttempts,
-		p.Delay.Microseconds()).Scan(&id)
+	id, err := q.sql.PublishJob(ctx, controlsql.PublishJobParams{
+		Kind:        p.Kind,
+		CompanyID:   p.CompanyID,
+		Payload:     string(p.Payload),
+		DedupeKey:   p.DedupeKey,
+		MaxAttempts: spec.MaxAttempts,
+		DelayUs:     p.Delay.Microseconds(),
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, false, nil
 	}
@@ -253,13 +245,11 @@ func (q *Queue) Publish(ctx context.Context, p Publication) (int64, bool, error)
 // mungkin sudah diklaim pekerja lain. Melanjutkan berarti dua pekerja menulis
 // hasil yang sama.
 func (q *Queue) RenewLease(ctx context.Context, id int64, workerID string) (bool, error) {
-	tag, err := q.pool.Exec(ctx, `
-		UPDATE jobs SET claimed_at = now(), updated_at = now()
-		WHERE id = $1 AND status = 'claimed' AND claimed_by = $2`, id, workerID)
+	n, err := q.sql.RenewLease(ctx, controlsql.RenewLeaseParams{ID: id, WorkerID: workerID})
 	if err != nil {
 		return false, fmt.Errorf("perpanjang lease #%d: %w", id, err)
 	}
-	return tag.RowsAffected() == 1, nil
+	return n == 1, nil
 }
 
 // ReportProgress melaporkan kemajuan (0–100) dan sekaligus memperpanjang lease.
@@ -270,13 +260,11 @@ func (q *Queue) ReportProgress(ctx context.Context, id int64, workerID string, p
 	if persen > 100 {
 		persen = 100
 	}
-	tag, err := q.pool.Exec(ctx, `
-		UPDATE jobs SET progress = $3, claimed_at = now(), updated_at = now()
-		WHERE id = $1 AND status = 'claimed' AND claimed_by = $2`, id, workerID, persen)
+	n, err := q.sql.ReportProgress(ctx, controlsql.ReportProgressParams{Progress: persen, ID: id, WorkerID: workerID})
 	if err != nil {
 		return false, fmt.Errorf("laporkan kemajuan #%d: %w", id, err)
 	}
-	return tag.RowsAffected() == 1, nil
+	return n == 1, nil
 }
 
 // Complete menandai pekerjaan selesai.
@@ -286,14 +274,11 @@ func (q *Queue) ReportProgress(ctx context.Context, id int64, workerID string, p
 // dan izinnya diperiksa SAAT MENGUNDUH — pekerjaan hidup berjam-jam, dan orang
 // yang aksesnya dicabut di antaranya tidak boleh tetap menerima hasilnya.
 func (q *Queue) Complete(ctx context.Context, id int64, workerID string, resultRef *string) (bool, error) {
-	tag, err := q.pool.Exec(ctx, `
-		UPDATE jobs SET status = 'done', progress = 100, result_ref = $3,
-		                finished_at = now(), updated_at = now()
-		WHERE id = $1 AND status = 'claimed' AND claimed_by = $2`, id, workerID, resultRef)
+	n, err := q.sql.CompleteJob(ctx, controlsql.CompleteJobParams{ResultRef: resultRef, ID: id, WorkerID: workerID})
 	if err != nil {
 		return false, fmt.Errorf("selesaikan #%d: %w", id, err)
 	}
-	return tag.RowsAffected() == 1, nil
+	return n == 1, nil
 }
 
 // HasilGagal menyatakan ke mana sebuah kegagalan membawa barisnya.
@@ -308,11 +293,9 @@ type HasilGagal struct {
 // kegagalan yang ditimpa menjadi kosong oleh percobaan yang akhirnya berhasil
 // menghapus satu-satunya petunjuk kenapa ia gagal dua kali lebih dulu.
 func (q *Queue) Fail(ctx context.Context, id int64, workerID, pesan string, acak func() float64) (*HasilGagal, error) {
-	var attempts, maxAttempts int
-	err := q.pool.QueryRow(ctx, `
-		SELECT attempts, max_attempts FROM jobs
-		WHERE id = $1 AND status = 'claimed' AND claimed_by = $2`, id, workerID).
-		Scan(&attempts, &maxAttempts)
+	// Terkunci pada pemilik lease (`claimed_by`) — `contract/jobs.sql` →
+	// ClaimedAttempts.
+	milik, err := q.sql.ClaimedAttempts(ctx, controlsql.ClaimedAttemptsParams{ID: id, WorkerID: workerID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Barisnya sudah bukan milik pekerja ini. Menulis kegagalan di sini akan
 		// menaikkan `attempts` milik pekerjaan orang lain.
@@ -322,16 +305,15 @@ func (q *Queue) Fail(ctx context.Context, id int64, workerID, pesan string, acak
 		return nil, fmt.Errorf("baca percobaan #%d: %w", id, err)
 	}
 
-	attempts++
+	attempts, maxAttempts := milik.Attempts+1, milik.MaxAttempts
 	if len(pesan) > 8000 {
 		pesan = pesan[:8000]
 	}
 
 	if IsDead(attempts, maxAttempts) {
-		if _, err := q.pool.Exec(ctx, `
-			UPDATE jobs SET status = 'dead', attempts = $2, last_error = $3,
-			                finished_at = now(), updated_at = now()
-			WHERE id = $1`, id, attempts, pesan); err != nil {
+		if err := q.sql.MarkDead(ctx, controlsql.MarkDeadParams{
+			Attempts: attempts, LastError: pesan, ID: id,
+		}); err != nil {
 			return nil, fmt.Errorf("matikan #%d: %w", id, err)
 		}
 		return &HasilGagal{Status: contract.StatusDead}, nil
@@ -340,12 +322,9 @@ func (q *Queue) Fail(ctx context.Context, id int64, workerID, pesan string, acak
 	// Backoff dikirim sebagai DURASI; `now()` di server yang menjadikannya
 	// waktu — lihat "JAM KOLOM `jobs`" di atas.
 	tunda := Backoff(attempts, acak).Microseconds()
-	if _, err := q.pool.Exec(ctx, `
-		UPDATE jobs SET status = 'queued', attempts = $2, last_error = $3,
-		                run_after = now() + $4::bigint * interval '1 microsecond',
-		                claimed_at = NULL, claimed_by = NULL,
-		                updated_at = now()
-		WHERE id = $1`, id, attempts, pesan, tunda); err != nil {
+	if err := q.sql.Requeue(ctx, controlsql.RequeueParams{
+		Attempts: attempts, LastError: pesan, BackoffUs: tunda, ID: id,
+	}); err != nil {
 		return nil, fmt.Errorf("pulangkan #%d: %w", id, err)
 	}
 	return &HasilGagal{Status: contract.StatusQueued}, nil
@@ -356,9 +335,7 @@ func (q *Queue) Fail(ctx context.Context, id int64, workerID, pesan string, acak
 // Pekerja memeriksanya DI ANTARA langkah, tidak dipaksakan: membatalkan di
 // tengah satu langkah yang sedang menulis menghasilkan keadaan separuh.
 func (q *Queue) CancelRequested(ctx context.Context, id int64) (bool, error) {
-	var batal bool
-	err := q.pool.QueryRow(ctx,
-		`SELECT cancel_requested FROM jobs WHERE id = $1`, id).Scan(&batal)
+	batal, err := q.sql.CancelRequested(ctx, id)
 	if err != nil {
 		return false, fmt.Errorf("baca pembatalan #%d: %w", id, err)
 	}
@@ -380,20 +357,12 @@ func (q *Queue) ReclaimStale(ctx context.Context, basi time.Duration) (int64, er
 	// SELALU membunuh pekerjanya (kehabisan memori pada ekspor yang terlalu
 	// besar) harus akhirnya menjadi `dead`, bukan berputar selamanya memulangkan
 	// dan membunuh pekerja berikutnya.
-	tag, err := q.pool.Exec(ctx, `
-		UPDATE jobs
-		   SET status = CASE WHEN attempts + 1 >= max_attempts THEN 'dead' ELSE 'queued' END,
-		       attempts = attempts + 1,
-		       last_error = CASE WHEN last_error IS NULL THEN '' ELSE last_error || chr(10) END
-		                    || 'lease kedaluwarsa — pekerja diduga mati',
-		       finished_at = CASE WHEN attempts + 1 >= max_attempts THEN now() ELSE NULL END,
-		       claimed_at = NULL, claimed_by = NULL, updated_at = now()
-		 WHERE status = 'claimed'
-		   AND claimed_at < LOCALTIMESTAMP - $1::bigint * interval '1 microsecond'`, basiMikro)
+	// (SQL: `contract/jobs.sql` → ReclaimStale, dengan `attempts + 1`.)
+	n, err := q.sql.ReclaimStale(ctx, basiMikro)
 	if err != nil {
 		return 0, fmt.Errorf("pulangkan lease kedaluwarsa: %w", err)
 	}
-	return tag.RowsAffected(), nil
+	return n, nil
 }
 
 // ArchiveDone membuang baris `done` yang sudah melewati jendela retensi.
@@ -402,18 +371,16 @@ func (q *Queue) ReclaimStale(ctx context.Context, basi time.Duration) (int64, er
 // kegagalan adalah isi paling berharga di tabel ini, dan ia justru yang dicari
 // orang berbulan-bulan kemudian. Predikat yang melebar ke "sudah selesai" akan
 // membuang justru baris yang paling dicari orang.
-func (q *Queue) ArchiveDone(ctx context.Context, retensiHari int) (int64, error) {
+func (q *Queue) ArchiveDone(ctx context.Context, retensiHari int32) (int64, error) {
 	// Retensi dikirim sebagai jumlah hari; ambangnya dihitung server terhadap
 	// jam yang menulis `finished_at` (`now()` di Complete) — lihat "JAM KOLOM
 	// `jobs`".
-	tag, err := q.pool.Exec(ctx, `
-		DELETE FROM jobs
-		 WHERE status = 'done'
-		   AND finished_at < LOCALTIMESTAMP - $1::int * interval '1 day'`, retensiHari)
+	// (SQL: `contract/jobs.sql` → ArchiveDone, `status = 'done'` saja.)
+	n, err := q.sql.ArchiveDone(ctx, retensiHari)
 	if err != nil {
 		return 0, fmt.Errorf("buang baris done: %w", err)
 	}
-	return tag.RowsAffected(), nil
+	return n, nil
 }
 
 // TryLaneLock memagari jalur tunggal-instans.

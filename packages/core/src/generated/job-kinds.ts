@@ -80,21 +80,64 @@ export const JOB_KINDS: Readonly<Record<JobKind, JobKindSpec>> = {
   "tenant.conformance": { lane: "tenant", maxAttempts: 2, writesLedger: false },
 };
 
+/**
+ * Ambang alarm satu jalur (09 §11). `measured: false` = bawaan
+ * `numbers.queue_age_*` karena sampelnya belum cukup (< 200); ambang
+ * durasinya kemudian `null` (tidak dinilai), bukan angka karangan.
+ */
+export interface JobLaneAlarm {
+  queueAgeWarnSeconds: number;
+  queueAgeLateSeconds: number;
+  durationP95WarnMs: number | null;
+  measured: boolean;
+  /** Pekerjaan yang menopang ambang terukur; 0 untuk bawaan. */
+  samples: number;
+}
+
 export interface JobLaneSpec {
   /** Lebih dari satu proses jalur ini adalah kesalahan konfigurasi. */
   singleInstance: boolean;
   /** Pagar memori per pekerjaan, MiB heap; 0 = tanpa pagar. */
   memoryFenceMiB: number;
+  alarm: JobLaneAlarm;
 }
 
 export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
-  bulk: { singleInstance: false, memoryFenceMiB: 512 },
-  integration: { singleInstance: false, memoryFenceMiB: 0 },
-  interactive: { singleInstance: false, memoryFenceMiB: 0 },
-  ledger: { singleInstance: true, memoryFenceMiB: 0 },
-  schedule: { singleInstance: true, memoryFenceMiB: 0 },
-  schema: { singleInstance: true, memoryFenceMiB: 0 },
-  tenant: { singleInstance: true, memoryFenceMiB: 0 },
+  bulk: {
+    singleInstance: false,
+    memoryFenceMiB: 512,
+    alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+  },
+  integration: {
+    singleInstance: false,
+    memoryFenceMiB: 0,
+    alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+  },
+  interactive: {
+    singleInstance: false,
+    memoryFenceMiB: 0,
+    alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+  },
+  ledger: {
+    singleInstance: true,
+    memoryFenceMiB: 0,
+    alarm: { queueAgeWarnSeconds: 120, queueAgeLateSeconds: 300, durationP95WarnMs: 10000, measured: true, samples: 992 },
+  },
+  schedule: {
+    singleInstance: true,
+    memoryFenceMiB: 0,
+    alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+  },
+  schema: {
+    singleInstance: true,
+    memoryFenceMiB: 0,
+    alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+  },
+  tenant: {
+    singleInstance: true,
+    memoryFenceMiB: 0,
+    alarm: { queueAgeWarnSeconds: 420, queueAgeLateSeconds: 600, durationP95WarnMs: null, measured: false, samples: 0 },
+  },
 };
 
 /** `kind` milik setiap jalur — klausa `WHERE kind IN (…)` pekerjanya. */

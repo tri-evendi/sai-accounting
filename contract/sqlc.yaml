@@ -1,0 +1,64 @@
+# sqlc — kueri Go bertipe atas basis data KENDALI (09 §3.5).
+#
+# Dijalankan `bun run contract:gen` dengan `go run` atas versi yang dipatok di
+# `services/integrator/tools/sqlc/go.mod`; JANGAN memanggil `sqlc` lain.
+# `contract:gen --cek` tidak menjalankan sqlc — ia membandingkan sidik
+# masukan & keluaran di `internal/controlsql/sqlc.sum` (tanpa jaringan).
+#
+# Skema = migration kendali, berurutan. Prisma pemilik skema; tabel baru di
+# migration kendali mengubah sidik masukan dan menuntut pembangkitan ulang.
+version: "2"
+sql:
+  - engine: postgresql
+    schema: "../prisma/postgresql/control/*/migration.sql"
+    queries:
+      - jobs.sql
+      - trail.sql
+    gen:
+      go:
+        package: controlsql
+        out: ../services/integrator/internal/controlsql
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        output_db_file_name: db_gen.go
+        output_models_file_name: models_gen.go
+        output_files_suffix: _gen
+        # Hanya struct yang dipakai kueri di atas — bukan model setiap tabel
+        # kendali (pohon Go tidak punya urusan dengan `users`/`api_tokens`).
+        omit_unused_structs: true
+        overrides:
+          # `id` SERIAL (int4) dipegang Go sebagai int64 di seluruh pelari;
+          # pgx memeriksa rentangnya saat mengodekan.
+          - column: jobs.id
+            go_type: int64
+          - column: jobs.attempts
+            go_type: int
+          - column: jobs.max_attempts
+            go_type: int
+          - column: jobs.progress
+            go_type: int
+          # Kolom nullable yang Go hanya MENULIS (tidak pernah memindainya) dan
+          # selalu dengan nilai: tipe Go-nya `string`, bukan `*string`.
+          - column: jobs.claimed_by
+            go_type: string
+          - column: jobs.dedupe_key
+            go_type: string
+          - column: jobs.last_error
+            go_type: string
+          - column: conformance_runs.companies_checked
+            go_type: int
+          - column: conformance_runs.companies_failed
+            go_type: int
+          - column: conformance_runs.finding_count
+            go_type: int
+          - column: jobs.payload
+            go_type: encoding/json.RawMessage
+          # Kosakata dari `contract/kinds.yaml` — bukan string bebas.
+          - column: jobs.kind
+            go_type:
+              import: github.com/tri-evendi/sai-accounting/services/integrator/internal/contract
+              type: JobKind
+          - column: jobs.status
+            go_type:
+              import: github.com/tri-evendi/sai-accounting/services/integrator/internal/contract
+              type: JobStatus

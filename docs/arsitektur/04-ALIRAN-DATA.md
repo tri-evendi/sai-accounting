@@ -121,8 +121,9 @@ Isi halaman depan (`0008_site_content_publishing`) berbentuk draf → terbit:
 `SiteContentEntry` memegang yang tayang dan drafnya per kunci+bahasa,
 `SiteContentPublication` + `SiteContentRevision` mencatat setiap penerbitan
 beserta nilai sebelum/sesudah, dan `SiteContentPreview` menyimpan hash token
-pratinjau berumur 30 menit. `SiteContent` (tabel lama) tinggal sebagai paruh
-expand yang ditulis ulang setiap penerbitan sampai migration contract-nya.
+pratinjau berumur 30 menit. `SiteContent` (tabel lama `site_contents`)
+sudah dicabut: paruh contract-nya `0010_drop_site_contents`, dengan rilis
+expand 0.18.0.
 `CacheSignal` (`0009_cache_signals`) bukan data: satu versi per cache yang
 ditulis konsol tetapi dibaca `app-customer` / `svc-worker`; penulis
 menaikkannya, pembaca membacanya sekali per 5 detik per proses dan membaca

@@ -47,8 +47,9 @@ const TINGKAT = ["company", "control", "platform"] as const;
 /**
  * Kontraksi yang DIIZINKAN, satu entri per pernyataan.
  *
- * Kosong hari ini, dan bentuknya ditulis di sini supaya entri pertama tidak
- * perlu menebak apa yang harus dibuktikan. Setiap entri WAJIB menyebut rilis
+ * Entri pertama: `site_contents` (platform 0010, 23 Okt 2026). Bentuknya
+ * ditulis di sini supaya entri berikutnya tidak perlu menebak apa yang harus
+ * dibuktikan. Setiap entri WAJIB menyebut rilis
  * tempat paruh **expand**-nya sudah terkirim — sebab itulah satu-satunya yang
  * membuat kontraksi aman, dan satu-satunya yang tidak bisa disimpulkan dari
  * berkas SQL-nya sendiri.
@@ -63,7 +64,19 @@ const KONTRAKSI_DIIZINKAN: {
   pernyataan: string;
   expandDiRilis: string;
   sebab: string;
-}[] = [];
+}[] = [
+  {
+    migration: "platform/0010_drop_site_contents",
+    pernyataan: 'DROP TABLE IF EXISTS "site_contents"',
+    expandDiRilis: "0.18.0",
+    sebab:
+      "Paruh contract isi halaman depan (PR #750). Expand = migration platform 0008 " +
+      "(`site_content_entries`), terkirim di 0.18.0; sejak itu `site_contents` hanya " +
+      "ditulis ulang (dual-write) untuk rollback ke image sebelum 0.18.0 dan tidak dibaca " +
+      "kode 0.18.0+. Produksi 23 Okt 2026 (hanya-baca): image 0.19.1, site_contents 0 baris, " +
+      "site_content_entries 0 baris. Dual-write dan model `SiteContent` dicabut di commit yang sama.",
+  },
+];
 
 /**
  * Satu migration yang sudah diurai: pernyataannya, dan tabel yang IA sendiri

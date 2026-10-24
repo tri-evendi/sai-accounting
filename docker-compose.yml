@@ -52,6 +52,8 @@ x-env:
     COMPANY_DATABASE_READ_MAX_WAIT_MS:
     DB_CONNECTION_LIMIT:
     COMPANY_CLIENT_POOL_MAX:
+    # Plafon `ensureCompanyClientCapacity` (relay outbox menaikkan kolam ke jumlah buku); bawaan 32.
+    COMPANY_CLIENT_POOL_CEILING:
     CONTROL_DB_CONNECTION_LIMIT:
     PLATFORM_DB_CONNECTION_LIMIT:
     POOL_DISCONNECT_GRACE_MS:

@@ -376,7 +376,12 @@ export default async function PlatformPage() {
           <div role="status" style={READ_ONLY_NOTE}>
             <WarningOutlined aria-hidden="true" style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }} />
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.625 }}>
-              {t("tenantSettings.readOnlyNote")}
+              {/* Dua keadaan hanya-baca, dua kalimat: uji coba yang habis
+                  bukan tunggakan, dan "selesaikan tagihan" padanya menyuruh
+                  orang mengejar tagihan yang tidak ada (alur demo-first). */}
+              {tenant.tenantStatus === "trial_ended"
+                ? t("tenantSettings.trialEndedNote")
+                : t("tenantSettings.readOnlyNote")}
             </p>
           </div>
         )}

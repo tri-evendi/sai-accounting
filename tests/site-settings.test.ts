@@ -142,13 +142,17 @@ describe("gerbang PPN — presedensi & bawaan AKTIF", () => {
 describe("jalur uang & permukaan ikut MENDENGAR panel", () => {
   const baca = (...bagian: string[]) => readFileSync(join(__dirname, "..", ...bagian), "utf8");
 
-  it("penjadwal membaca gerbang PPN dari basis data, bukan hanya env", () => {
-    /* Penjaga terpenting berkas ini: lihat butir 3 di atas. Penjadwal tidak
-       bisa memuat `lib/site-settings.ts` (ia `server-only` + `next/cache`),
-       jadi jalurnya INTI + kliennya sendiri — dan itulah yang dijaga. */
+  it("penjadwal TIDAK menerbitkan tagihan (alur demo-first) dan membaca pengaturan lewat INTI", () => {
+    /* Sejak 24 Okt 2026 uji coba yang habis BEKU, tidak ditagih — penjadwal
+       tidak lagi punya satu pun jalur yang menerbitkan `platform_invoices`, jadi
+       sakelar PPN tidak dibacanya lagi (tidak ada nominal yang dihitung). Yang
+       masih dibacanya dari pengaturan situs adalah KANAL KONTAK untuk surel
+       "minta aktivasi" — tetap lewat INTI + kliennya sendiri, sebab penjadwal
+       tidak bisa memuat `lib/site-settings.ts` (`server-only` + `next/cache`). */
     const src = baca("scripts", "subscription-scheduler.ts");
+    expect(src).not.toMatch(/platformInvoice\.create\(/);
     expect(src).toContain("site-settings-core");
-    expect(src).toContain("ppnEnabledFrom(await readSiteSettingsRow(platform)");
+    expect(src).toContain("await readSiteSettingsRow(platform)");
     expect(src, "penjadwal tidak boleh memuat pembungkus Next-nya").not.toContain(
       'from "@sai/platform/site-settings"'
     );

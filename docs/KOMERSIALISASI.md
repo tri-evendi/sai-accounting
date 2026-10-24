@@ -145,6 +145,16 @@ panjangkan uji coba menjadi 30 hari (satu siklus tutup bulan). Tagihan pertama
 lahir dari persetujuan manusia, yaitu penawaran yang disetujui (Fase B) atau
 checkout swalayan (Fase C), dan tidak pernah dari berakhirnya waktu.
 
+> **Dibangun 24 Okt 2026 (keputusan pemilik, alur *demo-first*).** Uji coba
+> yang habis kini berpindah ke `trial_ended`: hanya-baca, ekspor tetap jalan,
+> TANPA baris `platform_invoices`, tanpa surel `invoice_due`, tanpa tenggang —
+> untuk SEMUA mode penagihan (`planTrialFreezes`). Beku hanya terjadi setelah
+> pemberitahuan `F-` terbukti terkirim ≥7 hari sebelumnya, jadi uji coba lama
+> yang sudah lewat tidak membeku seketika saat rilis. `TRIAL_DAYS = 30`. Uji coba
+> dibuat operator dari konsol (`/tenants/new`: paket, kuota, lama, mode `none`,
+> mitra); owner menekan "Minta aktivasi" (tercatat di `activation_requests`,
+> tampil di konsol) alih-alih "Bayar" yang buntu.
+
 ---
 
 ## 2. Posisi produk & siapa yang membeli
@@ -442,8 +452,11 @@ sekarang dipanggil manusia.
 **Tombol langkah 7 sudah ada sejak 17 Okt 2026:** "Aktifkan dari penawaran" di
 rincian tenant (`activateQuoteEntitlement`: ganti paket → perpanjang → mode
 `manual`, berhenti pada langkah pertama yang gagal, nomor penawaran di setiap
-jejak). Template penawaran (3) belum ada. Perpanjangannya tetap menerbitkan
-tagihan Rp 0 `-K` (§6.4); keputusan untuk menghilangkannya belum diambil.
+jejak). Template penawaran (3) belum ada. **Sejak 24 Okt 2026** aktivasi ini
+TIDAK lagi menerbitkan tagihan Rp 0 `-K`: yang dicatat adalah baris
+`quote_activations` (nomor penawaran UNIK + referensi bukti transfer,
+migration platform 0011), yang tidak pernah dihitung sebagai pendapatan
+platform. Perpanjangan KOMPENSASI biasa tetap memakai `-K` berstatus `comped`.
 
 ---
 
@@ -530,7 +543,7 @@ pertama:
 | --- | --- | --- | --- |
 | K-1 | Jalur jual dibelah menurut jumlah PT (swalayan ≤3 PT, penawaran ≥4 PT) | **usulan** | §4.1 |
 | K-2 | Hentikan tindakan otomatis terhadap akun non-komersial | **dibangun (Fase A)** — `billing_mode` menggerbangi scheduler | §1.1 |
-| K-3 | Uji coba: tanpa kartu → beku (bukan ditagih), 30 hari | **usulan** | §1.2 |
+| K-3 | Uji coba: tanpa kartu → beku (bukan ditagih), 30 hari | **dibangun (24 Okt 2026, alur demo-first)** — `trial_ended` + `TRIAL_DAYS = 30`; uji coba dibuat operator (`/tenants/new`), "Minta aktivasi" menggantikan "Bayar" | §1.2 |
 | K-4 | Penagihan Fase B lewat buku PT sendiri, bukan `platform_invoices` | **usulan** | §3.4 |
 | K-5 | PPN platform dimatikan sampai status PKP dijawab | **usulan** | §9.1 |
 | K-6 | Fase C bergerbang 6 syarat terukur | **usulan** | §5 |
@@ -557,11 +570,11 @@ pertama:
 | **TIDAK ADA penagihan PERPANJANGAN sama sekali** | `platformInvoice.create` hanya ada di tiga tempat — trial habis, comp operator, prorata pindah paket — dan tak satu pun dipicu `current_period_end`. Jadi langganan "aktif" tidak pernah menagih bulan/tahun berikutnya; mesin pendapatan BERULANG belum ada. Ditemukan saat membangun panel mode penagihan | `scripts/subscription-scheduler.ts` |
 | ~~Tidak ada bendera "boleh ditagih"~~ — **ditutup**: `billing_mode` menggerbangi trial habis, dunning, dan tenggang | (dulu: akun internal/uji coba ditagih lalu ditangguhkan, 2×) | `scripts/subscription-scheduler.ts` |
 | ~~`extendSubscription` mengubah `billing_cycle` tanpa memotret ulang harga~~ — **ditutup**: kini memotret harga siklus dari katalog `plans` dan menolak siklus tanpa harga (`cycle_unpriced`); baris tenant 3 yang sudah terlanjur `yearly` Rp 599.000 perlu diperiksa terpisah | kurang tagih 10× saat comp habis 9 Sep 2027 | `apps/operator/src/lib/operator/writes.ts` |
-| Comp menghasilkan tagihan `paid` Rp 0 | "pendapatan" tak bisa dibaca tanpa menyaring comp; butuh status/penanda tersendiri | `extendSubscription`, `platform_invoices.status` |
+| ~~Comp menghasilkan tagihan `paid` Rp 0~~ — **ditutup**: comp berstatus `comped`; aktivasi penawaran tidak lagi menerbitkan tagihan sama sekali (`quote_activations`) | — | `extendSubscription`, `platform_invoices.status` |
 | ~~Tidak ada sakelar menutup pendaftaran publik~~ — **ditutup**: konsol `/settings` → Gate → Pendaftaran mandiri (env `SELF_SERVE_SIGNUP` jadi bawaan) | — | `packages/core/src/registration.ts`, konsol `/settings` |
-| `MANUAL_PAYMENT_INSTRUCTIONS` kosong | tombol "Bayar" = jalan buntu tanpa nomor rekening | `packages/billing/src/payment-gateway.ts` |
+| ~~`MANUAL_PAYMENT_INSTRUCTIONS` kosong~~ — **ditutup (24 Okt 2026)**: tanpa gerbang DAN tanpa instruksi transfer, tombol "Bayar" diganti "Minta aktivasi" | (dulu: tombol "Bayar" = jalan buntu tanpa nomor rekening) | `billing-actions.tsx`, `api/tenant/billing/activation-request` |
 | `tenant_billing_profiles` kosong (0 baris) | ekspor e-Faktur platform akan menandai semua sebagai masalah | `packages/core/src/efaktur.ts` |
-| Uji coba 14 hari < waktu ke nilai pertama | konversi diukur sebelum nilai pernah terasa | `TRIAL_DAYS` |
+| ~~Uji coba 14 hari < waktu ke nilai pertama~~ — **ditutup (24 Okt 2026)**: `TRIAL_DAYS = 30` | — | `TRIAL_DAYS` |
 
 ---
 

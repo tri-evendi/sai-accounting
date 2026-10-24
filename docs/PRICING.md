@@ -21,9 +21,9 @@ semua paket berbayar.
 
 | `plans.key`  | Nama       | Bulanan       | Tahunan        | PT   | Pengguna | Katalog                                   |
 | ------------ | ---------- | ------------: | -------------: | ---: | -------: | ----------------------------------------- |
-| `starter`    | Starter    |   Rp 249.000  |   Rp 2.490.000 |    1 |        3 | publik, uji coba 14 hari                  |
-| `pro`        | Pro        |   Rp 599.000  |   Rp 5.990.000 |    3 |       15 | publik, uji coba 14 hari, **disorot**     |
-| `business`   | Business   | Rp 1.199.000  |  Rp 11.990.000 |    8 |       40 | publik, uji coba 14 hari, dukungan prioritas |
+| `starter`    | Starter    |   Rp 249.000  |   Rp 2.490.000 |    1 |        3 | publik, uji coba 30 hari                  |
+| `pro`        | Pro        |   Rp 599.000  |   Rp 5.990.000 |    3 |       15 | publik, uji coba 30 hari, **disorot**     |
+| `business`   | Business   | Rp 1.199.000  |  Rp 11.990.000 |    8 |       40 | publik, uji coba 30 hari, dukungan prioritas |
 | `enterprise` | Enterprise | dirundingkan  | kontrak        |  ≥10 |      ≥50 | **tidak** publik sejak #408 (`contact_only`, aktif); jalur rundingannya menumpang kartu Business; kuota bawaan 10/50 |
 | `internal`   | Internal   |          Rp 0 |              — |   10 |       50 | **tidak** publik — pemakaian penyedia     |
 | `trial`      | Trial      |          Rp 0 |              — |    1 |        3 | pensiun (`is_public=0`), tetap aktif      |
@@ -111,8 +111,8 @@ sebelum dipakai di materi penjualan):
 
 | Aturan                     | Nilai                                | Sumber                                       |
 | -------------------------- | ------------------------------------ | -------------------------------------------- |
-| Uji coba                   | 14 hari, **paket Pro** (`trialing`)  | `packages/core/src/registration.ts` `TRIAL_DAYS`, `SIGNUP_PLAN_KEY` |
-| Sesudah uji coba           | tagihan pertama = harga Pro; boleh turun ke Starter bila ≤1 PT & ≤3 pengguna | `plan-change.ts` (turun paket ditolak bila melampaui kuota) |
+| Uji coba                   | 30 hari (K-3); pendaftaran mandiri mendarat di **paket Pro**, uji coba buatan operator di paket/kuota pilihan operator | `packages/core/src/registration.ts` `TRIAL_DAYS`, `SIGNUP_PLAN_KEY`; konsol `/tenants/new` |
+| Sesudah uji coba           | **BEKU hanya-baca, TANPA tagihan** (`trial_ended`, alur demo-first 24 Okt 2026) — pemberitahuan ≥7 hari sebelumnya, ekspor tetap jalan; keluar lewat aktivasi dari penawaran atau perpanjangan uji coba oleh operator | `subscription-lifecycle.ts` `planTrialFreezes`, `scripts/subscription-scheduler.ts` |
 | Naik paket                 | prorata sisa periode, berpindah setelah LUNAS | `plan-change.ts`, `payment-webhook.ts` |
 | Menunggak → ditangguhkan   | tenggang 14 hari; ditangguhkan = hanya-baca, ekspor tetap jalan | `subscription-lifecycle.ts` `GRACE_PERIOD_DAYS` |
 | PPN                        | 11% di atas DPP, baris terpisah      | `packages/core/src/tax.ts`; FAQ `faqTaxA`                  |

@@ -74,6 +74,12 @@ import {
   setTenantSuspension,
 } from "@op/lib/operator/writes";
 import {
+  createTrialTenant,
+  extendTrial,
+  markActivationRequestHandled,
+  setTenantPartner,
+} from "@op/lib/operator/trial-writes";
+import {
   PLATFORM_INVOICE_STATUSES,
   platformInvoiceIsRevenue,
 } from "@sai/billing/platform-constants";
@@ -194,6 +200,20 @@ function makeWorld() {
       retentionUntil: Date | null;
       createdAt: Date;
     }[],
+    /** Aktivasi penawaran (migration platform 0011) — pengganti tagihan `-K`. */
+    quoteActivations: [] as Record<string, unknown>[],
+    /** Permintaan aktivasi customer (migration platform 0011). */
+    activationRequests: [] as {
+      id: number;
+      tenantId: number;
+      status: string;
+      handledBy: string | null;
+      handledAt: Date | null;
+    }[],
+    /** Tenant/pengguna/keanggotaan yang LAHIR di tes (createTrialTenant). */
+    createdTenants: [] as Record<string, unknown>[],
+    createdUsers: [] as Record<string, unknown>[],
+    createdMemberships: [] as Record<string, unknown>[],
     /** Urutan operasi TULIS — bukti urutan #137 direkam, bukan dipercaya. */
     ops: [] as string[],
   };
@@ -298,6 +318,29 @@ function makeWorld() {
             (where.key !== undefined && p.key === where.key) ||
             (where.id !== undefined && p.id === where.id)
         ) ?? null,
+      findFirst: async ({ where }: { where: { key: string; isActive?: boolean } }) =>
+        state.plans.find((p) => p.key === where.key && (where.isActive === undefined || p.isActive === where.isActive)) ??
+        null,
+    },
+    quoteActivation: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        if (state.quoteActivations.some((q) => q.quoteRef === data.quoteRef)) {
+          throw Object.assign(new Error("Unique constraint"), { code: "P2002" });
+        }
+        state.ops.push("platform:quoteActivation.create");
+        state.quoteActivations.push(data);
+        return data;
+      },
+    },
+    activationRequest: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        state.activationRequests.find((r) => r.id === where.id) ?? null,
+      updateMany: async ({ where, data }: { where: { id: number; status: string }; data: Record<string, unknown> }) => {
+        const row = state.activationRequests.find((r) => r.id === where.id && r.status === where.status);
+        if (!row) return { count: 0 };
+        Object.assign(row, data);
+        return { count: 1 };
+      },
     },
   };
 
@@ -315,6 +358,22 @@ function makeWorld() {
         Object.assign(state.tenant, data);
         return state.tenant;
       },
+      findMany: async ({ where }: { where: { slug: { in: string[] } } }) =>
+        [state.tenant, ...state.createdTenants]
+          .filter((t) => where.slug.in.includes(t.slug as string))
+          .map((t) => ({ slug: t.slug })),
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        state.ops.push("control:tenant.create");
+        const row = { id: 70 + state.createdTenants.length, ...data };
+        state.createdTenants.push(row);
+        return row;
+      },
+    },
+    tenantMembership: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        state.createdMemberships.push(data);
+        return data;
+      },
     },
     company: {
       count: async () => state.companies.filter((c) => c.isActive).length,
@@ -328,6 +387,14 @@ function makeWorld() {
     user: {
       count: async () => state.users.length,
       findMany: async () => state.users,
+      findUnique: async ({ where }: { where: { email: string } }) =>
+        [...state.users, ...state.createdUsers].find((u) => u.email === where.email) ?? null,
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        state.ops.push("control:user.create");
+        const row = { id: 200 + state.createdUsers.length, ...data };
+        state.createdUsers.push(row);
+        return row;
+      },
       update: async ({ where, data }: { where: { id: number }; data: Record<string, unknown> }) => {
         state.ops.push("control:user.update");
         const row = state.users.find((u) => u.id === where.id)!;
@@ -1268,7 +1335,15 @@ describe("activateQuoteEntitlement — penawaran disetujui → hak pakai (§7 la
     state.tenant.status = "active";
     const r = await activateQuoteEntitlement(
       deps,
-      { tenantId: 7, planKey: "lite", cycle: "monthly", periods: 3, quoteRef: "Q-2026-014", actor: ACTOR },
+      {
+        tenantId: 7,
+        planKey: "lite",
+        cycle: "monthly",
+        periods: 3,
+        quoteRef: "Q-2026-014",
+        transferProof: "BCA/20261024/778",
+        actor: ACTOR,
+      },
       NOW
     );
     expect(r.steps.map((s) => [s.step, s.outcome])).toEqual([
@@ -1283,6 +1358,55 @@ describe("activateQuoteEntitlement — penawaran disetujui → hak pakai (§7 la
     for (const l of logs) expect(String(l.details?.reason)).toContain("Penawaran Q-2026-014");
     /* Riwayat langganan: tiga keputusan, tiga peristiwa — plan, period, billing_mode. */
     expect(state.subscriptionEvents.map((e) => e.kind)).toEqual(["plan", "period", "billing_mode"]);
+    /* Alur demo-first: TIDAK ADA tagihan Rp 0 `-K` — aktivasi penawaran bukan
+       kompensasi. Yang tercatat: nomor penawaran + bukti transfer. */
+    expect(state.invoices.some((i) => i.number.endsWith("-K"))).toBe(false);
+    expect(state.quoteActivations).toHaveLength(1);
+    expect(state.quoteActivations[0]).toMatchObject({
+      quoteRef: "Q-2026-014",
+      transferProof: "BCA/20261024/778",
+      planKey: "lite",
+      billingCycle: "monthly",
+      periods: 3,
+    });
+    const period = state.subscriptionEvents.find((e) => e.kind === "period")!;
+    expect(JSON.parse(String(period.details))).toMatchObject({ compensation: false, quoteRef: "Q-2026-014" });
+  });
+
+  it("nomor penawaran yang SAMA dua kali = satu aktivasi (UNIQUE), bukan dua periode", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.tenant.status = "active";
+    const input = {
+      tenantId: 7,
+      planKey: "starter",
+      cycle: "monthly" as const,
+      periods: 1,
+      quoteRef: "Q-DUP",
+      transferProof: "TRF-1",
+      actor: ACTOR,
+    };
+    expect((await activateQuoteEntitlement(deps, input, NOW)).ok).toBe(true);
+    const again = await activateQuoteEntitlement(deps, input, NOW);
+    expect(again.ok).toBe(false);
+    expect(again.steps.find((s) => s.step === "extend")?.outcome).toBe("duplicate");
+    expect(state.quoteActivations).toHaveLength(1);
+  });
+
+  it("uji coba BEKU (`trial_ended`) diaktifkan kembali — status aktif, jangkar beku dikosongkan", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "trial_ended";
+    (state.subscriptions[0] as Record<string, unknown>).trialEndedAt = new Date("2026-07-30T00:00:00Z");
+    state.tenant.status = "trial_ended";
+    const r = await activateQuoteEntitlement(
+      deps,
+      { tenantId: 7, planKey: "starter", cycle: "monthly", periods: 1, quoteRef: "Q-BEKU", transferProof: "TRF-2", actor: ACTOR },
+      NOW
+    );
+    expect(r.ok).toBe(true);
+    expect(state.subscriptions[0].status).toBe("active");
+    expect((state.subscriptions[0] as Record<string, unknown>).trialEndedAt).toBeNull();
+    expect(state.tenant.status).toBe("active");
   });
 
   it("berhenti pada langkah pertama yang gagal dan MENYATAKANNYA", async () => {
@@ -1290,7 +1414,7 @@ describe("activateQuoteEntitlement — penawaran disetujui → hak pakai (§7 la
     state.subscriptions[0].status = "cancelled";
     const r = await activateQuoteEntitlement(
       deps,
-      { tenantId: 7, planKey: "starter", cycle: "yearly", periods: 1, quoteRef: "Q-1", actor: ACTOR },
+      { tenantId: 7, planKey: "starter", cycle: "yearly", periods: 1, quoteRef: "Q-1", transferProof: "TRF", actor: ACTOR },
       NOW
     );
     expect(r.ok).toBe(false);
@@ -1298,5 +1422,144 @@ describe("activateQuoteEntitlement — penawaran disetujui → hak pakai (§7 la
       ["plan", "unchanged"],
       ["extend", "cancelled"],
     ]);
+  });
+});
+
+describe("alur demo-first — uji coba buatan operator, perpanjangan, mitra, permintaan aktivasi", () => {
+  it("createTrialTenant: tenant trialing + pemilik tanpa kata sandi yang sah + langganan `none`; satu jejak", async () => {
+    const { state, deps } = makeWorld();
+    const r = await createTrialTenant(
+      deps,
+      {
+        tenantName: "Grup Maju Bersama",
+        ownerName: "Sari",
+        ownerEmail: "Sari@Maju.co.id",
+        planKey: "lite",
+        trialDays: 30,
+        maxCompanies: null,
+        maxUsers: 5,
+        billingMode: "none",
+        referredByPartner: "  Mitra Andalas  ",
+        isDemo: false,
+        actor: ACTOR,
+      },
+      NOW
+    );
+    expect(r.outcome).toBe("created");
+    const tenant = state.createdTenants[0];
+    expect(tenant).toMatchObject({
+      status: "trialing",
+      planKey: "lite",
+      maxCompanies: 1, // dari paket
+      maxUsers: 5, // dipilih operator
+      referredByPartner: "Mitra Andalas",
+      isDemo: false,
+    });
+    expect((tenant.trialEndsAt as Date).getTime()).toBe(NOW.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const user = state.createdUsers[0];
+    expect(user.email).toBe("sari@maju.co.id");
+    expect(user.mustChangePassword).toBe(true);
+    expect(String(user.password)).not.toMatch(/^\$2[aby]\$/); // bukan hash bcrypt yang sah
+    expect(state.createdMemberships[0]).toMatchObject({ role: "owner" });
+    const sub = state.subscriptions[state.subscriptions.length - 1];
+    expect(sub).toMatchObject({ status: "trialing", billingMode: "none", tenantId: tenant.id });
+    /* Kendali dulu (id tenant lahir di sana), platform belakangan. */
+    expect(state.ops.indexOf("control:tenant.create")).toBeLessThan(state.ops.indexOf("platform:subscription.create"));
+    const logs = tenantAuditRows.filter((l) => l.action === "tenant.trial.create");
+    expect(logs).toHaveLength(1);
+  });
+
+  it("createTrialTenant: surel yang sudah punya akun DITOLAK, tidak ada yang lahir", async () => {
+    const { state, deps } = makeWorld();
+    const r = await createTrialTenant(
+      deps,
+      {
+        tenantName: "X",
+        ownerName: "Budi",
+        ownerEmail: "budi@contoh.co.id",
+        planKey: "starter",
+        trialDays: 30,
+        maxCompanies: null,
+        maxUsers: null,
+        billingMode: "none",
+        referredByPartner: null,
+        isDemo: false,
+        actor: ACTOR,
+      },
+      NOW
+    );
+    expect(r).toEqual({ outcome: "email_taken" });
+    expect(state.createdTenants).toHaveLength(0);
+  });
+
+  it("createTrialTenant: tenant DEMO lahir `active` tanpa tanggal akhir — tidak beku di tengah presentasi", async () => {
+    const { state, deps } = makeWorld();
+    const r = await createTrialTenant(
+      deps,
+      {
+        tenantName: "Demo Mitra Andalas",
+        ownerName: "Sales",
+        ownerEmail: "demo@andalas.id",
+        planKey: "starter",
+        trialDays: 30,
+        maxCompanies: null,
+        maxUsers: null,
+        billingMode: "none",
+        referredByPartner: "Mitra Andalas",
+        isDemo: true,
+        actor: ACTOR,
+      },
+      NOW
+    );
+    expect(r.outcome).toBe("created");
+    expect(state.createdTenants[0]).toMatchObject({ status: "active", trialEndsAt: null, isDemo: true });
+  });
+
+  it("extendTrial: `trial_ended` dicairkan ke `trialing` dengan tanggal akhir dari HARI INI", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "trial_ended";
+    state.tenant.status = "trial_ended";
+    const r = await extendTrial(deps, { tenantId: 7, days: 14, actor: ACTOR }, NOW);
+    expect(r.outcome).toBe("extended");
+    expect(state.subscriptions[0].status).toBe("trialing");
+    expect(state.subscriptions[0].trialEndsAt?.getTime()).toBe(NOW.getTime() + 14 * 24 * 60 * 60 * 1000);
+    expect(state.tenant.status).toBe("trialing");
+    expect(state.ops.indexOf("platform:subscription.update")).toBeLessThan(state.ops.indexOf("control:tenant.update"));
+  });
+
+  it("extendTrial: langganan aktif/menunggak tidak punya uji coba untuk diperpanjang", async () => {
+    const { deps } = makeWorld();
+    const r = await extendTrial(deps, { tenantId: 7, days: 14, actor: ACTOR }, NOW);
+    expect(r).toEqual({ outcome: "not_applicable", status: "past_due" });
+  });
+
+  it("setTenantPartner: teks dipangkas, kosong = hapus, sama = tidak menulis", async () => {
+    const { state, deps } = makeWorld();
+    expect(await setTenantPartner(deps, { tenantId: 7, partner: " Mitra A ", actor: ACTOR })).toEqual({
+      outcome: "changed",
+      from: null,
+      to: "Mitra A",
+    });
+    expect((state.tenant as Record<string, unknown>).referredByPartner).toBe("Mitra A");
+    expect(await setTenantPartner(deps, { tenantId: 7, partner: "Mitra A", actor: ACTOR })).toEqual({
+      outcome: "not_applicable",
+    });
+    expect((await setTenantPartner(deps, { tenantId: 7, partner: "", actor: ACTOR })).outcome).toBe("changed");
+  });
+
+  it("markActivationRequestHandled: sekali saja; klik kedua = sudah ditangani", async () => {
+    const { state, deps } = makeWorld();
+    state.activationRequests.push({ id: 5, tenantId: 7, status: "open", handledBy: null, handledAt: null });
+    expect(await markActivationRequestHandled(deps, { requestId: 5, actor: ACTOR }, NOW)).toEqual({
+      outcome: "handled",
+      tenantId: 7,
+    });
+    expect(state.activationRequests[0]).toMatchObject({ status: "handled", handledBy: "operator:vyn" });
+    expect(await markActivationRequestHandled(deps, { requestId: 5, actor: ACTOR }, NOW)).toEqual({
+      outcome: "already_handled",
+    });
+    expect(await markActivationRequestHandled(deps, { requestId: 99, actor: ACTOR }, NOW)).toEqual({
+      outcome: "not_found",
+    });
   });
 });

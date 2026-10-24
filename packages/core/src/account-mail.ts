@@ -49,3 +49,40 @@ export function passwordResetMail(input: { name: string | null; link: string }):
       "— SAI Accounting",
   };
 }
+
+/**
+ * Surel SAMBUTAN tenant uji coba yang dibuat OPERATOR (alur demo-first,
+ * 24 Okt 2026). Isinya tautan atur-kata-sandi yang SAMA dengan "lupa kata
+ * sandi" — operator tidak pernah mengetik kata sandi siapa pun — ditambah apa
+ * yang perlu diketahui prospek: sampai kapan uji cobanya, dan bahwa akhir uji
+ * coba TIDAK menerbitkan tagihan (akun beku hanya-baca sampai diaktifkan).
+ *
+ * Tautannya berumur 60 menit (`RESET_TOKEN_TTL_MS`); kalimatnya menyebut jalan
+ * keluarnya bila sudah kedaluwarsa, sebab surel sambutan jarang dibuka saat itu
+ * juga.
+ */
+export function trialWelcomeMail(input: {
+  name: string | null;
+  accountName: string;
+  link: string;
+  loginUrl: string;
+  /** Tanggal akhir uji coba yang SUDAH diformat; `null` = tenant demo. */
+  trialEndsAt: string | null;
+}): MailContent {
+  return {
+    subject: `Akun ${input.accountName} siap dicoba — SAI Accounting`,
+    text:
+      `Halo ${input.name ?? ""},\n\n` +
+      `Akun ${input.accountName} di SAI Accounting sudah kami siapkan untuk Anda.\n` +
+      "Buka tautan berikut untuk MENENTUKAN KATA SANDI ANDA SENDIRI:\n\n" +
+      `  ${input.link}\n\n` +
+      "Tautan berlaku 60 menit dan sekali pakai. Bila sudah kedaluwarsa, buka\n" +
+      `${input.loginUrl} lalu pilih "Lupa kata sandi" dengan alamat surel ini.\n\n` +
+      (input.trialEndsAt
+        ? `Masa uji coba berlaku sampai ${input.trialEndsAt}. Setelah itu TIDAK ADA\n` +
+          "tagihan otomatis: akun menjadi hanya-baca (data tetap bisa diekspor) sampai\n" +
+          'Anda menekan "Minta aktivasi" di menu Langganan dan kami mengaktifkannya.\n\n'
+        : "") +
+      "— SAI Accounting",
+  };
+}

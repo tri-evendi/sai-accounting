@@ -14,6 +14,12 @@
  *
  * Keduanya dirender sebagai SEL di dalam tabel tagihan (`StaticTable`), jadi
  * mereka harus tetap sekecil mungkin: satu baris kendali, bukan panel.
+ *
+ *   • `RequestActivation` (alur demo-first, 24 Okt 2026) — "Minta aktivasi"
+ *     MENGGANTIKAN "Bayar" selama uji coba, saat uji coba sudah beku, dan saat
+ *     pemasangan ini tidak punya satu pun rel pembayaran. Ia mencatat
+ *     permintaan (tampil di konsol operator) lalu membuka kanal kontak dari
+ *     `contactChannels()` — WhatsApp dan/atau surel.
  */
 
 import { useState } from "react";
@@ -94,11 +100,113 @@ function Instructions({ payment }: { payment: PendingPayment }) {
   return null;
 }
 
+export interface ActivationContact {
+  /** `https://wa.me/<nomor>` dari `contactChannels()`; tidak ada = tak dirender. */
+  whatsappUrl?: string;
+  email?: string;
+}
+
+/**
+ * "Minta aktivasi" — pengganti tombol "Bayar" yang berujung jalan buntu.
+ *
+ * Satu tekan = satu baris `activation_requests` (idempoten: permintaan yang
+ * masih terbuka tidak digandakan) + kanal kontak terbuka. Kanalnya dibuka
+ * SESUDAH permintaan tercatat, bukan sebagai pengganti pencatatan: percakapan
+ * WhatsApp yang tidak pernah dikirim tidak meninggalkan jejak apa pun di sisi
+ * kami, sedangkan baris di konsol tetap terbaca operator.
+ */
+export function RequestActivation({
+  contact,
+  tenantSlug,
+  variant = "primary",
+  size = "sm",
+}: {
+  contact: ActivationContact;
+  tenantSlug: string;
+  variant?: "primary" | "outline";
+  size?: "sm" | "md";
+}) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const { toast } = useToast();
+  const [state, setState] = useState<"idle" | "sending" | "done">("idle");
+
+  const waText = encodeURIComponent(t("billing.activation.waText", { account: tenantSlug }));
+  const waHref = contact.whatsappUrl ? `${contact.whatsappUrl}?text=${waText}` : null;
+  const mailHref = contact.email
+    ? `mailto:${contact.email}?subject=${encodeURIComponent(
+        t("billing.activation.mailSubject", { account: tenantSlug })
+      )}`
+    : null;
+
+  async function send() {
+    setState("sending");
+    try {
+      const res = await fetch("/api/tenant/billing/activation-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast(data?.error ?? t("billing.activation.errSave"), "error");
+        setState("idle");
+        return;
+      }
+      setState("done");
+      /* Kanal dibuka di tab baru SESUDAH tercatat — WhatsApp lebih dulu (paling
+         cepat dibalas), surel bila WhatsApp tidak disetel. */
+      const target = waHref ?? mailHref;
+      if (target) window.open(target, "_blank", "noopener,noreferrer");
+    } catch {
+      toast(t("billing.activation.errSave"), "error");
+      setState("idle");
+    }
+  }
+
+  if (state === "done") {
+    return (
+      <Flex vertical gap={token.marginXXS}>
+        <Text type="success">{t("billing.activation.done")}</Text>
+        {(waHref || mailHref) && (
+          <Flex wrap gap={token.marginXS}>
+            {waHref && (
+              <Button href={waHref} target="_blank" rel="noopener noreferrer" size="sm" variant="outline">
+                {t("billing.activation.whatsapp")}
+              </Button>
+            )}
+            {mailHref && (
+              <Button href={mailHref} size="sm" variant="outline">
+                {t("billing.activation.email")}
+              </Button>
+            )}
+          </Flex>
+        )}
+        {!waHref && !mailHref && <Text type="secondary">{t("billing.activation.noChannel")}</Text>}
+      </Flex>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      size={size}
+      variant={variant}
+      disabled={state === "sending"}
+      aria-busy={state === "sending"}
+      onClick={send}
+    >
+      {state === "sending" ? t("common.processing") : t("billing.activation.button")}
+    </Button>
+  );
+}
+
 export function PayInvoice({
   invoiceId,
   pending,
   instantPayment,
   manualInstructions,
+  activation,
 }: {
   invoiceId: number;
   pending: PendingPayment | null;
@@ -109,6 +217,13 @@ export function PayInvoice({
   instantPayment: boolean;
   /** Isi `MANUAL_PAYMENT_INSTRUCTIONS`; kosong → kalimat cadangan kamus. */
   manualInstructions: string | null;
+  /**
+   * Kanal kontak + slug tenant untuk "Minta aktivasi" — dipakai saat TIDAK ADA
+   * rel pembayaran sama sekali (gerbang mati DAN instruksi transfer kosong):
+   * kalimat cadangan "transfer manual" tanpa nomor rekening adalah jalan buntu
+   * (`docs/KOMERSIALISASI.md` §11), jadi yang ditawarkan adalah jalan ke orang.
+   */
+  activation: { contact: ActivationContact; tenantSlug: string };
 }) {
   const t = useT();
   const { token } = theme.useToken();
@@ -176,7 +291,14 @@ export function PayInvoice({
    * ditampilkan LANGSUNG. Bukan tombol yang dinonaktifkan: tombol pudar tetap
    * menjanjikan sesuatu yang tidak ada, dan menyuruh orang menebak kenapa.
    */
-  if (!instantPayment) return manualBox(manualInstructions);
+  if (!instantPayment) {
+    /* Tanpa gerbang DAN tanpa instruksi transfer = tidak ada cara membayar
+       sama sekali. Yang ditawarkan: minta aktivasi, bukan kalimat cadangan. */
+    if (!manualInstructions?.trim()) {
+      return <RequestActivation contact={activation.contact} tenantSlug={activation.tenantSlug} />;
+    }
+    return manualBox(manualInstructions);
+  }
 
   if (manualText !== null) return manualBox(manualText);
 

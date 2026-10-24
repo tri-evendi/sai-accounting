@@ -24,7 +24,10 @@ import {
   pendingReminder,
   planDunning,
   planGraceExpiries,
-  planTrialExpiries,
+  planTrialFreezes,
+  pendingTrialNotice,
+  trialFreezeAt,
+  FREEZE_NOTICE_DAYS,
   readOnlyRefusal,
   tenantStatusForSubscription,
   transition,
@@ -40,11 +43,14 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
     trialing: {
       payment_received: "active",
       payment_failed: null,
-      trial_expired: "active", // siklus tagih dimulai — bukan hadiah gratis
+      /* Alur demo-first (24 Okt 2026): uji coba habis = BEKU hanya-baca, TIDAK
+         ditagih (`docs/KOMERSIALISASI.md` §1.2, K-3). */
+      trial_expired: "trial_ended",
       grace_expired: null,
       cancel: null,
       operator_suspend: "suspended", // manual #155 — penyalahgunaan saat trial
       operator_restore: null,
+      operator_extend_trial: "trialing",
     },
     active: {
       payment_received: "active", // perpanjangan — sah, keadaan tetap
@@ -54,6 +60,7 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       cancel: null, // berhenti hanya dari suspended (diagram)
       operator_suspend: "suspended", // manual #155
       operator_restore: null,
+      operator_extend_trial: null,
     },
     past_due: {
       payment_received: "active",
@@ -68,6 +75,7 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
          adalah `payment_received` — memakainya berarti menulis pembayaran yang
          tidak pernah terjadi ke dalam jejak audit. */
       operator_restore: "active",
+      operator_extend_trial: null,
     },
     suspended: {
       payment_received: "active", // bayar = pulih penuh
@@ -77,6 +85,19 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       cancel: "cancelled",
       operator_suspend: null, // sudah ditangguhkan — idempoten, bukan galat
       operator_restore: "active", // pemulihan manual #155 — mendarat sama dengan bayar
+      operator_extend_trial: null,
+    },
+    /* Uji coba BEKU — bukan tunggakan: tidak ada `payment_failed`/`grace_expired`
+       dari sini; keluar hanya lewat tindakan manusia. */
+    trial_ended: {
+      payment_received: "active",
+      payment_failed: null,
+      trial_expired: null,
+      grace_expired: null,
+      cancel: "cancelled",
+      operator_suspend: null,
+      operator_restore: null,
+      operator_extend_trial: "trialing",
     },
     cancelled: {
       payment_received: null,
@@ -86,6 +107,7 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       cancel: null,
       operator_suspend: null, // keadaan akhir — juga bagi tangan operator
       operator_restore: null,
+      operator_extend_trial: null,
     },
   };
 
@@ -131,8 +153,8 @@ describe("suspended = HANYA-BACA — klasifikasi disapu untuk SEMUA izin", () =>
     expect(readOnlyRefusal("suspended", "report.read")).toBeNull();
   });
 
-  it("izin tulis ditolak saat suspended DAN cancelled; baca selalu lolos", () => {
-    for (const status of ["suspended", "cancelled"]) {
+  it("izin tulis ditolak saat suspended, cancelled, DAN trial_ended; baca selalu lolos", () => {
+    for (const status of ["suspended", "cancelled", "trial_ended"]) {
       expect(readOnlyRefusal(status, "invoice.write")).not.toBeNull();
       expect(readOnlyRefusal(status, "customer.delete")).not.toBeNull();
       expect(readOnlyRefusal(status, "user.manage")).not.toBeNull();
@@ -145,6 +167,15 @@ describe("suspended = HANYA-BACA — klasifikasi disapu untuk SEMUA izin", () =>
       expect(isReadOnlyTenantStatus(status)).toBe(false);
       expect(readOnlyRefusal(status, "invoice.write")).toBeNull();
     }
+  });
+
+  it("uji coba beku punya KALIMAT sendiri — bukan 'selesaikan tagihan' yang tidak ada", () => {
+    const refusal = readOnlyRefusal("trial_ended", "invoice.write");
+    expect(refusal?.code).toBe("trial_ended");
+    expect(refusal?.message).toMatch(/aktivasi/i);
+    expect(refusal?.message).not.toMatch(/tagihan diselesaikan/i);
+    expect(readOnlyRefusal("trial_ended", "report.export")).toBeNull();
+    expect(readOnlyRefusal("suspended", "invoice.write")?.code).toBe("tenant_suspended");
   });
 
   it("tanpa tenant (adopsi #134 belum tuntas) BUKAN hanya-baca — gerbangnya tentang suspensi", () => {
@@ -163,17 +194,68 @@ describe("perencana penjadwal — IDEMPOTEN: putaran kedua kosong", () => {
   const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
   const daysAhead = (n: number) => new Date(now.getTime() + n * 24 * 60 * 60 * 1000);
 
-  it("trial habis: terpilih sekali; setelah statusnya berpindah, putaran kedua kosong", () => {
+  it("trial habis + pemberitahuan ≥7 hari: BEKU sekali; setelah berpindah, putaran kedua kosong", () => {
     const subs = [
-      { id: 1, status: "trialing", trialEndsAt: daysAgo(1), pastDueSince: null, billingMode: "auto" },
-      { id: 2, status: "trialing", trialEndsAt: daysAhead(3), pastDueSince: null, billingMode: "auto" },
-      { id: 3, status: "active", trialEndsAt: daysAgo(1), pastDueSince: null, billingMode: "auto" },
+      { id: 1, status: "trialing", trialEndsAt: daysAgo(1), pastDueSince: null, billingMode: "none" },
+      { id: 2, status: "trialing", trialEndsAt: daysAhead(3), pastDueSince: null, billingMode: "none" },
+      { id: 3, status: "active", trialEndsAt: daysAgo(1), pastDueSince: null, billingMode: "none" },
     ];
-    expect(planTrialExpiries(subs, now)).toEqual([1]);
+    const notices = new Map([
+      [1, daysAgo(8)],
+      [2, daysAgo(4)],
+      [3, daysAgo(8)],
+    ]);
+    expect(planTrialFreezes(subs, notices, now)).toEqual([1]);
 
     // Terapkan hasilnya (status berpindah lewat mesin) → rencana berikutnya kosong.
     subs[0].status = transition("trialing", "trial_expired")!;
-    expect(planTrialExpiries(subs, now)).toEqual([]);
+    expect(subs[0].status).toBe("trial_ended");
+    expect(planTrialFreezes(subs, notices, now)).toEqual([]);
+  });
+
+  it("trial habis TANPA pemberitahuan F- (akun lama): TIDAK beku — tidak ada yang tiba-tiba hanya-baca", () => {
+    const subs = [
+      { id: 1, status: "trialing", trialEndsAt: daysAgo(90), pastDueSince: null, billingMode: "none" },
+    ];
+    expect(planTrialFreezes(subs, new Map(), now)).toEqual([]);
+    /* Pemberitahuan terlambat F-0 baru dikirim hari ini → beku 7 hari lagi. */
+    const lewatTujuh = new Date(now.getTime() + (FREEZE_NOTICE_DAYS - 1) * 24 * 60 * 60 * 1000);
+    expect(planTrialFreezes(subs, new Map([[1, now]]), lewatTujuh)).toEqual([]);
+    const sesudah = new Date(now.getTime() + FREEZE_NOTICE_DAYS * 24 * 60 * 60 * 1000);
+    expect(planTrialFreezes(subs, new Map([[1, now]]), sesudah)).toEqual([1]);
+  });
+
+  it("uji coba habis membeku di SEMUA mode — termasuk `auto`; tidak ada mode yang menagih dari sini", () => {
+    for (const mode of ["none", "manual", "auto", "", "asing"]) {
+      const subs = [{ id: 1, status: "trialing", trialEndsAt: daysAgo(1), pastDueSince: null, billingMode: mode }];
+      expect(planTrialFreezes(subs, new Map([[1, daysAgo(10)]]), now), mode).toEqual([1]);
+    }
+  });
+
+  it("pemberitahuan beku: F-7/F-3/F-1 sebelum tanggal akhir; F-0 sekali bila sudah lewat tanpa pemberitahuan", () => {
+    const end = daysAhead(5);
+    const first = pendingTrialNotice(end, now, new Set());
+    expect(first?.sendKey.startsWith("F-7:")).toBe(true);
+    expect(first?.late).toBe(false);
+
+    const lewat = daysAgo(30);
+    const late = pendingTrialNotice(lewat, now, new Set());
+    expect(late?.sendKey).toMatch(/^F-0:/);
+    expect(late?.late).toBe(true);
+    expect(pendingTrialNotice(lewat, now, new Set(late!.markKeys))).toBeNull();
+
+    /* Jejak `H-` lama (surel "tagihan terbit otomatis") TIDAK terhitung. */
+    const keyH = `H-1:${lewat.toISOString().slice(0, 10)}`;
+    expect(pendingTrialNotice(lewat, now, new Set([keyH]))?.sendKey).toMatch(/^F-0:/);
+  });
+
+  it("tanggal beku = yang terjauh antara akhir uji coba dan pemberitahuan pertama + 7 hari", () => {
+    const end = daysAhead(7);
+    expect(trialFreezeAt(end, now)?.getTime()).toBe(end.getTime());
+    expect(trialFreezeAt(daysAgo(30), now)?.getTime()).toBe(
+      now.getTime() + FREEZE_NOTICE_DAYS * 24 * 60 * 60 * 1000
+    );
+    expect(trialFreezeAt(end, null)).toBeNull();
   });
 
   it("tenggang habis: hanya past_due yang melewati GRACE_PERIOD_DAYS; putaran kedua kosong", () => {
@@ -294,7 +376,9 @@ describe("gerbang mode penagihan: hanya `auto` yang boleh ditagih", () => {
   ];
 
   it("`auto` tetap ditagih — penjaga ini TIDAK mematikan penagihan yang sah", () => {
-    expect(planTrialExpiries([trialHabis("auto")], now)).toEqual([1]);
+    /* Uji coba habis tidak lagi menagih SIAPA PUN (alur demo-first); yang
+       tetap milik `auto` adalah dunning dan tenggang atas tagihan yang ada. */
+    expect(planTrialFreezes([trialHabis("auto")], new Map([[1, daysAgo(10)]]), now)).toEqual([1]);
     expect(planGraceExpiries([tenggangHabis("auto")], now)).toEqual([1]);
     expect(
       planDunning(
@@ -307,7 +391,6 @@ describe("gerbang mode penagihan: hanya `auto` yang boleh ditagih", () => {
 
   for (const mode of ["none", "manual"]) {
     it(`\`${mode}\`: tidak diterbitkan tagihan, tidak didorong past_due, tidak ditangguhkan`, () => {
-      expect(planTrialExpiries([trialHabis(mode)], now)).toEqual([]);
       expect(planGraceExpiries([tenggangHabis(mode)], now)).toEqual([]);
       expect(
         planDunning(tagihanLewatTempo, new Map([[1, { status: "active", billingMode: mode }]]), now)
@@ -320,7 +403,6 @@ describe("gerbang mode penagihan: hanya `auto` yang boleh ditagih", () => {
        docs/DATABASE.md §2). Nilai asing — salah ketik, migrasi separuh, baris
        hasil impor — tidak boleh berarti "tagih saja". */
     for (const asing of ["", "AUTO", "automatic", "otomatis", "null"]) {
-      expect(planTrialExpiries([trialHabis(asing)], now), asing).toEqual([]);
       expect(planGraceExpiries([tenggangHabis(asing)], now), asing).toEqual([]);
       expect(
         planDunning(

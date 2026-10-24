@@ -98,7 +98,7 @@ const DEFAULT_PLANS = [
     priceYearly: "2490000.00",
     maxCompanies: 1,
     maxUsers: 3,
-    trialDays: 14,
+    trialDays: 30,
     isPublic: true,
   },
   {
@@ -125,7 +125,7 @@ const DEFAULT_PLANS = [
      * onboarding di sini lebih berat — daftar akun plus saldo awal harus
      * selesai sebelum bukunya berguna. Uji coba yang habis sebelum penyiapan
      * selesai tidak mengonversi siapa pun. */
-    trialDays: 14,
+    trialDays: 30,
     isPublic: true,
     isRecommended: true,
   },
@@ -146,7 +146,7 @@ const DEFAULT_PLANS = [
     priceYearly: "11990000.00",
     maxCompanies: 8,
     maxUsers: 40,
-    trialDays: 14,
+    trialDays: 30,
     isPublic: true,
   },
   {

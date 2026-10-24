@@ -36,7 +36,7 @@
 import Link from "next/link";
 import { TeamOutlined } from "@ant-design/icons";
 import { Badge } from "@sai/ui/badge";
-import { Button } from "@sai/ui/button";
+import { Button, ButtonLink } from "@sai/ui/button";
 import { EmptyState } from "@sai/ui/empty-state";
 import { Input } from "@sai/ui/input";
 import {
@@ -48,7 +48,14 @@ import { Select } from "@sai/ui/select";
 import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { requireOperatorPage } from "@op/lib/operator/guard";
-import { listTenantsForOperator, tenantStatusVariant } from "@op/lib/operator/store";
+import { operatorCan } from "@op/lib/operator/roles";
+import {
+  activationRequestsForOperator,
+  listTenantsForOperator,
+  tenantStatusVariant,
+} from "@op/lib/operator/store";
+import { ActivationRequests } from "@op/components/operator/activation-requests";
+import { operatorMarkActivationHandled } from "./actions";
 import { TENANT_STATUSES } from "@sai/core/constants";
 import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
@@ -71,7 +78,7 @@ export default async function OperatorTenantsPage({
 }: {
   searchParams: Promise<{ q?: string; status?: string }>;
 }) {
-  await requireOperatorPage();
+  const { operator } = await requireOperatorPage();
   const t = await getT();
   const params = await searchParams;
 
@@ -80,7 +87,14 @@ export default async function OperatorTenantsPage({
     ? params.status
     : "";
 
-  const tenants = await listTenantsForOperator({ q, status });
+  const [tenants, activation] = await Promise.all([
+    listTenantsForOperator({ q, status }),
+    /* Daftar kerja alur demo-first: permintaan aktivasi yang masih TERBUKA.
+       `null` = platform tak terjangkau — daftar tenant di bawahnya tetap tampil. */
+    activationRequestsForOperator({ status: "open" }),
+  ]);
+  const openRequestTenants = new Set((activation ?? []).map((r) => r.tenantId));
+  const canBill = operatorCan(operator.role, "tenant.billing");
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
 
   const columns: SaiColumns<TenantRow> = [
@@ -89,12 +103,18 @@ export default async function OperatorTenantsPage({
       title: t("operator.tenants.colName"),
       align: "left",
       render: (_v, tenant) => (
-        <Link
-          href={`/tenants/${tenant.id}`}
-          style={{ color: "var(--ant-color-link)", fontWeight: 500 }}
-        >
-          {tenant.name}
-        </Link>
+        <span style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+          <Link
+            href={`/tenants/${tenant.id}`}
+            style={{ color: "var(--ant-color-link)", fontWeight: 500 }}
+          >
+            {tenant.name}
+          </Link>
+          {tenant.isDemo && <Badge variant="outline">{t("operator.trial.demoBadge")}</Badge>}
+          {openRequestTenants.has(tenant.id) && (
+            <Badge variant="warning">{t("operator.activation.badge")}</Badge>
+          )}
+        </span>
       ),
     },
     {
@@ -120,6 +140,14 @@ export default async function OperatorTenantsPage({
       title: t("operator.tenants.colPlan"),
       align: "left",
       render: (_v, tenant) => tenant.planKey,
+    },
+    /* Atribusi mitra (migration kendali 0013) — dasar komisi yang dihitung
+       manual; pencarian di atas ikut menyapu kolom ini. */
+    {
+      key: "partner",
+      title: t("operator.partner.column"),
+      align: "left",
+      render: (_v, tenant) => <span style={MUTED}>{tenant.referredByPartner ?? "—"}</span>,
     },
     {
       key: "created",
@@ -157,9 +185,40 @@ export default async function OperatorTenantsPage({
       <PageHeader
         title={`${t("operator.tenants.heading")} (${tenants.length})`}
         description={t("operator.tenants.description")}
+        actions={
+          canBill ? (
+            <ButtonLink href="/tenants/new" variant="primary">
+              {t("operator.trial.open")}
+            </ButtonLink>
+          ) : undefined
+        }
       />
 
       <div style={CONSOLE_PAGE}>
+      {activation !== null && activation.length > 0 && (
+        <ConsolePanel
+          title={`${t("operator.activation.heading")} (${activation.length})`}
+          description={t("operator.activation.description")}
+        >
+          <ActivationRequests
+            showTenant
+            canAct={canBill}
+            markHandled={operatorMarkActivationHandled}
+            rows={activation.map((r) => ({
+              id: r.id,
+              tenantId: r.tenantId,
+              tenantName: r.tenantName,
+              referredByPartner: r.referredByPartner,
+              requestedByName: r.requestedByName,
+              tenantStatus: r.tenantStatus,
+              note: r.note,
+              createdLabel: formatDate(r.createdAt),
+              status: r.status,
+              handledLabel: r.handledAt ? formatDate(r.handledAt) : null,
+            }))}
+          />
+        </ConsolePanel>
+      )}
       {/* Saringan dan tabelnya SATU panel, bukan dua wilayah yang kebetulan
           bertetangga: saringan tanpa hasilnya di bawah tidak berarti apa-apa,
           dan memberinya kartu sendiri menghasilkan dua tepi yang memisahkan

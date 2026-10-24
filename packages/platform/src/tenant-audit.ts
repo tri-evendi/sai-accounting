@@ -117,7 +117,18 @@ export type TenantAuditAction =
   | "tenant.onprem.export"
   | "tenant.onprem.unfreeze"
   | "tenant.onprem.migrated_out"
-  | "tenant.onprem.import";
+  | "tenant.onprem.import"
+  /** Alur demo-first (24 Okt 2026): tenant UJI COBA dibuat operator untuk
+   *  seorang prospek — paket, kuota, lama uji coba, mode, mitra tercatat. */
+  | "tenant.trial.create"
+  /** Uji coba diperpanjang operator (termasuk mencairkan yang sudah beku). */
+  | "tenant.trial.extend"
+  /** Owner menekan "Minta aktivasi" (uji coba / beku / tanpa rel bayar). */
+  | "tenant.activation_request"
+  /** Operator menandai permintaan aktivasi sudah ditangani. */
+  | "tenant.activation_request.handled"
+  /** Atribusi mitra (`referred_by_partner`) disetel/dihapus operator. */
+  | "tenant.partner";
 
 export interface TenantAuditEntry {
   id: string;

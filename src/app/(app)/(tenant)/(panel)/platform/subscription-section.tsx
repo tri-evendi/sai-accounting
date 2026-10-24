@@ -58,11 +58,15 @@ import {
 } from "@sai/billing/subscription-lifecycle";
 import type { BillingOverview } from "@/lib/subscription-store";
 import { offersInstantPayment } from "@sai/billing/payment-gateway";
-import { resolveManualPaymentInstructions, resolvePpnEnabled } from "@sai/platform/site-settings";
+import {
+  resolveContactChannels,
+  resolveManualPaymentInstructions,
+  resolvePpnEnabled,
+} from "@sai/platform/site-settings";
 import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
-import { BillingProfileForm, PayInvoice } from "./billing-actions";
+import { BillingProfileForm, PayInvoice, RequestActivation } from "./billing-actions";
 
 const CARD_HEADING: React.CSSProperties = {
   margin: 0,
@@ -118,10 +122,17 @@ type Invoice = NonNullable<BillingOverview["billing"]>["invoices"][number];
 
 export async function SubscriptionSection({
   overview,
+  tenantSlug,
 }: {
   overview: BillingOverview | null;
+  /** Slug akun — disebut di pesan WhatsApp/surel "Minta aktivasi". */
+  tenantSlug: string;
 }) {
   const t = await getT();
+  /* Kanal kontak EFEKTIF (basis data → env) untuk "Minta aktivasi" — alur
+     demo-first: tanpa gerbang pembayaran, jalan menuju aktivasi adalah orang. */
+  const contact = await resolveContactChannels();
+  const activation = { contact, tenantSlug };
 
   /* Keadaan gerbang dibaca DI SINI karena `process.env` hanya ada di server;
      `PayInvoice` adalah komponen klien dan tidak boleh menebaknya sendiri. */
@@ -152,9 +163,15 @@ export async function SubscriptionSection({
    * spanduk yang menakut-nakuti tentang tagihan yang sudah lewat. */
   const trial =
     overview.tenant.status === "trialing" ? trialCountdown(overview.tenant.trialEndsAt) : null;
+  /* Uji coba yang sudah BEKU (`trial_ended`, alur demo-first): hanya-baca,
+     tanpa tagihan — jalan keluarnya "Minta aktivasi", bukan "Bayar". */
+  const trialEnded = overview.tenant.status === "trial_ended";
+  /* Harga paket (DENGAN PPN, lewat `platformInvoiceAmounts` yang sama dengan
+     penerbit tagihan) disebut sebagai INFORMASI — "bila diaktifkan, harganya
+     sekian" — bukan lagi sebagai tagihan yang akan terbit di akhir uji coba. */
   const subscriptionPrice = overview.billing?.subscription?.price;
   const trialCharge =
-    trial && subscriptionPrice
+    trial && subscriptionPrice && Number(subscriptionPrice) > 0
       ? formatMoney(
           Number(
             platformInvoiceAmounts(
@@ -226,6 +243,7 @@ export async function SubscriptionSection({
             pending={invoice.pendingPayment}
             instantPayment={instantPayment}
             manualInstructions={manualInstructions}
+            activation={activation}
           />
         ) : (
           <span
@@ -339,6 +357,12 @@ export async function SubscriptionSection({
                       ? t("tenantSettings.trialDaysLeft", { days: trial.days })
                       : t("tenantSettings.trialOver")}
                   </p>
+                  {/* Alur demo-first: akhir uji coba = BEKU hanya-baca, TIDAK
+                      ADA tagihan otomatis. Kalimat lama ("tagihan pertama
+                      sebesar … terbit") sudah tidak benar dan tidak dipakai. */}
+                  <p style={{ margin: 0, fontSize: "var(--ant-font-size)" }}>
+                    {t("tenantSettings.trialFreezeNote")}
+                  </p>
                   {trialCharge && (
                     <p
                       style={{
@@ -347,20 +371,56 @@ export async function SubscriptionSection({
                         fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {t("tenantSettings.trialFirstInvoice", { amount: trialCharge })}
+                      {t("tenantSettings.trialActivationPrice", { amount: trialCharge })}
                     </p>
                   )}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <RequestActivation
+                    contact={contact}
+                    tenantSlug={tenantSlug}
+                    variant={trial.urgent ? "primary" : "outline"}
+                  />
+                  <Button href="/platform/billing/plans" size="sm" variant="outline">
+                    {t("platform.plansViewLabel")}
+                  </Button>
+                </div>
+              </div>
+            )}
+            {trialEnded && (
+              /* ⚠ SPANDUK UJI COBA BEKU — warna peringatan + ikon + kalimat:
+                 buku hanya-baca, ekspor tetap jalan, tidak ada tagihan, dan
+                 SATU tindakan: minta aktivasi. */
+              <div
+                role="status"
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  padding: 16,
+                  borderRadius: "var(--ant-border-radius-lg)",
+                  border: "1px solid var(--ant-color-warning-border)",
+                  background: "var(--ant-color-warning-bg)",
+                  color: "var(--ant-color-text)",
+                }}
+              >
+                <CalendarOutlined aria-hidden style={{ fontSize: 20, marginTop: 2, flexShrink: 0 }} />
+                <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "var(--ant-font-size)",
+                      fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+                    }}
+                  >
+                    {t("tenantSettings.trialOver")}
+                  </p>
                   <p style={{ margin: 0, fontSize: "var(--ant-font-size)" }}>
-                    {t("tenantSettings.trialUnpaidNote")}
+                    {t("tenantSettings.trialEndedNote")}
                   </p>
                 </div>
-                <Button
-                  href="/platform/billing/plans"
-                  size="sm"
-                  variant={trial.urgent ? "primary" : "outline"}
-                >
-                  {t("platform.plansViewLabel")}
-                </Button>
+                <RequestActivation contact={contact} tenantSlug={tenantSlug} variant="primary" />
               </div>
             )}
             <p style={SMALL}>{t("tenantSettings.planChangeNote")}</p>

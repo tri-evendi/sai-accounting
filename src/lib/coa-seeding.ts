@@ -29,8 +29,9 @@
 import "server-only";
 
 import { normalBalanceFor } from "@/lib/accounting";
-import { coaTemplateFor } from "@/lib/coa-template";
-import { seedDefaultMappings } from "@/lib/posting/mapping";
+import { coaTemplateFor, equityTemplateFor, type EquityTemplateInput } from "@/lib/coa-template";
+import { ANY_CURRENCY, MAPPING_KEYS, seedDefaultMappings } from "@/lib/posting/mapping";
+import { equityModelFor } from "@sai/core/legal-form";
 import { seedDefaultAssetCategories } from "@/lib/asset-categories";
 import type { BusinessModule } from "@/lib/business-modules";
 import type { Prisma, PrismaClient } from "@sai/db/client/company";
@@ -48,14 +49,22 @@ export interface CoaSeedResult {
   mappingsCreated: number;
   /** Kategori aset tetap bawaan yang ikut lahir (issue #416). */
   assetCategoriesCreated: number;
+  /** Baris pemilik/sekutu yang ikut lahir (bentuk usaha, 24 Okt 2026). */
+  partnersCreated: number;
 }
 
 
+/**
+ * `equity` — templat ekuitas menurut bentuk usaha (`EquityTemplateInput` di
+ * `coa-template.ts`): `undefined` = ekuitas PT (perilaku lama), `null` = tanpa
+ * akun ekuitas (penyalaan modul belakangan), objek = templat bentuk usahanya.
+ */
 export async function seedCoaForModules(
   client: Client,
-  modules: Iterable<BusinessModule>
+  modules: Iterable<BusinessModule>,
+  equity?: EquityTemplateInput | null
 ): Promise<CoaSeedResult> {
-  const rows = coaTemplateFor(modules);
+  const rows = coaTemplateFor(modules, equity);
 
   const byCode = new Map<string, number>();
   let created = 0;
@@ -103,11 +112,78 @@ export async function seedCoaForModules(
   // adalah cara slot-slot yang tadinya kosong akhirnya terisi.
   const mappings = await seedDefaultMappings(client);
 
+  /* Bentuk usaha (24 Okt 2026): baris pemilik/sekutu + slot yang hanya
+     berlaku bagi bentuknya. Sesudah akun, sebab barisnya MENUNJUK akun. */
+  const partnersCreated = equity ? await seedEquityOwners(client, equity, byCode) : 0;
+
   /* Kategori aset tetap ikut lahir di sini (issue #416) — sesudah akun dan
      mapping, sebab kategorinya MENUNJUK akun yang baru saja disemai (FK
      RESTRICT). Diam bila akunnya tidak ada: perusahaan tanpa modul Aset Tetap
      memang tidak butuh satu kategori pun. */
   const assetCategoriesCreated = await seedDefaultAssetCategories(client);
 
-  return { created, existing, mappingsCreated: mappings.created, assetCategoriesCreated };
+  return {
+    created,
+    existing,
+    mappingsCreated: mappings.created,
+    assetCategoriesCreated,
+    partnersCreated,
+  };
+}
+
+/**
+ * Baris `company_partners` untuk buku CV/Firma/perorangan — SEKALI.
+ *
+ * Hanya bila tabelnya masih KOSONG: penyemaian dipanggil berulang (wisaya
+ * bolak-balik, jaring pengaman di POST akhir), dan sekutu yang sudah ada —
+ * mungkin sudah diubah porsinya — tidak boleh digandakan atau ditimpa.
+ * Perubahan sesudahnya lewat Pengaturan → Bentuk usaha (`lib/partners-service`).
+ *
+ * Usaha perorangan juga mendapat slot `retained_earnings` → Modal Pemilik:
+ * slot itu tidak dipakai tutup bukunya (yang memakai baris pemilik), tetapi
+ * Pemetaan Akun tidak boleh menyebutnya "belum diatur" untuk buku yang memang
+ * tidak punya Laba Ditahan.
+ */
+async function seedEquityOwners(
+  client: Client,
+  equity: EquityTemplateInput,
+  idByCode: Map<string, number>
+): Promise<number> {
+  const model = equityModelFor(equity.legalForm);
+  if (model === "retained_earnings") return 0;
+
+  if (model === "sole_owner") {
+    const capitalId = idByCode.get("3101");
+    if (capitalId) {
+      const exists = await client.accountMapping.findUnique({
+        where: { key_currency: { key: MAPPING_KEYS.RETAINED_EARNINGS, currency: ANY_CURRENCY } },
+      });
+      if (!exists) {
+        await client.accountMapping.create({
+          data: { key: MAPPING_KEYS.RETAINED_EARNINGS, currency: ANY_CURRENCY, accountId: capitalId },
+        });
+      }
+    }
+  }
+
+  if ((await client.companyPartner.count()) > 0) return 0;
+  const { partners } = equityTemplateFor(equity);
+  let created = 0;
+  for (const p of partners) {
+    const capitalAccountId = idByCode.get(p.capitalCode);
+    if (!capitalAccountId) continue;
+    await client.companyPartner.create({
+      data: {
+        name: p.name.trim(),
+        role: p.role ?? null,
+        shareBp: p.shareBp,
+        capitalAccountId,
+        drawingAccountId: idByCode.get(p.drawingCode) ?? null,
+        sortOrder: p.sortOrder,
+        isActive: true,
+      },
+    });
+    created++;
+  }
+  return created;
 }

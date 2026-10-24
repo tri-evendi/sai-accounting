@@ -297,6 +297,16 @@ export type AuditAction =
   | "company_setting.logo.update"
   | "company_setting.logo.remove"
   /**
+   * Bentuk usaha diubah (24 Okt 2026) — baris `companies` di basis data
+   * KENDALI. `details`: dari/ke. Tidak menulis ulang jurnal apa pun; yang
+   * berubah hanya templat & tutup buku SESUDAHNYA, dan justru karena itu
+   * "sejak kapan buku ini diperlakukan sebagai CV" harus punya jawaban.
+   */
+  | "company.legal_form.update"
+  /** Pemilik/sekutu ditambah atau diubah (nama, peran, porsi, aktif). */
+  | "company_partner.create"
+  | "company_partner.update"
+  /**
    * Paket laporan diminta (09 §5) — ditulis PENERBIT saat menerbitkan, sebab
    * pelari Go tidak menulis buku. `details`: periode, format, laporan yang
    * disertakan & dikecualikan (+ alasan), id pekerjaan anak PDF.
@@ -341,6 +351,8 @@ export type AuditEntity =
   /** Dokumen biaya impor (issue #495 butir 1). */
   | "landed_cost"
   | "company_settings"
+  /** Baris `company_partners` — pemilik/sekutu dan porsi labanya. */
+  | "company_partner"
   /** Bukan sebuah tabel — kumpulan baris bertanda `[CONTOH]` di banyak tabel. */
   | "sample_data"
   /** Bukan sebuah tabel — satu perbaikan data skrip yang menyentuh banyak tabel. */

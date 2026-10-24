@@ -436,6 +436,16 @@ export function createFakeReportClient(seed: {
   fiscalYearStart?: Date;
   /** Pusat biaya (issue #91) — dibaca label penyaring Laba Rugi. */
   costCenters?: { id: number; code: string; name: string; isActive?: boolean }[];
+  /** Pemilik/sekutu (bentuk usaha, 24 Okt 2026). Tidak disebut = buku PT. */
+  partners?: {
+    name: string;
+    role?: string | null;
+    shareBp: number;
+    isActive?: boolean;
+    capitalAccountId: number;
+    drawingAccountId?: number | null;
+    sortOrder?: number;
+  }[];
 }) {
   const accounts = seed.accounts.map((a) => ({
     normalBalance: "debit",
@@ -509,6 +519,23 @@ export function createFakeReportClient(seed: {
     companySetting: {
       findFirst: async () =>
         seed.fiscalYearStart ? { fiscalYearStart: seed.fiscalYearStart } : null,
+    },
+    /* Urutan `sortOrder, id` (id = posisi di seed) — sama dengan kueri
+       produksi dan `partnersSQL` Go. */
+    companyPartner: {
+      findMany: async () =>
+        (seed.partners ?? [])
+          .map((p, i) => ({
+            id: i + 1,
+            name: p.name,
+            role: p.role ?? null,
+            shareBp: p.shareBp,
+            isActive: p.isActive ?? true,
+            capitalAccountId: p.capitalAccountId,
+            drawingAccountId: p.drawingAccountId ?? null,
+            sortOrder: p.sortOrder ?? 0,
+          }))
+          .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
     },
     costCenter: {
       findUnique: async ({ where }: { where: { id: number } }) => {

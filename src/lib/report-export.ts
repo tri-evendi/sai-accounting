@@ -49,6 +49,10 @@ import {
   CASH_FLOW_HEADERS,
   EQUITY_STATEMENT_COLUMNS,
   EQUITY_STATEMENT_HEADERS,
+  EQUITY_PARTNER_COLUMNS,
+  EQUITY_PARTNER_HEADERS,
+  EQUITY_PARTNER_PRINT_LABELS,
+  equityPartnerLayout,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   PARTY_RECAP_HEADERS,
@@ -67,6 +71,7 @@ import {
   type CashBankColumnId,
   type CashFlowColumnId,
   type EquityStatementColumnId,
+  type EquityPartnerColumnId,
   type IncomeStatementColumnId,
   type IncomeStatementLayoutRow,
   type PartyRecapColumnId,
@@ -985,6 +990,69 @@ function buildEquityStatementSheet(
     })),
     rows,
   };
+}
+
+/**
+ * Lebar kolom lembar KEDUA Laporan Perubahan Ekuitas — rincian modal per
+ * pemilik/sekutu (bentuk usaha, 24 Okt 2026). Dibangkitkan ke Go.
+ */
+export const EQUITY_PARTNER_WIDTHS: Record<EquityPartnerColumnId, number> = {
+  partner: 44,
+  opening: 20,
+  profitShare: 20,
+  contributions: 20,
+  drawings: 20,
+  closing: 20,
+};
+
+/**
+ * Lembar "Rincian Modal Pemilik" — HANYA bila muatannya membawa pemilik/sekutu
+ * (CV, Firma, usaha perorangan). PT: `null`, dan berkasnya tetap satu lembar
+ * persis seperti sebelumnya.
+ */
+function buildEquityPartnerSheet(
+  p: Extract<StatementPayload, { kind: "equity-changes" }>
+): SheetModel | null {
+  const layout = equityPartnerLayout(p.partners);
+  if (layout.length === 0) return null;
+  return {
+    name: EQUITY_PARTNER_PRINT_LABELS.sheetName,
+    title: EQUITY_PARTNER_PRINT_LABELS.title,
+    period: p.period,
+    columns: EQUITY_PARTNER_COLUMNS.map((c) => ({
+      header: EQUITY_PARTNER_HEADERS[c],
+      width: EQUITY_PARTNER_WIDTHS[c],
+    })),
+    rows: layout.map((r) => {
+      const bold = r.kind === "total";
+      return [
+        text(r.label, bold),
+        money(r.opening, bold),
+        money(r.profitShare, bold),
+        money(r.contributions, bold),
+        money(r.drawings, bold),
+        money(r.closing, bold),
+      ];
+    }),
+  };
+}
+
+/**
+ * SEMUA lembar sebuah muatan — pintu yang dipakai setiap jalur berkas.
+ *
+ * Hampir setiap laporan satu lembar (`buildReportSheet`). Laporan Perubahan
+ * Ekuitas buku CV/Firma/perorangan mendapat lembar kedua, rincian modal per
+ * pemilik — lembar terpisah, bukan baris tambahan, sebab kolomnya berbeda
+ * (enam, bukan lima) dan menjejalkannya ke tabel komponen akan mengubah lembar
+ * PT juga.
+ */
+export function buildReportSheets(payload: StatementPayload): SheetModel[] {
+  const main = buildReportSheet(payload);
+  if (payload.kind === "equity-changes") {
+    const partners = buildEquityPartnerSheet(payload);
+    if (partners) return [main, partners];
+  }
+  return [main];
 }
 
 /** Map any statement payload to its sheet model. One entry point, one mapping. */

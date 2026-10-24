@@ -1989,12 +1989,27 @@ export interface EquityComponentShape {
   closing: number;
 }
 
+/** Satu pemilik/sekutu — bentuk `EquityPartnerRow` (`@/lib/equity-statement`). */
+export interface EquityPartnerShape {
+  name: string;
+  role: string | null;
+  shareBp: number;
+  isActive: boolean;
+  opening: number;
+  profitShare: number;
+  contributions: number;
+  drawings: number;
+  closing: number;
+}
+
 /** Struktural dengan sengaja — muat untuk hasil `getEquityStatement` maupun payload ekspor. */
 export interface EquityStatementShape {
   components: readonly EquityComponentShape[];
   unclosedIncome: { opening: number; movement: number; closing: number };
   totalOpening: number;
   totalClosing: number;
+  /** Rincian per pemilik/sekutu (bentuk usaha). Kosong/tidak ada untuk PT. */
+  partners?: readonly EquityPartnerShape[];
 }
 
 export type EquityStatementRowKind = "line" | "unclosed" | "total";
@@ -2085,6 +2100,133 @@ export function equityStatementLayout(
     reductions: null,
     closing: statement.totalClosing,
   });
+  return rows;
+}
+
+// ─── Rincian modal per pemilik/sekutu (bentuk usaha, 24 Okt 2026) ────────────
+
+/**
+ * Tabel KEDUA Laporan Perubahan Ekuitas untuk CV, Firma, dan usaha perorangan:
+ * satu baris per pemilik/sekutu — modal awal, bagian laba, setoran, prive,
+ * modal akhir. Untuk PT daftarnya kosong dan tabel ini TIDAK ADA di permukaan
+ * mana pun (layar, PDF, lembar sebar) — keluaran PT tidak berubah.
+ *
+ * Kalimat cetaknya bahasa Indonesia dan DIBANGKITKAN ke Go
+ * (`report_layout_gen.go`) bersama judul kolomnya — lembar sebar kedua
+ * dibandingkan isi-per-isi oleh paritas.
+ */
+export const EQUITY_PARTNER_COLUMNS = [
+  "partner",
+  "opening",
+  "profitShare",
+  "contributions",
+  "drawings",
+  "closing",
+] as const;
+
+export type EquityPartnerColumnId = (typeof EQUITY_PARTNER_COLUMNS)[number];
+
+/** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
+export const EQUITY_PARTNER_HEADERS: Record<EquityPartnerColumnId, string> = {
+  partner: "Pemilik / Sekutu",
+  opening: "Modal Awal (IDR)",
+  profitShare: "Bagian Laba/Rugi (IDR)",
+  contributions: "Setoran (IDR)",
+  drawings: "Prive (IDR)",
+  closing: "Modal Akhir (IDR)",
+};
+
+export interface EquityPartnerLabels {
+  title: string;
+  sheetName: string;
+  total: string;
+  roleAktif: string;
+  roleKomanditer: string;
+  inactive: string;
+}
+
+export const EQUITY_PARTNER_PRINT_LABELS = {
+  /** Judul tabel kedua (PDF) dan judul lembar keduanya (lembar sebar). */
+  title: "Rincian Modal per Pemilik",
+  /** Nama tab lembar kedua — ≤ 31 huruf, tanpa huruf terlarang Excel. */
+  sheetName: "Rincian Modal Pemilik",
+  total: "Total",
+  roleAktif: "sekutu aktif",
+  roleKomanditer: "sekutu komanditer",
+  inactive: "nonaktif",
+} as const satisfies EquityPartnerLabels;
+
+/**
+ * Porsi basis poin → teks persen id-ID: 10000 → "100", 3333 → "33,33",
+ * 3330 → "33,3". Ditulis tangan, bukan `toLocaleString`: padanan Go-nya harus
+ * menghasilkan teks yang SAMA PERSIS, dan aturan tiga baris lebih mudah disalin
+ * daripada perilaku Intl.
+ */
+export function shareBpText(bp: number): string {
+  const whole = Math.trunc(bp / 100);
+  const frac = Math.abs(bp % 100);
+  if (frac === 0) return String(whole);
+  if (frac % 10 === 0) return `${whole},${frac / 10}`;
+  return `${whole},${String(frac).padStart(2, "0")}`;
+}
+
+/** Label baris pemilik/sekutu: "Budi (sekutu aktif, 60%)", "Sari (100%) — nonaktif". */
+export function equityPartnerLabel(
+  p: Pick<EquityPartnerShape, "name" | "role" | "shareBp" | "isActive">,
+  labels: EquityPartnerLabels = EQUITY_PARTNER_PRINT_LABELS
+): string {
+  const role =
+    p.role === "aktif" ? labels.roleAktif : p.role === "komanditer" ? labels.roleKomanditer : "";
+  const inside = role ? `${role}, ${shareBpText(p.shareBp)}%` : `${shareBpText(p.shareBp)}%`;
+  return `${p.name} (${inside})${p.isActive ? "" : ` — ${labels.inactive}`}`;
+}
+
+export interface EquityPartnerLayoutRow {
+  kind: "line" | "total";
+  label: string;
+  opening: number;
+  profitShare: number;
+  contributions: number;
+  drawings: number;
+  closing: number;
+}
+
+/**
+ * Baris tabel rincian per pemilik dalam urutan kanoniknya, diakhiri Total.
+ * Daftar kosong → `[]` (tabelnya tidak ditampilkan sama sekali).
+ */
+export function equityPartnerLayout(
+  partners: readonly EquityPartnerShape[] | undefined,
+  labels: EquityPartnerLabels = EQUITY_PARTNER_PRINT_LABELS
+): EquityPartnerLayoutRow[] {
+  if (!partners || partners.length === 0) return [];
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const total: EquityPartnerLayoutRow = {
+    kind: "total",
+    label: labels.total,
+    opening: 0,
+    profitShare: 0,
+    contributions: 0,
+    drawings: 0,
+    closing: 0,
+  };
+  const rows: EquityPartnerLayoutRow[] = partners.map((p) => {
+    total.opening = round2(total.opening + p.opening);
+    total.profitShare = round2(total.profitShare + p.profitShare);
+    total.contributions = round2(total.contributions + p.contributions);
+    total.drawings = round2(total.drawings + p.drawings);
+    total.closing = round2(total.closing + p.closing);
+    return {
+      kind: "line",
+      label: equityPartnerLabel(p, labels),
+      opening: p.opening,
+      profitShare: p.profitShare,
+      contributions: p.contributions,
+      drawings: p.drawings,
+      closing: p.closing,
+    };
+  });
+  rows.push(total);
   return rows;
 }
 

@@ -44,7 +44,7 @@ import { REPORTS, isExportable, reportById } from "@/lib/report-catalog";
 import { exportJobKind, reportEngine } from "@/lib/report-engine";
 import { publishGoExport } from "@/lib/report-export-go";
 import { statementPayloadSchema } from "@/lib/validations/report-export";
-import { buildReportSheet } from "@/lib/report-export";
+import { buildReportSheets } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -139,7 +139,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const sheet = buildReportSheet(payload);
+  /* Lembar utama menentukan ambang baris; lembar tambahan (rincian modal per
+     pemilik, bentuk usaha) paling banyak beberapa puluh baris. */
+  const sheets = buildReportSheets(payload);
+  const sheet = sheets[0]!;
 
   /*
    * ── PENYERAHAN KE ANTREAN (tahap 1c, §5) ────────────────────────────────
@@ -225,7 +228,7 @@ export async function POST(request: Request) {
       { status: 413 }
     );
   }
-  const buffer = await buildWorkbookBuffer([sheet], await getCompanyIdentity());
+  const buffer = await buildWorkbookBuffer(sheets, await getCompanyIdentity());
 
   const slug = STATEMENT_TITLES[payload.kind].replace(/[^A-Za-z0-9]+/g, "_");
   const filename = `${slug}_${businessISODate(new Date())}.xlsx`;

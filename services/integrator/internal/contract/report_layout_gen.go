@@ -119,6 +119,17 @@ const (
 	EquityStatementTotalLabel    = "Total"
 )
 
+// Lembar kedua Laporan Perubahan Ekuitas — rincian modal per pemilik/sekutu
+// (bentuk usaha, 24 Okt 2026): `EQUITY_PARTNER_PRINT_LABELS`.
+const (
+	EquityPartnerSheetName           = "Rincian Modal Pemilik"
+	EquityPartnerTitle               = "Rincian Modal per Pemilik"
+	EquityPartnerTotalLabel          = "Total"
+	EquityPartnerRoleAktifLabel      = "sekutu aktif"
+	EquityPartnerRoleKomanditerLabel = "sekutu komanditer"
+	EquityPartnerInactiveLabel       = "nonaktif"
+)
+
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
@@ -197,6 +208,17 @@ var EquityStatementColumns = []ReportColumn{
 	{Header: "Penambahan (IDR)", Width: 20},
 	{Header: "Pengurangan (IDR)", Width: 20},
 	{Header: "Saldo Akhir (IDR)", Width: 20},
+}
+
+// EquityPartnerColumns: judul (EQUITY_PARTNER_HEADERS) dan lebar
+// (EQUITY_PARTNER_WIDTHS) kolom lembar rincian modal per pemilik.
+var EquityPartnerColumns = []ReportColumn{
+	{Header: "Pemilik / Sekutu", Width: 44},
+	{Header: "Modal Awal (IDR)", Width: 20},
+	{Header: "Bagian Laba/Rugi (IDR)", Width: 20},
+	{Header: "Setoran (IDR)", Width: 20},
+	{Header: "Prive (IDR)", Width: 20},
+	{Header: "Modal Akhir (IDR)", Width: 20},
 }
 
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.

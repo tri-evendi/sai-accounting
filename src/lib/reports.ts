@@ -728,7 +728,7 @@ export async function getEquityStatement(
 ): Promise<EquityStatement> {
   const sebelum = new Date(from.getTime() - 1);
 
-  const [awal, akhir, accounts, mutasi] = await Promise.all([
+  const [awal, akhir, accounts, mutasi, partners] = await Promise.all([
     getBalanceSheet(sebelum, client),
     getBalanceSheet(to, client),
     client.account.findMany({
@@ -741,10 +741,59 @@ export async function getEquityStatement(
       _sum: { baseDebit: true, baseCredit: true },
       where: { journal: { date: { gte: from, lte: to } }, account: { type: "equity" } },
     }),
+    /* Bentuk usaha (24 Okt 2026): pemilik/sekutu. Buku PT tidak punya baris,
+       dan untuk buku itu tidak ada kueri tambahan lain yang berjalan. */
+    client.companyPartner.findMany({
+      select: {
+        name: true,
+        role: true,
+        shareBp: true,
+        isActive: true,
+        capitalAccountId: true,
+        drawingAccountId: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    }),
   ]);
 
   const mutasiById = new Map(mutasi.map((g) => [g.accountId, g]));
   const openingById = new Map(awal.equity.map((l) => [l.code, l.amount]));
+
+  /*
+   * Mutasi BUKAN-penutup akun ekuitas — hanya bila ada pemilik/sekutu. Selisih
+   * terhadap mutasi seluruhnya adalah mutasi jurnal penutup, yaitu bagian laba
+   * (lihat `EquityPartnerInput`). Satu kueri, penyaring `NOT_CLOSING` yang sama
+   * dengan Laba Rugi.
+   */
+  const bukanPenutupById =
+    partners.length === 0
+      ? new Map<number, { _sum: { baseDebit: unknown; baseCredit: unknown } }>()
+      : new Map(
+          (
+            await client.journalLine.groupBy({
+              by: ["accountId"],
+              _sum: { baseDebit: true, baseCredit: true },
+              where: {
+                journal: { date: { gte: from, lte: to }, ...NOT_CLOSING },
+                account: { type: "equity" },
+              },
+            })
+          ).map((g) => [g.accountId, g])
+        );
+  const codeById = new Map(accounts.map((a) => [a.id, a.code]));
+  const sums = (id: number | null) => {
+    if (id === null) return { opening: 0, debit: 0, credit: 0, ncDebit: 0, ncCredit: 0 };
+    const code = codeById.get(id);
+    const g = mutasiById.get(id);
+    const nc = bukanPenutupById.get(id);
+    return {
+      opening: code ? (openingById.get(code) ?? 0) : 0,
+      debit: Number(g?._sum.baseDebit ?? 0),
+      credit: Number(g?._sum.baseCredit ?? 0),
+      ncDebit: Number(nc?._sum.baseDebit ?? 0),
+      ncCredit: Number(nc?._sum.baseCredit ?? 0),
+    };
+  };
 
   return buildEquityStatement({
     components: accounts.map((a) => {
@@ -763,5 +812,20 @@ export async function getEquityStatement(
     }),
     openingUnclosedIncome: awal.netIncome,
     closingUnclosedIncome: akhir.netIncome,
+    partners: partners.map((p) => {
+      const c = sums(p.capitalAccountId);
+      const d = sums(p.drawingAccountId);
+      return {
+        name: p.name,
+        role: p.role,
+        shareBp: p.shareBp,
+        isActive: p.isActive,
+        opening: c.opening + d.opening,
+        periodDebit: c.ncDebit + d.ncDebit,
+        periodCredit: c.ncCredit + d.ncCredit,
+        closingDebit: c.debit - c.ncDebit + (d.debit - d.ncDebit),
+        closingCredit: c.credit - c.ncCredit + (d.credit - d.ncCredit),
+      };
+    }),
   });
 }

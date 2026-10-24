@@ -54,11 +54,23 @@ type fixtureAccount struct {
 	Type string `json:"type"`
 }
 
+// fixturePartner: satu baris `company_partners` (bentuk usaha, 24 Okt 2026).
+type fixturePartner struct {
+	Name             string  `json:"name"`
+	Role             *string `json:"role"`
+	ShareBp          int     `json:"shareBp"`
+	IsActive         *bool   `json:"isActive"`
+	CapitalAccountID int     `json:"capitalAccountId"`
+	DrawingAccountID *int    `json:"drawingAccountId"`
+	SortOrder        int     `json:"sortOrder"`
+}
+
 // StatementBook adalah satu buku fixture bersama (`testdata/statement_books.json`).
 type statementBook struct {
 	Name            string           `json:"name"`
 	FiscalYearStart *time.Time       `json:"fiscalYearStart"`
 	Accounts        []fixtureAccount `json:"accounts"`
+	Partners        []fixturePartner `json:"partners"`
 	Journals        []fixtureJournal `json:"journals"`
 	IncomeStmts     []struct {
 		Case       string `json:"case"`

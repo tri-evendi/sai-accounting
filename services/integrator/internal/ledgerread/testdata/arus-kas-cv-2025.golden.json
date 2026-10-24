@@ -1,0 +1,109 @@
+{
+  "from": "2024-12-31T17:00:00Z",
+  "to": "2025-12-31T16:59:59.999Z",
+  "groups": [
+    {
+      "category": "operating",
+      "lines": [
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "type": "revenue",
+          "inflow": "10000000.01",
+          "outflow": "0.00",
+          "net": "10000000.01"
+        },
+        {
+          "code": "6101",
+          "name": "Beban Operasional",
+          "type": "expense",
+          "inflow": "0.00",
+          "outflow": "2500000.00",
+          "net": "-2500000.00"
+        }
+      ],
+      "inflow": "10000000.01",
+      "outflow": "2500000.00",
+      "net": "7500000.01"
+    },
+    {
+      "category": "investing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "financing",
+      "lines": [
+        {
+          "code": "311001",
+          "name": "Modal Andi",
+          "type": "equity",
+          "inflow": "50000000.00",
+          "outflow": "0.00",
+          "net": "50000000.00"
+        },
+        {
+          "code": "311002",
+          "name": "Modal Budi",
+          "type": "equity",
+          "inflow": "30000000.00",
+          "outflow": "0.00",
+          "net": "30000000.00"
+        },
+        {
+          "code": "311003",
+          "name": "Modal Citra",
+          "type": "equity",
+          "inflow": "20000000.00",
+          "outflow": "0.00",
+          "net": "20000000.00"
+        },
+        {
+          "code": "312001",
+          "name": "Prive Andi",
+          "type": "equity",
+          "inflow": "0.00",
+          "outflow": "1000000.00",
+          "net": "-1000000.00"
+        },
+        {
+          "code": "312002",
+          "name": "Prive Budi",
+          "type": "equity",
+          "inflow": "0.00",
+          "outflow": "500000.00",
+          "net": "-500000.00"
+        }
+      ],
+      "inflow": "100000000.00",
+      "outflow": "1500000.00",
+      "net": "98500000.00"
+    },
+    {
+      "category": "uncategorised",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    }
+  ],
+  "totalInflow": "110000000.01",
+  "totalOutflow": "4000000.00",
+  "netChange": "106000000.01",
+  "openingCash": "0.00",
+  "closingCash": "106000000.01",
+  "cashAccounts": [
+    {
+      "code": "1101",
+      "name": "Kas",
+      "opening": "0.00",
+      "closing": "106000000.01",
+      "net": "106000000.01"
+    }
+  ],
+  "reconciled": true,
+  "suspectUnrated": 0,
+  "unknownTypes": []
+}

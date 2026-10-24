@@ -34,7 +34,7 @@ import { getCashFlow, getEquityStatement } from "@/lib/reports";
 import { isExportable, reportById, resolvePeriod } from "@/lib/report-catalog";
 import { goExportPayloadShape } from "@/lib/report-export-go";
 import { buildReportPayload } from "@/lib/report-payload";
-import { buildReportSheet } from "@/lib/report-export";
+import { buildReportSheet, buildReportSheets } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
 import { compareWorkbookContent } from "@/lib/xlsx-content-parity";
 import { statementPayloadSchema } from "@/lib/validations/report-export";
@@ -114,11 +114,13 @@ for (const book of BOOKS) {
 
       it(`${c.case}: isi lembar sebar setara — jalur berkas DAN jalur sinkron`, async () => {
         const payload = await buildReportPayload(EQUITY as never, { from: c.from, to: c.to }, client(book) as never);
-        const ts = await buildWorkbookBuffer([buildReportSheet(payload)], { name: book.companyName });
+        /* SEMUA lembar (`buildReportSheets`): buku CV/Firma/perorangan membawa
+           lembar kedua, rincian modal per pemilik — Go menulisnya juga. */
+        const ts = await buildWorkbookBuffer(buildReportSheets(payload), { name: book.companyName });
         expect(await compareWorkbookContent(new Uint8Array(ts), goSheet(c.case)), "berkas ⇄ Go").toEqual([]);
         /* Jalur sinkron halaman: muatan yang SAMA melewati skema rute ekspor. */
         const sinkron = statementPayloadSchema.parse(JSON.parse(JSON.stringify(payload)));
-        expect(buildReportSheet(sinkron)).toEqual(buildReportSheet(payload));
+        expect(buildReportSheets(sinkron)).toEqual(buildReportSheets(payload));
       });
     }
   });
@@ -172,5 +174,49 @@ describe("pembanding Arus Kas & Ekuitas MELIHAT selisih — bukan selalu hijau",
     const g = goNumbers<GoEquityStatement>("ekuitas-lintas-tutup");
     const ubah = { ...ts, components: ts.components.map((x) => (x.code === "3103" ? { ...x, reductions: 0 } : x)) };
     expect(compareEquityStatement(ubah, g).join("\n")).toMatch(/komponen 3103 reductions/);
+  });
+});
+
+describe("bentuk usaha: rincian modal per pemilik (buku-cv)", () => {
+  const cv = BOOKS.find((b) => b.name === "buku-cv")!;
+
+  it("bagian laba dari jurnal penutup, prive yang ditutup tidak menghapus prive", async () => {
+    const r = resolvePeriod("2025-01-01", "2025-12-31");
+    const ts = await getEquityStatement(r.from, r.to, client(cv) as never);
+    expect(ts.partners.map((p) => p.name)).toEqual(["Andi", "Budi", "Citra"]);
+    const andi = ts.partners[0]!;
+    /* Sisa pembulatan 1 sen milik porsi TERBESAR (Andi, 50%). */
+    expect(andi.profitShare).toBe(3_750_000.01);
+    expect(andi.drawings).toBe(1_000_000);
+    expect(andi.contributions).toBe(50_000_000);
+    expect(andi.closing).toBe(52_750_000.01);
+    /* Rincian adalah ringkasan akun yang sudah ada: jumlah modal akhir pemilik
+       = jumlah saldo akhir akun Modal+Prive mereka. */
+    const akun = ts.components
+      .filter((c) => /^31[12]00[1-4]$/.test(c.code))
+      .reduce((s, c) => s + c.closing, 0);
+    const pemilik = ts.partners.reduce((s, p) => s + p.closing, 0);
+    expect(Math.round(pemilik * 100)).toBe(Math.round(akun * 100));
+  });
+
+  it("sekutu nonaktif tanpa saldo dilewati; PT tidak punya rincian", async () => {
+    const r = resolvePeriod("2026-01-01", "2026-03-31");
+    const ts = await getEquityStatement(r.from, r.to, client(cv) as never);
+    expect(ts.partners.some((p) => p.name === "Dedi")).toBe(false);
+    const pt = BOOKS.find((b) => b.name === "buku-arus-kas")!;
+    const ptStatement = await getEquityStatement(r.from, r.to, client(pt) as never);
+    expect(ptStatement.partners).toEqual([]);
+    const payload = await buildReportPayload(EQUITY as never, { from: "2026-01-01", to: "2026-03-31" }, client(pt) as never);
+    expect("partners" in payload).toBe(false);
+    expect(buildReportSheets(payload)).toHaveLength(1);
+  });
+
+  it("pembanding MELIHAT selisih satu sen pada bagian laba", async () => {
+    const r = resolvePeriod("2025-01-01", "2025-12-31");
+    const ts = await getEquityStatement(r.from, r.to, client(cv) as never);
+    ts.partners[1]!.profitShare += 0.01;
+    expect(compareEquityStatement(ts, goNumbers<GoEquityStatement>("ekuitas-cv-2025")).join("\n")).toMatch(
+      /pemilik #2 Budi profitShare/
+    );
   });
 });

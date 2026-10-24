@@ -76,6 +76,9 @@ import {
   EQUITY_STATEMENT_COLUMNS,
   EQUITY_STATEMENT_HEADERS,
   EQUITY_STATEMENT_PRINT_LABELS,
+  EQUITY_PARTNER_COLUMNS,
+  EQUITY_PARTNER_HEADERS,
+  EQUITY_PARTNER_PRINT_LABELS,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   INCOME_STATEMENT_PRINT_LABELS,
@@ -100,6 +103,7 @@ import {
   CASH_FLOW_WIDTHS,
   COMPARE_CHANGE_WIDTH,
   EQUITY_STATEMENT_WIDTHS,
+  EQUITY_PARTNER_WIDTHS,
   IDR_NUMBER_FORMAT,
   INCOME_STATEMENT_WIDTHS,
   SHEET_BANNER_STYLE,
@@ -2226,6 +2230,19 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
   const kolomEq = EQUITY_STATEMENT_COLUMNS.map(
     (c) => `\t{Header: ${q(EQUITY_STATEMENT_HEADERS[c])}, Width: ${EQUITY_STATEMENT_WIDTHS[c]}},`
   ).join("\n");
+  /* Lembar kedua: rincian modal per pemilik (bentuk usaha, 24 Okt 2026). */
+  const epl = EQUITY_PARTNER_PRINT_LABELS;
+  const konstPemilik = ratakan([
+    { kiri: "EquityPartnerSheetName", kanan: `= ${q(epl.sheetName)}` },
+    { kiri: "EquityPartnerTitle", kanan: `= ${q(epl.title)}` },
+    { kiri: "EquityPartnerTotalLabel", kanan: `= ${q(epl.total)}` },
+    { kiri: "EquityPartnerRoleAktifLabel", kanan: `= ${q(epl.roleAktif)}` },
+    { kiri: "EquityPartnerRoleKomanditerLabel", kanan: `= ${q(epl.roleKomanditer)}` },
+    { kiri: "EquityPartnerInactiveLabel", kanan: `= ${q(epl.inactive)}` },
+  ]);
+  const kolomPemilik = EQUITY_PARTNER_COLUMNS.map(
+    (c) => `\t{Header: ${q(EQUITY_PARTNER_HEADERS[c])}, Width: ${EQUITY_PARTNER_WIDTHS[c]}},`
+  ).join("\n");
   const kolomBs = BALANCE_SHEET_COLUMNS.map(
     (c) => `\t{Header: ${q(BALANCE_SHEET_HEADERS[c])}, Width: ${BALANCE_SHEET_WIDTHS[c]}},`
   ).join("\n");
@@ -2293,6 +2310,12 @@ const (
 ${konstEkuitas}
 )
 
+// Lembar kedua Laporan Perubahan Ekuitas — rincian modal per pemilik/sekutu
+// (bentuk usaha, 24 Okt 2026): \`EQUITY_PARTNER_PRINT_LABELS\`.
+const (
+${konstPemilik}
+)
+
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
@@ -2333,6 +2356,12 @@ ${kolomCf}
 // (EQUITY_STATEMENT_WIDTHS) kolom Laporan Perubahan Ekuitas.
 var EquityStatementColumns = []ReportColumn{
 ${kolomEq}
+}
+
+// EquityPartnerColumns: judul (EQUITY_PARTNER_HEADERS) dan lebar
+// (EQUITY_PARTNER_WIDTHS) kolom lembar rincian modal per pemilik.
+var EquityPartnerColumns = []ReportColumn{
+${kolomPemilik}
 }
 
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.

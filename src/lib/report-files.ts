@@ -308,13 +308,20 @@ async function tungguHasil(
 
     if (res.ok) return res;
 
+    if (res.status === 410) {
+      /* Berkasnya sudah dihapus karena melewati masa simpan (TATA-KELOLA §6).
+         Kalimatnya dari server, dalam bahasa pengguna. */
+      const isi = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new HasilKedaluwarsaError(isi.error ?? "Berkasnya sudah dihapus — minta ekspornya lagi.");
+    }
+
     if (res.status !== 409) {
       /* 404 = bukan milik PT ini, izinnya dicabut, atau berkasnya hilang.
          Apa pun sebabnya, ia tidak akan berubah dengan menunggu. */
       throw new Error(`Hasil tidak bisa diambil: ${res.status}`);
     }
 
-    const keadaan = (await res.json()) as { status?: string };
+    const keadaan = (await res.json()) as { status?: string; progress?: number };
     if (keadaan.status === "dead") {
       throw new Error("Pekerjaan ekspor gagal — tidak ada berkas yang bisa diunduh.");
     }
@@ -325,7 +332,69 @@ async function tungguHasil(
       );
     }
 
-    lapor?.(keadaan.status === "claimed" ? 50 : 10);
+    /* Kemajuan NYATA dari pelarinya bila rute mengabarkannya; tebakan kasar
+       hanya untuk jawaban lama tanpa `progress`. */
+    lapor?.(
+      typeof keadaan.progress === "number" && keadaan.status === "claimed"
+        ? keadaan.progress
+        : keadaan.status === "claimed"
+          ? 50
+          : 10
+    );
     await new Promise((r) => setTimeout(r, JEDA_MS));
   }
+}
+
+/** Hasil pekerjaan yang berkasnya sudah dihapus karena umurnya (410). */
+export class HasilKedaluwarsaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "HasilKedaluwarsaError";
+  }
+}
+
+/** Badan `POST /api/reports/package` — bentuk `reportPackageRequestSchema`. */
+export interface PermintaanPaket {
+  period: { kind: "month" | "quarter" | "year" | "custom"; year?: number; month?: number; quarter?: number; from?: string; to?: string };
+  reports: string[];
+  formats: ("pdf" | "xlsx")[];
+}
+
+/** Galat penerbitan paket — `message` sudah kalimat dari server. */
+export class PaketDitolakError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string
+  ) {
+    super(message);
+    this.name = "PaketDitolakError";
+  }
+}
+
+/**
+ * Minta paket laporan, tunggu pekerjaannya, lalu unduh ZIP-nya (09 §5).
+ *
+ * Penerbitan memulangkan 202 + id pekerjaan; penantiannya di rute hasil
+ * bertenant yang SAMA dengan ekspor lain (409 `job_not_done` + `progress`
+ * sampai berkasnya ada). `reused` = paket yang sama baru saja diminta dan
+ * pekerjaan itu yang dipakai (idempotensi penerbit).
+ */
+export async function unduhPaketLaporan(
+  permintaan: PermintaanPaket,
+  lapor?: (persen: number) => void,
+  diterbitkan?: (info: { jobId: number; reused: boolean; excluded: number }) => void
+): Promise<void> {
+  const res = await apiFetch("/api/reports/package", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(permintaan),
+  });
+  if (res.status !== 202) {
+    const isi = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+    throw new PaketDitolakError(isi.error ?? `Paket gagal diminta: ${res.status}`, isi.code);
+  }
+  const antre = (await res.json()) as { jobId: number; kind: string; reused: boolean; excluded: number };
+  diterbitkan?.(antre);
+  const hasil = await tungguHasil(antre.jobId, antre.kind, lapor);
+  await simpanBlob(await hasil.blob(), hasil.headers.get("Content-Disposition"), `Paket_Laporan_${stamp()}.zip`);
 }

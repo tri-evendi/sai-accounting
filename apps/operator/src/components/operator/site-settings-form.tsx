@@ -28,6 +28,19 @@
  * NOMINAL yang benar-benar ditagih — termasuk oleh penjadwal di luar Next.
  * Konfirmasinya muncul HANYA bila salah satu gerbang berubah; menyunting nomor
  * WhatsApp tidak perlu melewati dialog tentang pajak.
+ *
+ * ══ SATU TAB, SATU BAGIAN ═════════════════════════════════════════════════
+ * Sejak `/settings` dibagi tab (Pendaftaran & uji coba · Tagihan & PPN · Harga
+ * publik · Kontak · Retensi), formulir ini merender HANYA medan bagiannya
+ * (`section`) dan mengirim hanya medan itu (`siteSettingsSectionSchema`).
+ * Menyimpan nomor WhatsApp tidak ikut menulis ulang gerbang PPN yang tidak
+ * terlihat di tab itu. "Kembalikan ke pengaturan server" (`SiteSettingsReset`)
+ * tetap SATU tombol untuk seluruh baris — konfirmasinya menyebut itu.
+ *
+ * Gerbang KETIGA, harga di situs publik (migration platform 0013), justru DUA
+ * keadaan: ia tidak punya env untuk diikuti, dan `null` di kolom sudah berarti
+ * tampil — jadi tidak ada keputusan `.env` yang bisa dirampas. Konfirmasinya
+ * ikut pola yang sama: hanya bila berubah, dan menyebut akibatnya.
  */
 
 import { useState } from "react";
@@ -51,10 +64,25 @@ import { TextInput } from "@sai/ui/input";
 import { SelectField } from "@sai/ui/select";
 import { Textarea } from "@sai/ui/textarea";
 import { useT } from "@sai/core/i18n/client";
-import { siteSettingsSchema, type SiteSettingsFormInput } from "@op/lib/validations/operator";
+import {
+  siteSettingsSectionSchema,
+  type SiteSettingsFormInput,
+  type SiteSettingsSection,
+  type SiteSettingsSectionFormInput,
+} from "@op/lib/validations/operator";
 import type { OperatorSettingsResult } from "@op/app/(operator)/settings/actions";
 
+/** Medan milik tiap bagian — satu tempat, dipakai nilai awal & kiriman. */
+const SECTION_FIELDS: Record<SiteSettingsSection, (keyof SiteSettingsFormInput)[]> = {
+  signup: ["selfServeSignup"],
+  billing: ["ppn", "manualPaymentInstructions"],
+  pricing: ["publicPricing"],
+  contact: ["contactWhatsapp", "contactEmail"],
+};
+
 export interface SiteSettingsFormProps {
+  /** Bagian (tab) yang dirender & disimpan formulir ini. */
+  section: SiteSettingsSection;
   /** Nilai awal = yang BERLAKU sekarang (DB bila ada, kalau tidak env). */
   initial: SiteSettingsFormInput;
   /** Per medan: apakah nilainya datang dari basis data atau dari environment. */
@@ -67,31 +95,24 @@ export interface SiteSettingsFormProps {
    * "pendaftaran terbuka" pada kotak yang sesungguhnya menutupnya.
    */
   envGates: { signupOpen: boolean; ppnEnabled: boolean };
-  /** Ada barisnya di basis data — menentukan perlu-tidaknya tombol kembalikan. */
-  rowExists: boolean;
-  save: (input: SiteSettingsFormInput) => Promise<OperatorSettingsResult>;
-  reset: () => Promise<OperatorSettingsResult>;
+  save: (input: SiteSettingsSectionFormInput) => Promise<OperatorSettingsResult>;
 }
 
-export function SiteSettingsForm({
-  initial,
-  fromDb,
-  envGates,
-  rowExists,
-  save,
-  reset,
-}: SiteSettingsFormProps) {
+export function SiteSettingsForm({ section, initial, fromDb, envGates, save }: SiteSettingsFormProps) {
   const t = useT();
   const { token } = theme.useToken();
   const router = useRouter();
   const [result, setResult] = useState<OperatorSettingsResult | null>(null);
-  const [confirming, setConfirming] = useState(false);
   /** Nilai yang menunggu konfirmasi gerbang — `null` = tidak ada yang menunggu. */
-  const [pendingGates, setPendingGates] = useState<SiteSettingsFormInput | null>(null);
+  const [pendingGates, setPendingGates] = useState<SiteSettingsSectionFormInput | null>(null);
 
-  const form = useForm<SiteSettingsFormInput>({
-    resolver: zodResolver(siteSettingsSchema) as Resolver<SiteSettingsFormInput>,
-    defaultValues: initial,
+  const defaults: SiteSettingsSectionFormInput = { section };
+  for (const key of SECTION_FIELDS[section]) {
+    (defaults as Record<string, unknown>)[key] = initial[key];
+  }
+  const form = useForm<SiteSettingsSectionFormInput>({
+    resolver: zodResolver(siteSettingsSectionSchema) as unknown as Resolver<SiteSettingsSectionFormInput>,
+    defaultValues: defaults,
   });
 
   /** Dari mana nilai medan ini berasal — dikatakan di bawah setiap isian. */
@@ -111,16 +132,25 @@ export function SiteSettingsForm({
   ];
 
   /** Kalimat akibat untuk gerbang yang BERUBAH — kosong bila tak ada. */
-  const gateWarnings = (values: SiteSettingsFormInput): string[] => {
+  const gateWarnings = (values: SiteSettingsSectionFormInput): string[] => {
     const out: string[] = [];
-    if (values.selfServeSignup !== initial.selfServeSignup) {
+    if (section === "signup" && values.selfServeSignup !== initial.selfServeSignup) {
       out.push(t("operator.settings.signupConfirm"));
     }
-    if (values.ppn !== initial.ppn) out.push(t("operator.settings.ppnConfirm"));
+    if (section === "billing" && values.ppn !== initial.ppn) out.push(t("operator.settings.ppnConfirm"));
+    if (section === "pricing" && values.publicPricing !== initial.publicPricing) {
+      out.push(
+        t(
+          values.publicPricing === "on"
+            ? "operator.settings.pricingShowConfirm"
+            : "operator.settings.pricingHideConfirm"
+        )
+      );
+    }
     return out;
   };
 
-  const simpan = async (values: SiteSettingsFormInput) => {
+  const simpan = async (values: SiteSettingsSectionFormInput) => {
     setResult(null);
     const res = await save(values);
     if (!res.ok) {
@@ -147,118 +177,124 @@ export function SiteSettingsForm({
     <Form {...form}>
       <form onSubmit={onSubmit} noValidate>
         <Flex vertical gap={token.marginLG} style={{ maxWidth: 560 }}>
-          <FormField
-            control={form.control}
-            name="contactWhatsapp"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("operator.settings.whatsappLabel")}</FormLabel>
-                <FormControl>
-                  <TextInput {...field} inputMode="numeric" placeholder="628123456789" />
-                </FormControl>
-                <FormDescription>
-                  {t("operator.settings.whatsappHint")} · {sumber(fromDb.whatsapp)}
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {section === "contact" && (
+            <>
+              <FormField
+                control={form.control}
+                name="contactWhatsapp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("operator.settings.whatsappLabel")}</FormLabel>
+                    <FormControl>
+                      <TextInput {...field} value={field.value ?? ""} inputMode="numeric" placeholder="628123456789" />
+                    </FormControl>
+                    <FormDescription>
+                      {t("operator.settings.whatsappHint")} · {sumber(fromDb.whatsapp)}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contactEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("operator.settings.emailLabel")}</FormLabel>
+                    <FormControl>
+                      <TextInput {...field} value={field.value ?? ""} inputMode="email" placeholder="sales@contoh.id" />
+                    </FormControl>
+                    <FormDescription>
+                      {t("operator.settings.emailHint")} · {sumber(fromDb.email)}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Kotak kosong = CABUT, bukan "pakai env" — dikatakan sebelum
+                  tombol simpan, bukan sesudah orang kehilangan kanalnya. */}
+              <p style={{ margin: 0, fontSize: token.fontSize, color: token.colorTextSecondary }}>
+                {t("operator.settings.emptyMeans")}
+              </p>
+            </>
+          )}
 
-          <FormField
-            control={form.control}
-            name="contactEmail"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("operator.settings.emailLabel")}</FormLabel>
-                <FormControl>
-                  <TextInput {...field} inputMode="email" placeholder="sales@contoh.id" />
-                </FormControl>
-                <FormDescription>
-                  {t("operator.settings.emailHint")} · {sumber(fromDb.email)}
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {section === "signup" && (
+            <FormField
+              control={form.control}
+              name="selfServeSignup"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("operator.settings.signupLabel")}</FormLabel>
+                  <FormControl>
+                    <SelectField {...field} options={gateOptions(envGates.signupOpen)} />
+                  </FormControl>
+                  <FormDescription>{t("operator.settings.signupHint")}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
-          <FormField
-            control={form.control}
-            name="manualPaymentInstructions"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("operator.settings.paymentLabel")}</FormLabel>
-                <FormControl>
-                  <Textarea {...field} rows={3} />
-                </FormControl>
-                <FormDescription>
-                  {t("operator.settings.paymentHint")} · {sumber(fromDb.payment)}
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {section === "billing" && (
+            <>
+              <FormField
+                control={form.control}
+                name="ppn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("operator.settings.ppnLabel")}</FormLabel>
+                    <FormControl>
+                      <SelectField {...field} options={gateOptions(envGates.ppnEnabled)} />
+                    </FormControl>
+                    <FormDescription>{t("operator.settings.ppnHint")}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="manualPaymentInstructions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("operator.settings.paymentLabel")}</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value ?? ""} rows={3} />
+                    </FormControl>
+                    <FormDescription>
+                      {t("operator.settings.paymentHint")} · {sumber(fromDb.payment)}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
 
-          {/* Kotak kosong = CABUT, bukan "pakai env" — dikatakan sebelum tombol
-              simpan, bukan sesudah orang kehilangan kanalnya. */}
-          <p style={{ margin: 0, fontSize: token.fontSize, color: token.colorTextSecondary }}>
-            {t("operator.settings.emptyMeans")}
-          </p>
-
-          {/* ══ GERBANG ══ Dipisah dari isian di atas oleh judulnya sendiri:
-              yang di atas adalah ISI yang dipajang, yang di bawah MENGUBAH
-              perilaku — pendaftaran dan nominal tagihan. */}
-          <div>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: token.fontSizeLG,
-                fontWeight: 600,
-                color: token.colorText,
-              }}
-            >
-              {t("operator.settings.gatesHeading")}
-            </h2>
-            <p
-              style={{
-                margin: `${token.marginXXS}px 0 0`,
-                fontSize: token.fontSize,
-                color: token.colorTextSecondary,
-                lineHeight: 1.625,
-              }}
-            >
-              {t("operator.settings.gatesIntro")}
-            </p>
-          </div>
-
-          <FormField
-            control={form.control}
-            name="selfServeSignup"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("operator.settings.signupLabel")}</FormLabel>
-                <FormControl>
-                  <SelectField {...field} options={gateOptions(envGates.signupOpen)} />
-                </FormControl>
-                <FormDescription>{t("operator.settings.signupHint")}</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="ppn"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("operator.settings.ppnLabel")}</FormLabel>
-                <FormControl>
-                  <SelectField {...field} options={gateOptions(envGates.ppnEnabled)} />
-                </FormControl>
-                <FormDescription>{t("operator.settings.ppnHint")}</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Harga publik (migration platform 0013) — dua keadaan, tanpa env:
+              tidak ada "ikut pengaturan server" untuk ditawarkan. */}
+          {section === "pricing" && (
+            <FormField
+              control={form.control}
+              name="publicPricing"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("operator.settings.pricingLabel")}</FormLabel>
+                  <FormControl>
+                    <SelectField
+                      {...field}
+                      options={[
+                        { value: "on", label: t("operator.settings.pricingShow") },
+                        { value: "off", label: t("operator.settings.pricingHide") },
+                      ]}
+                    />
+                  </FormControl>
+                  <FormDescription>{t("operator.settings.pricingHint")}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           {result && <Alert type="success" showIcon message={result.message} />}
           {form.formState.errors.root?.message && (
@@ -269,21 +305,11 @@ export function SiteSettingsForm({
             <Button type="submit" variant="primary" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? t("common.saving") : t("common.save")}
             </Button>
-            {rowExists && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setConfirming(true)}
-              >
-                {t("operator.settings.resetSubmit")}
-              </Button>
-            )}
           </Flex>
         </Flex>
 
-        {/* Gerbang yang berubah disebut AKIBATNYA, satu kalimat per gerbang —
-            bukan "Anda yakin?" (MASTER.md §Form). Keduanya bisa berubah dalam
-            satu simpan, jadi pesannya digabung alih-alih dua dialog berurutan. */}
+        {/* Gerbang yang berubah disebut AKIBATNYA — bukan "Anda yakin?"
+            (MASTER.md §Form). */}
         <ConfirmDialog
           open={pendingGates !== null}
           onOpenChange={(open) => {
@@ -298,23 +324,41 @@ export function SiteSettingsForm({
             if (values) await simpan(values);
           }}
         />
-
-        {/* Mengembalikan ke environment MENGHAPUS barisnya — pesannya menyebut
-            akibatnya, bukan "Anda yakin?" (MASTER.md §Form). */}
-        <ConfirmDialog
-          open={confirming}
-          onOpenChange={setConfirming}
-          title={t("operator.settings.resetSubmit")}
-          message={t("operator.settings.resetConfirm")}
-          confirmLabel={t("operator.settings.resetSubmit")}
-          onConfirm={async () => {
-            const res = await reset();
-            setResult(res.ok ? res : null);
-            if (!res.ok) form.setError("root", { message: res.message });
-            router.refresh();
-          }}
-        />
       </form>
     </Form>
+  );
+}
+
+/**
+ * "Kembalikan ke pengaturan server" — MENGHAPUS barisnya, jadi SEMUA nilai di
+ * semua tab kembali ke `.env`/bawaan. Satu tombol untuk seluruh halaman,
+ * bukan per tab, dan konfirmasinya menyebut akibatnya (MASTER.md §Form).
+ */
+export function SiteSettingsReset({ reset }: { reset: () => Promise<OperatorSettingsResult> }) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [result, setResult] = useState<OperatorSettingsResult | null>(null);
+
+  return (
+    <Flex vertical gap={token.marginXS} align="flex-start">
+      {result && <Alert type={result.ok ? "success" : "error"} showIcon message={result.message} />}
+      <Button type="button" variant="secondary" onClick={() => setConfirming(true)}>
+        {t("operator.settings.resetSubmit")}
+      </Button>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={t("operator.settings.resetSubmit")}
+        message={t("operator.settings.resetConfirm")}
+        confirmLabel={t("operator.settings.resetSubmit")}
+        onConfirm={async () => {
+          const res = await reset();
+          setResult(res);
+          router.refresh();
+        }}
+      />
+    </Flex>
   );
 }

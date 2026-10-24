@@ -75,6 +75,34 @@ export type OperatorAuditAction =
    */
   | "operator.settings.trial_retention"
   /**
+   * PAKET TAMPIL/TERSEMBUNYI di katalog publik (`plans.is_public`, halaman
+   * `/plans`). `details` memuat kunci paket, nilai LAMA dan BARU, serta
+   * alasannya — menyembunyikan paket juga menutup jalan swalayan tenant untuk
+   * pindah ke paket itu (`plan-change` menuntut `is_public`).
+   */
+  | "operator.plans.visibility"
+  /**
+   * TAMPILAN HALAMAN DEPAN (konsol `/landing`, migration platform 0014).
+   * `details` memuat nilai LAMA dan BARU: seksi tersembunyi, tautan demo +
+   * kalimat WhatsApp, pengumuman utuh (teks pendek, tautan, jendela). Untuk FAQ
+   * hanya kunci, pertanyaan bahasa Indonesia, dan panjang jawabannya.
+   */
+  | "operator.landing.sections"
+  | "operator.landing.contact"
+  | "operator.landing.announcement"
+  | "operator.landing.faq"
+  /**
+   * GAMBAR & BUKTI SOSIAL (konsol `/landing/media`, migration platform 0015).
+   * `image` = unggahan (id, jenis, sidik, format, ukuran — bukan isinya);
+   * daftar = kunci, nama, dan sakelar tampil sebelum/sesudah; `screens` = id
+   * gambar hero/galeri/OG sebelum/sesudah.
+   */
+  | "operator.landing.image"
+  | "operator.landing.testimonials"
+  | "operator.landing.client_logos"
+  | "operator.landing.partners"
+  | "operator.landing.screens"
+  /**
    * AKUN OPERATOR (migration kendali 0004). `details` memuat nama akun
    * sasaran, peran sebelum/sesudah, dan aktif sebelum/sesudah — TIDAK PERNAH
    * kata sandi atau rahasia TOTP yang diterbitkan (keduanya hanya tampil

@@ -12,6 +12,17 @@
  * membuka setiap halaman. Yang disembunyikan per peran adalah tombol & formulir
  * di dalam halamannya, dan yang menolaknya adalah action-nya sendiri.
  *
+ * ══ TUJUH KELOMPOK, MENURUT PEKERJAAN (bukan menurut tabel) ═══════════════
+ * Ringkasan · Pelanggan (tenant, lisensi, penghapusan) · Penjualan & tagihan
+ * (katalog paket, e-Faktur, rekonsiliasi) · Halaman publik (isi, logo) ·
+ * Komunikasi (pengumuman status, surel) · Sistem (penjadwal, cadangan,
+ * kesesuaian data) · Administrasi (pengaturan, akun operator, jejak audit).
+ * Sebelumnya penagihan menumpang kelompok "Customer" (kata Inggris di UI
+ * Indonesia), dan "Pengaturan situs" ada di kelompok situs padahal isinya
+ * setelan KOMERSIAL — pendaftaran, PPN, transfer manual, kontak, retensi uji
+ * coba, harga publik. Yang berubah hanya kelompok, urutan, dan label; rute,
+ * izin, dan logika butir aktif tidak disentuh.
+ *
  * `.tsx` karena butirnya membawa ikon; tidak ada komponen yang diekspor.
  */
 import {
@@ -26,8 +37,10 @@ import {
   FileTextOutlined,
   HistoryOutlined,
   KeyOutlined,
+  LayoutOutlined,
   MailOutlined,
   PictureOutlined,
+  FileImageOutlined,
   SettingOutlined,
   TeamOutlined,
   FileSearchOutlined,
@@ -45,8 +58,11 @@ const UKURAN_IKON = { fontSize: 16 } as const;
 export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
   const ringkasan = t("operator.nav.groupSummary");
   const pelanggan = t("operator.nav.groupCustomers");
-  const situs = t("operator.nav.groupSite");
+  const penjualan = t("operator.nav.groupSales");
+  const halamanPublik = t("operator.nav.groupPublic");
+  const komunikasi = t("operator.nav.groupComms");
   const sistem = t("operator.nav.groupSystem");
+  const administrasi = t("operator.nav.groupAdmin");
 
   return [
     {
@@ -65,6 +81,12 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       group: pelanggan,
     },
     {
+      href: "/licences",
+      label: t("operator.nav.licences"),
+      icon: <SafetyCertificateOutlined style={UKURAN_IKON} />,
+      group: pelanggan,
+    },
+    {
       href: "/deletions",
       label: t("operator.nav.deletions"),
       icon: <DeleteOutlined style={UKURAN_IKON} />,
@@ -74,59 +96,65 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/plans",
       label: t("operator.nav.plans"),
       icon: <AppstoreOutlined style={UKURAN_IKON} />,
-      group: pelanggan,
-    },
-    {
-      href: "/licences",
-      label: t("operator.nav.licences"),
-      icon: <SafetyCertificateOutlined style={UKURAN_IKON} />,
-      group: pelanggan,
+      group: penjualan,
     },
     {
       href: "/efaktur",
       label: t("operator.nav.efaktur"),
       icon: <AuditOutlined style={UKURAN_IKON} />,
-      group: pelanggan,
+      group: penjualan,
     },
     {
       href: "/reconciliation",
       label: t("operator.nav.reconciliation"),
       icon: <FileProtectOutlined style={UKURAN_IKON} />,
-      group: pelanggan,
+      group: penjualan,
     },
     {
       href: "/content",
       label: t("operator.nav.content"),
       icon: <FileTextOutlined style={UKURAN_IKON} />,
-      group: situs,
+      group: halamanPublik,
     },
     {
-      href: "/settings",
-      label: t("operator.nav.settings"),
-      icon: <SettingOutlined style={UKURAN_IKON} />,
-      group: situs,
+      /* Tampilan halaman depan: seksi, pengumuman, demo, FAQ (migration
+         platform 0014) — halaman sendiri, bukan tab `/settings`. */
+      href: "/landing",
+      label: t("operator.nav.landing"),
+      icon: <LayoutOutlined style={UKURAN_IKON} />,
+      group: halamanPublik,
+      /* PERSIS: `/landing/media` punya butirnya sendiri di bawah. */
+      exact: true,
+    },
+    {
+      /* Gambar & bukti sosial halaman depan (migration platform 0015). */
+      href: "/landing/media",
+      label: t("operator.nav.landingMedia"),
+      icon: <FileImageOutlined style={UKURAN_IKON} />,
+      group: halamanPublik,
     },
     {
       href: "/brand",
       label: t("operator.nav.brand"),
       icon: <PictureOutlined style={UKURAN_IKON} />,
-      group: situs,
-    },
-    {
-      href: "/scheduler",
-      label: t("operator.nav.scheduler"),
-      icon: <ClockCircleOutlined style={UKURAN_IKON} />,
-      group: sistem,
-    },
-    {
-      href: "/conformance",
-      label: t("operator.nav.conformance"),
-      icon: <FileSearchOutlined style={UKURAN_IKON} />,
+      group: halamanPublik,
     },
     {
       href: "/status-notices",
       label: t("operator.nav.statusNotices"),
       icon: <NotificationOutlined style={UKURAN_IKON} />,
+      group: komunikasi,
+    },
+    {
+      href: "/mail",
+      label: t("operator.nav.mail"),
+      icon: <MailOutlined style={UKURAN_IKON} />,
+      group: komunikasi,
+    },
+    {
+      href: "/scheduler",
+      label: t("operator.nav.scheduler"),
+      icon: <ClockCircleOutlined style={UKURAN_IKON} />,
       group: sistem,
     },
     {
@@ -136,22 +164,28 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       group: sistem,
     },
     {
-      href: "/mail",
-      label: t("operator.nav.mail"),
-      icon: <MailOutlined style={UKURAN_IKON} />,
+      href: "/conformance",
+      label: t("operator.nav.conformance"),
+      icon: <FileSearchOutlined style={UKURAN_IKON} />,
       group: sistem,
+    },
+    {
+      href: "/settings",
+      label: t("operator.nav.settings"),
+      icon: <SettingOutlined style={UKURAN_IKON} />,
+      group: administrasi,
     },
     {
       href: "/accounts",
       label: t("operator.nav.accounts"),
       icon: <KeyOutlined style={UKURAN_IKON} />,
-      group: sistem,
+      group: administrasi,
     },
     {
       href: "/audit",
       label: t("operator.nav.audit"),
       icon: <HistoryOutlined style={UKURAN_IKON} />,
-      group: sistem,
+      group: administrasi,
     },
   ];
 }

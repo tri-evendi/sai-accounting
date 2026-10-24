@@ -207,7 +207,7 @@ export const SITE_CONTENT_SECTIONS: readonly SiteContentSection[] = [
   {
     id: "nav",
     labelKey: "operator.content.sectionNav",
-    prefixes: ["nav", "signIn", "signUp", "skipToContent"],
+    prefixes: ["nav", "signIn", "signUp", "skipToContent", "announcement"],
   },
   { id: "hero", labelKey: "operator.content.sectionHero", prefixes: ["hero", "fact"] },
   {
@@ -230,7 +230,7 @@ export const SITE_CONTENT_SECTIONS: readonly SiteContentSection[] = [
     labelKey: "operator.content.sectionIntegrations",
     prefixes: ["integrations", "integration", "eyebrowIntegrations"],
   },
-  { id: "trust", labelKey: "operator.content.sectionTrust", prefixes: ["trust", "eyebrowTrust"] },
+  { id: "trust", labelKey: "operator.content.sectionTrust", prefixes: ["trust", "eyebrowTrust", "testimonials", "eyebrowTestimonials", "clientLogos", "partners", "eyebrowPartners"] },
   {
     id: "pricing",
     labelKey: "operator.content.sectionPricing",
@@ -456,6 +456,16 @@ export interface ContentCell {
   /** `undefined` = tidak ada draf; `null` = draf "kembali ke bawaan". */
   draft: string | null | undefined;
 }
+
+/**
+ * Bahasa yang DISUNTING di alur biasa konsol `/content`. Bahasa lain tetap
+ * tersimpan, berdraf, dan terbit per bahasa seperti sebelumnya — layar hanya
+ * melipatnya di balik "Bahasa lain (opsional)" (pemilik tidak mengelola
+ * terjemahan di sana). Di inti, bukan di editor: editornya modul client, dan
+ * konstanta yang diimpor server component dari modul client menjadi rujukan
+ * klien, bukan nilai.
+ */
+export const SITE_CONTENT_PRIMARY_LOCALE: Locale = "id";
 
 export type ContentCellState = "default" | "overridden" | "draft";
 

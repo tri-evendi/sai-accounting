@@ -64,8 +64,7 @@ export async function bolehAmbilHasil(
     /* Ekspor yang dihitung Go (tahap 1d) — muatannya membawa `reportId` yang
        sama bentuknya (`src/lib/report-export-go.ts`), jadi gerbang keduanya
        SAMA, bukan versi kedua yang bisa menyimpang. */
-    case "report.export_go":
-    case "report.package": {
+    case "report.export_go": {
       /*
        * Muatannya WAJIB menyebut laporan mana. Muatan tanpa `reportId` adalah
        * pekerjaan yang tidak bisa diperiksa gerbang keduanya, dan jawabannya
@@ -82,6 +81,34 @@ export async function bolehAmbilHasil(
       /* `canEffective` memeriksa modul lebih dulu, jadi satu panggilan menutup
          modul-mati maupun peran-tak-berhak. */
       return canEffective(user, report.permission);
+    }
+
+    case "report.package": {
+      /*
+       * Paket laporan (09 §5). DUA syarat, keduanya terhadap keadaan HARI INI:
+       *
+       *  1. hanya PEMINTANYA — paket memuat belasan laporan yang dipilih satu
+       *     orang untuk dirinya; rekan sesama PT yang kebetulan berizin
+       *     `report.read` tidak mewarisi berkasnya lewat id yang ditebak
+       *     (tahap 1c: "hanya pengguna yang meminta");
+       *  2. SETIAP laporan di dalamnya masih boleh dibuka pengguna itu —
+       *     modul yang dimatikan atau peran yang dicabut sesudah paket
+       *     diminta membuat seluruh berkas tertutup, sebab berkasnya tidak
+       *     bisa diunduh "sebagian".
+       *
+       * Muatan tanpa daftar laporan yang bisa diperiksa DITOLAK.
+       */
+      const p = payload as { requestedBy?: unknown; reports?: unknown } | null;
+      if (typeof p?.requestedBy !== "string" || p.requestedBy !== String(user.id)) return false;
+      if (!Array.isArray(p.reports) || p.reports.length === 0) return false;
+      for (const r of p.reports) {
+        const reportId = (r as { reportId?: unknown } | null)?.reportId;
+        if (typeof reportId !== "string") return false;
+        const report = reportById(reportId);
+        if (!report || !isExportable(report)) return false;
+        if (!(await canEffective(user, report.permission))) return false;
+      }
+      return true;
     }
 
     case "report.pdf": {
@@ -141,6 +168,8 @@ export async function bolehAmbilHasil(
     case "efaktur.record":
     case "integration.bank_feed":
     case "document.invoice_send":
+    /* Bagian PDF paket laporan — berkas antara; pintunya `null`. */
+    case "report.package_pdf":
       return false;
   }
 }

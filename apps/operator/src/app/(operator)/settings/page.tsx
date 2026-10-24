@@ -29,17 +29,28 @@
  *     bisa dibedakan dari "sengaja dimatikan" (kolom `TINYINT(1) NULL`,
  *     migration 0017) — tanpa itu, satu kali menyimpan formulir ini merampas
  *     keputusan dari `.env`.
+ *
+ * ══ LIMA TAB (`?tab=`) ═════════════════════════════════════════════════════
+ * Pendaftaran & uji coba · Tagihan & PPN · Harga publik · Kontak · Retensi.
+ * Tiap tab menyimpan medannya SENDIRI (`siteSettingsSectionSchema`), jadi
+ * menyimpan satu tab tidak menulis ulang tab lain; jejaknya mencatat bagian
+ * itu saja, nilai lama dan baru. Daftar kandidat retensi hanya dibaca di tab
+ * Retensi. "Kembalikan ke pengaturan server" tetap satu tombol di bawah tab
+ * (ia menghapus seluruh baris).
  */
 
-import { ConsoleNotice, ConsolePanel } from "@op/components/operator/console-ui";
+import { CONSOLE_PAGE, ConsoleNotice, ConsolePanel } from "@op/components/operator/console-ui";
 import { PageHeader } from "@sai/ui/page-header";
-import { SiteSettingsForm } from "@op/components/operator/site-settings-form";
+import { SiteSettingsForm, SiteSettingsReset } from "@op/components/operator/site-settings-form";
+import { ConsoleTabs } from "@op/components/operator/console-tabs";
+import { resolveConsoleTab } from "@op/lib/operator/console-tabs";
 import { getT } from "@sai/platform/i18n/server";
 import { requireOperatorPage } from "@op/lib/operator/guard";
 import { operatorCan } from "@op/lib/operator/roles";
 import {
   effectiveSetting,
   ppnEnabledFrom,
+  publicPricingVisibleFrom,
   signupOpenFrom,
   siteSettingsForOperator,
   trialAutoDeletionFrom,
@@ -58,6 +69,20 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/** Judul & keterangan panel per tab — peta STATIS (penjaga kunci yatim membaca teks). */
+const TAB_HEADING = {
+  signup: "operator.settings.tabSignup",
+  billing: "operator.settings.tabBilling",
+  pricing: "operator.settings.tabPricing",
+  contact: "operator.settings.tabContact",
+} as const;
+const TAB_DESCRIPTION = {
+  signup: "operator.settings.tabSignupDescription",
+  billing: "operator.settings.tabBillingDescription",
+  pricing: "operator.settings.tabPricingDescription",
+  contact: "operator.settings.tabContactDescription",
+} as const;
+
 /** `null` → "ikut pengaturan server"; `true`/`false` → keputusan konsol. */
 function gateValue(v: boolean | null | undefined): "env" | "on" | "off" {
   if (v === true) return "on";
@@ -65,9 +90,17 @@ function gateValue(v: boolean | null | undefined): "env" | "on" | "off" {
   return "env";
 }
 
-export default async function OperatorSettingsPage() {
+const TABS = ["signup", "billing", "pricing", "contact", "retention"] as const;
+type Tab = (typeof TABS)[number];
+
+export default async function OperatorSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { operator } = await requireOperatorPage();
   const t = await getT();
+  const tab: Tab = resolveConsoleTab((await searchParams).tab, TABS, "signup");
   const row = await siteSettingsForOperator();
 
   if (row === "unreachable") {
@@ -101,6 +134,9 @@ export default async function OperatorSettingsPage() {
        telepon akan ikut menuliskan keputusan gerbang yang tak pernah diambil. */
     selfServeSignup: gateValue(row?.selfServeSignupOpen),
     ppn: gateValue(row?.ppnEnabled),
+    /* Dua keadaan (tanpa env): `null` = tampil, fungsi yang SAMA dengan
+       pembaca halaman publik. */
+    publicPricing: publicPricingVisibleFrom(row) ? ("on" as const) : ("off" as const),
   };
 
   /* Yang BERLAKU bila pilihannya "ikut pengaturan server" — dihitung di sini
@@ -124,7 +160,9 @@ export default async function OperatorSettingsPage() {
      Nilai BERLAKU dihitung dengan fungsi yang SAMA dengan penjadwal. */
   const retentionDays = trialRetentionDaysFrom(row, process.env);
   const autoDeletionOn = trialAutoDeletionFrom(row, process.env);
-  const retentionRows = await trialRetentionForOperator(retentionDays);
+  /* Kandidat retensi dibaca HANYA di tab Retensi — tab lain tidak membayar
+     kuerinya. */
+  const retentionRows = tab === "retention" ? await trialRetentionForOperator(retentionDays) : null;
   const retentionColumns: SaiColumns<TrialRetentionRow> = [
     {
       key: "tenant",
@@ -161,20 +199,47 @@ export default async function OperatorSettingsPage() {
         title={t("operator.settings.heading")}
         description={t("operator.settings.description")}
       />
+      <ConsoleTabs
+        label={t("operator.settings.tabsAria")}
+        basePath="/settings"
+        active={tab}
+        defaultId="signup"
+        tabs={[
+          { id: "signup", label: t("operator.settings.tabSignup") },
+          { id: "billing", label: t("operator.settings.tabBilling") },
+          { id: "pricing", label: t("operator.settings.tabPricing") },
+          { id: "contact", label: t("operator.settings.tabContact") },
+          { id: "retention", label: t("operator.settings.tabRetention") },
+        ]}
+      />
+      <div style={{ ...CONSOLE_PAGE, marginTop: "var(--ant-margin-lg)" }}>
       {!operatorCan(operator.role, "site.settings") ? (
         <ConsoleNotice>{t("operator.roleCannotEdit")}</ConsoleNotice>
+      ) : tab !== "retention" ? (
+      <>
+      <ConsolePanel
+        title={t(TAB_HEADING[tab])}
+        description={t(TAB_DESCRIPTION[tab])}
+      >
+        {/* `key` per tab: RHF memegang `defaultValues` render pertama, dan
+            formulir tab sebelumnya tidak boleh terbawa ke tab ini. */}
+        <SiteSettingsForm
+          key={tab}
+          section={tab}
+          initial={initial}
+          fromDb={fromDb}
+          envGates={envGates}
+          save={operatorSaveSiteSettings}
+        />
+      </ConsolePanel>
+      {row !== null && (
+        <ConsolePanel footnote={t("operator.settings.resetNote")}>
+          <SiteSettingsReset reset={operatorResetSiteSettings} />
+        </ConsolePanel>
+      )}
+      </>
       ) : (
       <>
-      <ConsolePanel>
-      <SiteSettingsForm
-        initial={initial}
-        fromDb={fromDb}
-        envGates={envGates}
-        rowExists={row !== null}
-        save={operatorSaveSiteSettings}
-        reset={operatorResetSiteSettings}
-      />
-      </ConsolePanel>
       {/* Retensi uji coba beku — sakelar BAWAAN MATI; selama mati penjadwal
           hanya melaporkan kandidat di tabel bawah. */}
       <ConsolePanel
@@ -215,6 +280,7 @@ export default async function OperatorSettingsPage() {
       </ConsolePanel>
       </>
       )}
+      </div>
     </div>
   );
 }

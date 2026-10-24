@@ -83,8 +83,34 @@ export interface OperatorTenantRow {
  * saat platform mati). Pemakaian dihitung dari sumber kebenarannya (registry
  * perusahaan & pengguna), bukan dari `usage_counters` turunan.
  */
+/**
+ * Jumlah tenant per status (dengan pencarian yang sama) — lencana tab status
+ * di `/tenants`. Satu `groupBy`, bukan membaca seluruh baris: tab yang tidak
+ * aktif cukup tahu jumlahnya.
+ */
+export async function tenantStatusCountsForOperator(
+  filter: { q?: string } = {},
+  deps: { control: ControlClient } = { control: controlDb }
+): Promise<Record<string, number>> {
+  const q = filter.q?.trim();
+  const rows = await deps.control.tenant.groupBy({
+    by: ["status"],
+    where: q
+      ? {
+          OR: [
+            { name: { contains: q } },
+            { slug: { contains: q } },
+            { referredByPartner: { contains: q } },
+          ],
+        }
+      : {},
+    _count: { _all: true },
+  });
+  return Object.fromEntries(rows.map((r) => [r.status, r._count._all]));
+}
+
 export async function listTenantsForOperator(
-  filter: { q?: string; status?: string } = {},
+  filter: { q?: string; status?: string; ids?: number[] } = {},
   deps: { control: ControlClient } = { control: controlDb }
 ): Promise<OperatorTenantRow[]> {
   const q = filter.q?.trim();
@@ -93,6 +119,8 @@ export async function listTenantsForOperator(
   const tenants = await deps.control.tenant.findMany({
     where: {
       ...(status ? { status } : {}),
+      /* Tab "Minta aktivasi": hanya tenant yang punya permintaan terbuka. */
+      ...(filter.ids ? { id: { in: filter.ids } } : {}),
       /* Pencarian juga menyapu nama MITRA: "tenant mana saja yang dibawa mitra
          X?" adalah pertanyaan komisi, dan jawabannya harus satu saringan. */
       ...(q

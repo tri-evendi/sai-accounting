@@ -62,11 +62,15 @@ import { LandingIntegrations } from "@/components/landing/landing-integrations";
 import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingPricing } from "@/components/landing/landing-pricing";
 import { LandingShell } from "@/components/landing/landing-shell";
+import { LandingClientLogos, LandingPartners, LandingTestimonials } from "@/components/landing/landing-proof";
 import { LandingTrust } from "@/components/landing/landing-trust";
 import { auth } from "@/lib/auth";
 import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
+import { landingSettings } from "@sai/platform/landing-settings";
+import { isSectionVisible } from "@sai/core/landing-settings";
 import { publicAppUrl } from "@/lib/public-url";
+import { resolvePublicPricingVisible } from "@sai/platform/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -123,17 +127,34 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Home() {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
+  /* Harga bisa disembunyikan dari konsol (alur demo-first, migration platform
+     0013). Dibaca lewat cache bersinyal yang sama dengan gerbang pendaftaran,
+     dan halaman ini `force-dynamic` — tidak ada ISR yang menahan keadaan lama. */
+  const hargaTampil = await resolvePublicPricingVisible();
+
+  /* Seksi yang disembunyikan operator (konsol `/landing`) TIDAK dirender sama
+     sekali — bukan `display:none`: jangkarnya ikut hilang, dan tautan bilah
+     atas/kaki yang menunjuknya dicabut di komponennya masing-masing dari
+     setelan yang SAMA. Pahlawan dan ajakan penutup selalu tampil. Platform
+     tak terjangkau = semua tampil (gagal-lunak). */
+  const setelan = await landingSettings();
+  const tampil = (seksi: Parameters<typeof isSectionVisible>[1]) => isSectionVisible(setelan, seksi);
 
   return (
     <LandingShell>
       <LandingHero />
+      {/* Bukti sosial dari konsol `/landing/media` — masing-masing `null` bila
+          tidak ada butir yang diterbitkan. Logo klien tepat di bawah pahlawan,
+          testimoni sesudah bukti keamanan (sebelum harga), mitra sebelum
+          ajakan penutup. */}
+      <LandingClientLogos />
       {/* Urutan disengaja: empat kartu "yang Anda dapatkan" menjawab "kenapa
           produk ini", bagian modul menjawab "apakah PEKERJAAN SAYA ada di
           dalamnya", dan baru sesudah itu harga. Menaruh harga sebelum jawaban
           itu memaksa orang menimbang angka untuk sesuatu yang belum ia tahu
           isinya. */}
-      <LandingFeatures />
-      <LandingModules />
+      {tampil("features") && <LandingFeatures />}
+      {tampil("modules") && <LandingModules />}
       {/* "Untuk siapa" SESUDAH daftar modul, bukan sesudah manfaat (#398):
           kartunya menyebut modul lewat NAMANYA, jadi ia rujukan ke sesuatu
           yang baru saja dibaca — "dari sepuluh itu, mana yang untuk saya".
@@ -141,20 +162,24 @@ export default async function Home() {
           seksi polos berkartu nada (untuk siapa, kepercayaan): tanpa pita
           itu halaman memajang tiga kisi kartu bernada berturut-turut. Alasan
           lengkapnya di kepala kedua berkas komponennya. */}
-      <LandingAudience />
-      <LandingIntegrations />
+      {tampil("audience") && <LandingAudience />}
+      {tampil("integrations") && <LandingIntegrations />}
       {/* Bukti SEBELUM harga, dan itu urutan yang disengaja: dua keberatan
           terbesar pada pembukuan multi-PT — "apakah data saya bisa tercampur"
           dan "apakah saya bisa keluar lagi" — muncul saat orang membayangkan
           memakainya, bukan saat ia melihat angkanya. Menjawabnya sesudah harga
           berarti menjawabnya kepada orang yang sudah pergi. */}
-      <LandingTrust />
-      <LandingPricing />
+      {tampil("trust") && <LandingTrust />}
+      <LandingTestimonials />
+      {/* Tidak dirender sama sekali saat disembunyikan — termasuk penawaran
+          JSON-LD-nya, yang diterbitkan dari dalam komponen ini. */}
+      {hargaTampil && <LandingPricing />}
       {/* FAQ tepat SESUDAH harga: di situlah keberatan muncul — orang sudah
           melihat angkanya dan sedang mencari alasan untuk tidak melanjutkan.
           Menaruhnya sebelum harga berarti menjawab pertanyaan yang belum
           ditanyakan siapa pun. */}
-      <LandingFaq />
+      {tampil("faq") && <LandingFaq />}
+      <LandingPartners />
       <LandingClosingCta />
     </LandingShell>
   );

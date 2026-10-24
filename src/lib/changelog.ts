@@ -73,8 +73,24 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.24.0",
+    tanggal: "2026-10-24",
+    ringkas: "Paket laporan: unduh laporan satu periode sekaligus dalam satu berkas.",
+    butir: [
+      {
+        jenis: "baru",
+        teks: "Paket laporan di Pusat Laporan: pilih periode dan laporan, lalu unduh satu berkas berisi ringkasan, PDF tiap laporan, dan satu buku kerja Excel.",
+      },
+      {
+        jenis: "ubah",
+        teks: "Berkas ekspor bisa diunduh selama 7 hari sejak dibuat; setelah itu buat ulang dari halaman laporannya.",
+      },
+    ],
+  },
+  {
     versi: "0.23.0",
     tanggal: "2026-10-24",
+    sha: "ce5038b",
     ringkas: "Uji coba kini dimulai dari demo: masa uji coba 30 hari tanpa tagihan, lalu aktivasi lewat penawaran.",
     butir: [
       {

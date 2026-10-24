@@ -64,8 +64,8 @@ import { WhatsAppOutlined } from "@ant-design/icons";
 import type { CSSProperties } from "react";
 
 import { Button } from "@sai/ui/button";
-import { resolveContactChannels } from "@sai/platform/site-settings";
-import { getT } from "@sai/platform/i18n/server";
+import { resolveLandingWhatsappUrl } from "@sai/platform/landing-settings";
+import { getLocale, getT } from "@sai/platform/i18n/server";
 
 /** Diameter tombol — 48px (permintaan issue; ≥40px target sentuh MASTER.md). */
 export const WHATSAPP_FAB_SIZE = 48;
@@ -88,8 +88,11 @@ export const WHATSAPP_FAB_STYLE = {
 } as CSSProperties;
 
 export async function LandingWhatsappFab() {
-  const kanal = await resolveContactChannels();
-  if (kanal.whatsappUrl === undefined) return null;
+  /* Nomor dari `resolveContactChannels()` (sakelar yang sama untuk seluruh
+     app); kalimat pembuka — bila operator menyetelnya di konsol `/landing` —
+     dalam bahasa pembaca. Tanpa nomor sah: tidak ada tombol. */
+  const waUrl = await resolveLandingWhatsappUrl(await getLocale());
+  if (waUrl === undefined) return null;
   const t = await getT();
 
   return (
@@ -106,7 +109,7 @@ export async function LandingWhatsappFab() {
       }}
     >
       <Button
-        href={kanal.whatsappUrl}
+        href={waUrl}
         variant="outline"
         size="icon"
         target="_blank"

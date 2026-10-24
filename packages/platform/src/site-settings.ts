@@ -41,6 +41,7 @@ import { platformDb } from "@sai/platform/platform-db";
 import {
   effectiveSetting,
   ppnEnabledFrom,
+  publicPricingVisibleFrom,
   readSiteSettingsRow,
   signupOpenFrom,
   type SiteSettingsRow,
@@ -52,6 +53,7 @@ import {
 export {
   effectiveSetting,
   ppnEnabledFrom,
+  publicPricingVisibleFrom,
   signupOpenFrom,
   trialAutoDeletionFrom,
   trialRetentionDaysFrom,
@@ -137,17 +139,25 @@ export async function resolveManualPaymentInstructions(): Promise<string | null>
 
 export interface SaveSiteSettingsInput {
   /** `null` = kembalikan ke environment; `""` = cabut kanalnya. */
-  contactWhatsapp: string | null;
-  contactEmail: string | null;
-  manualPaymentInstructions: string | null;
+  contactWhatsapp?: string | null;
+  contactEmail?: string | null;
+  manualPaymentInstructions?: string | null;
   /** `null` = pakai environment; `true`/`false` = keputusan dari konsol. */
-  selfServeSignupOpen: boolean | null;
-  ppnEnabled: boolean | null;
+  selfServeSignupOpen?: boolean | null;
+  ppnEnabled?: boolean | null;
+  /** Harga di situs publik — `true`/`false` dari konsol; tidak ada env. */
+  publicPricingVisible?: boolean;
   actor: string;
 }
 
 /**
  * Simpan pengaturan. Satu baris, `upsert` atas `singleton = 1`.
+ *
+ * SEBAGIAN: medan yang tidak disebut (`undefined`) TIDAK ditulis — Prisma
+ * melewati `undefined`. Sejak `/settings` dibagi per tab, tiap tab menyimpan
+ * medannya sendiri; menyimpan nomor WhatsApp tidak boleh ikut menulis ulang
+ * gerbang PPN yang tidak sedang dilihat siapa pun. Baris yang belum ada dibuat
+ * dengan medan lain `null` (= ikut environment / bawaan), bukan nilai karangan.
  *
  * Sesudahnya sinyal `site-settings` dinaikkan, bukan tag Next: penulisnya
  * `app-operator`, pembacanya `app-customer`, dan invalidasi tag hanya membuang
@@ -161,6 +171,7 @@ export async function saveSiteSettings(input: SaveSiteSettingsInput): Promise<vo
     manualPaymentInstructions: input.manualPaymentInstructions,
     selfServeSignupOpen: input.selfServeSignupOpen,
     ppnEnabled: input.ppnEnabled,
+    publicPricingVisible: input.publicPricingVisible,
     updatedBy: input.actor,
   };
   await platformDb.siteSetting.upsert({
@@ -205,6 +216,19 @@ export async function resolveSelfServeSignupOpen(): Promise<boolean> {
  */
 export async function resolvePpnEnabled(): Promise<boolean> {
   return ppnEnabledFrom(await siteSettings(), process.env);
+}
+
+/**
+ * Harga dipajang di situs publik? — EFEKTIF (migration platform 0013).
+ *
+ * Dibaca lewat `siteSettings()` yang SAMA dengan gerbang pendaftaran: cache
+ * berkunci versi sinyal `site-settings`, jadi sakelar dari konsol tampil di
+ * halaman publik dalam `CACHE_SIGNAL_POLL_SECONDS` tanpa ISR yang basi.
+ * Platform tak terjangkau → `null` → TAMPIL (perilaku lama), lihat
+ * `publicPricingVisibleFrom`.
+ */
+export async function resolvePublicPricingVisible(): Promise<boolean> {
+  return publicPricingVisibleFrom(await siteSettings());
 }
 
 /**

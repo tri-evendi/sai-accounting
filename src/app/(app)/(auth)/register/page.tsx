@@ -51,12 +51,14 @@
  */
 
 import type { Metadata } from "next";
-import { MailOutlined, UserAddOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { CalendarOutlined, MailOutlined, UserAddOutlined, WhatsAppOutlined } from "@ant-design/icons";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@sai/ui/button";
 import { resolveContactChannels, resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
-import { getT } from "@sai/platform/i18n/server";
+import { getLocale, getT } from "@sai/platform/i18n/server";
+import { QUOTE_PARAM } from "@/lib/landing-ask";
+import { landingSettings, resolveLandingWhatsappUrl } from "@sai/platform/landing-settings";
 
 import { RegisterForm } from "./register-form";
 
@@ -69,17 +71,35 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default async function RegisterPage() {
-  if (await resolveSelfServeSignupOpen()) return <RegisterForm />;
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  /* `?quote=1` = pengunjung MEMINTA PENAWARAN (harga publik disembunyikan,
+     `quoteContactHref`): layar penawaran dirender walau pendaftaran terbuka.
+     Tanpa parameter perilakunya tidak berubah. */
+  const mintaPenawaran = (await searchParams)[QUOTE_PARAM] !== undefined;
+  const terbuka = await resolveSelfServeSignupOpen();
+  if (terbuka && !mintaPenawaran) return <RegisterForm />;
 
   const t = await getT();
   const kanal = await resolveContactChannels();
+  /* WhatsApp dengan kalimat pembuka (konsol `/landing`) — tujuan yang sama
+     dengan tombol melayang di pendaratan, jadi orang yang datang dari sana
+     tidak mendapat dua percakapan yang dibuka dengan cara berbeda. */
+  const [waUrl, { demoBookingUrl }] = await Promise.all([
+    resolveLandingWhatsappUrl(await getLocale()),
+    landingSettings(),
+  ]);
 
   return (
     <AuthShell
       icon={<UserAddOutlined aria-hidden="true" style={{ fontSize: 24 }} />}
       heading={t("auth.register.closedTitle")}
-      description={t("auth.register.closedBody")}
+      /* Saat terbuka, kalimat "bukan lewat pendaftaran mandiri" tidak benar —
+         kalimat penawarannya sendiri yang dipakai. */
+      description={t(terbuka ? "auth.register.quoteBody" : "auth.register.closedBody")}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin)" }}>
         {/* TIGA LANGKAH — bernomor, sebab yang ditanya orang di titik ini
@@ -106,10 +126,19 @@ export default async function RegisterPage() {
         {/* Kanal yang BENAR-BENAR terpasang saja — `contactChannels()`
             memulangkan hanya yang nilainya sah, jadi tidak ada tombol yang
             menjanjikan jalan yang tidak ada. */}
-        {kanal.whatsappUrl && (
-          <Button href={kanal.whatsappUrl} target="_blank" rel="noreferrer" variant="primary">
+        {waUrl && (
+          <Button href={waUrl} target="_blank" rel="noreferrer" variant="primary">
             <WhatsAppOutlined aria-hidden="true" />
             {t("auth.register.closedWhatsapp")}
+          </Button>
+        )}
+        {/* Tautan pemesanan demo (konsol `/landing`) — langkah pertama dari
+            tiga di atas, langsung ke kalender. `outline`: WhatsApp tetap satu-
+            satunya primer layar ini. https saja, tab baru, tanpa `opener`. */}
+        {demoBookingUrl && (
+          <Button href={demoBookingUrl} target="_blank" rel="noopener noreferrer" variant="outline">
+            <CalendarOutlined aria-hidden="true" />
+            {t("auth.register.closedBookDemo")}
           </Button>
         )}
         {kanal.email && (

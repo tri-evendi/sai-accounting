@@ -99,6 +99,8 @@ import {
 } from "@sai/core/outbox-health";
 import type { OutboxRelayBookView } from "@sai/platform/outbox-relay-store";
 
+import { ConsoleTabs } from "@op/components/operator/console-tabs";
+import { resolveConsoleTab } from "@op/lib/operator/console-tabs";
 export const dynamic = "force-dynamic";
 
 const MUTED = CONSOLE_MUTED;
@@ -252,17 +254,31 @@ interface TriggerRow {
 
 type SchedulerRun = NonNullable<Awaited<ReturnType<typeof schedulerRunsForOperator>>>[number];
 
-export default async function OperatorSchedulerPage() {
+/**
+ * LIMA TAB (`?tab=`): Ringkasan (putaran penjadwal + putaran terakhir) ·
+ * Antrean · Outbox · Metrik · Versi & runtime. Hanya kueri tab AKTIF yang
+ * dijalankan — `null` di bawah berarti "tidak dibaca", dan panel yang
+ * memakainya memang tidak dirender di tab lain.
+ */
+const TABS = ["summary", "queue", "outbox", "metrics", "versions"] as const;
+type Tab = (typeof TABS)[number];
+
+export default async function OperatorSchedulerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   await requireOperatorPage();
   const t = await getT();
+  const tab: Tab = resolveConsoleTab((await searchParams).tab, TABS, "summary");
 
   const [runs, queue, metrics, runtime, builds, outbox] = await Promise.all([
-    schedulerRunsForOperator(10),
-    queueSnapshotForOperator(),
-    jobMetricsForOperator(),
-    runtimeSummaryForOperator(),
-    serviceBuildsForOperator(),
-    outboxRelayForOperator(),
+    tab === "summary" ? schedulerRunsForOperator(10) : null,
+    tab === "queue" ? queueSnapshotForOperator() : null,
+    tab === "metrics" ? jobMetricsForOperator() : null,
+    tab === "versions" ? runtimeSummaryForOperator() : null,
+    tab === "versions" ? serviceBuildsForOperator() : null,
+    tab === "outbox" ? outboxRelayForOperator() : null,
   ]);
 
   const versionBadge = (verdict: BuildVerdict) => (
@@ -684,151 +700,22 @@ export default async function OperatorSchedulerPage() {
       <PageHeader title={t("operator.scheduler.heading")} description={t("operator.scheduler.description")} />
       <div style={CONSOLE_PAGE}>
 
-      <ConsolePanel
-        title={t("operator.scheduler.versionsHeading")}
-        description={
-          builds === null
-            ? undefined
-            : t("operator.scheduler.versionsDescription", {
-                self: `app-operator ${buildLabel(builds.self)}`,
-                hours: SERVICE_BUILD_WINDOW_HOURS,
-              })
-        }
-        actions={
-          builds === null || builds.rows.length === 0 ? undefined : (
-            <Badge variant={tertinggal > 0 ? "warning" : "success"}>
-              {tertinggal > 0
-                ? t("operator.scheduler.versionsSummaryDiffers", { count: tertinggal })
-                : t("operator.scheduler.versionsSummaryOk")}
-            </Badge>
-          )
-        }
-      >
-        {builds === null ? (
-          <ConsoleNotice>{t("operator.scheduler.versionsUnavailable")}</ConsoleNotice>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
-            {builds.rows.length === 0 ? (
-              <p style={{ ...MUTED, margin: 0 }}>
-                {t("operator.scheduler.versionsEmpty", { hours: SERVICE_BUILD_WINDOW_HOURS })}
-              </p>
-            ) : (
-              <StaticTable
-                columns={versionColumns}
-                rows={builds.rows}
-                rowKey={(r) => `${r.service}|${r.role}|${r.build ? buildLabel(r.build) : ""}`}
-              />
-            )}
-            {builds.unseen.length > 0 && (
-              <p style={{ ...MUTED, margin: 0 }}>
-                {t("operator.scheduler.versionsUnseen", {
-                  hours: SERVICE_BUILD_WINDOW_HOURS,
-                  list: builds.unseen.map((u) => `${u.service}/${u.role}`).join(", "),
-                })}
-              </p>
-            )}
-            <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.versionsNote")}</p>
-          </div>
-        )}
-      </ConsolePanel>
+      <ConsoleTabs
+        label={t("operator.scheduler.tabsAria")}
+        basePath="/scheduler"
+        active={tab}
+        defaultId="summary"
+        tabs={[
+          { id: "summary", label: t("operator.scheduler.tabSummary") },
+          { id: "queue", label: t("operator.scheduler.tabQueue") },
+          { id: "outbox", label: t("operator.scheduler.tabOutbox") },
+          { id: "metrics", label: t("operator.scheduler.tabMetrics") },
+          { id: "versions", label: t("operator.scheduler.tabVersions") },
+        ]}
+      />
 
-      <ConsolePanel title={t("operator.scheduler.queueHeading")}>
-        {queue === null ? (
-          <ConsoleNotice>{t("operator.scheduler.queueUnavailable")}</ConsoleNotice>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
-            <StaticTable columns={queueColumns} rows={queue} rowKey={(lane) => lane.lane} />
-            <p style={{ ...MUTED, margin: 0 }}>
-              {t("operator.scheduler.queueNote", {
-                warn: QUEUE_AGE_WARN_SECONDS,
-                late: QUEUE_AGE_LATE_SECONDS,
-              })}
-            </p>
-          </div>
-        )}
-      </ConsolePanel>
-
-      <ConsolePanel title={t("operator.scheduler.outboxHeading")}>
-        {outbox === null ? (
-          <ConsoleNotice>{t("operator.scheduler.outboxUnavailable")}</ConsoleNotice>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
-            <div>
-              <Badge variant={OUTBOX_BADGE[outbox.health.status]}>
-                {t(OUTBOX_STATUS_KEY[outbox.health.status] as Parameters<typeof t>[0])}
-              </Badge>
-            </div>
-            {outbox.books.length === 0 ? (
-              <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.outboxEmpty")}</p>
-            ) : (
-              <StaticTable columns={outboxColumns} rows={outbox.books} rowKey={(b) => String(b.companyId)} />
-            )}
-            <p style={{ ...MUTED, margin: 0 }}>
-              {t("operator.scheduler.outboxNote", {
-                warn: OUTBOX_LAG_WARN_SECONDS,
-                late: OUTBOX_LAG_LATE_SECONDS,
-                stale: OUTBOX_RELAY_STALE_SECONDS,
-              })}
-            </p>
-          </div>
-        )}
-      </ConsolePanel>
-
-      <ConsolePanel title={t("operator.scheduler.metricsHeading")}>
-        {metrics === null ? (
-          <ConsoleNotice>{t("operator.scheduler.metricsUnavailable")}</ConsoleNotice>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
-            <StaticTable columns={metricsColumns} rows={metrics} rowKey={(m) => m.lane} />
-            <p style={{ ...MUTED, margin: 0 }}>
-              {t("operator.scheduler.metricsNote", { window: METRICS_WINDOW_MINUTES })}
-            </p>
-          </div>
-        )}
-      </ConsolePanel>
-
-      <ConsolePanel
-        title={t("operator.scheduler.runtimeHeading")}
-        description={t("operator.scheduler.runtimeDescription", { days: RUNTIME_EVAL_WINDOW_DAYS })}
-        actions={
-          runtime === null
-            ? undefined
-            : verdictBadge(
-                stage1dTriggered(runtime.loopVerdict, runtime.memoryVerdict)
-                  ? "triggered"
-                  : "not_triggered"
-              )
-        }
-      >
-        {runtime === null ? (
-          <ConsoleNotice>{t("operator.scheduler.runtimeUnavailable")}</ConsoleNotice>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin)" }}>
-            <StaticTable columns={triggerColumns} rows={triggerRows} rowKey={(r) => r.key} />
-
-            <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
-              <h3 style={SUBHEADING}>{t("operator.scheduler.runtimeLoopHeading")}</h3>
-              {runtime.loop.length === 0 ? (
-                <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeLoopEmpty")}</p>
-              ) : (
-                <StaticTable columns={loopColumns} rows={runtime.loop} rowKey={(l) => l.source} />
-              )}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
-              <h3 style={SUBHEADING}>{t("operator.scheduler.runtimeMemoryHeading")}</h3>
-              {runtime.jobs.length === 0 ? (
-                <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeMemoryEmpty")}</p>
-              ) : (
-                <StaticTable columns={memoryColumns} rows={runtime.jobs} rowKey={(m) => m.lane} />
-              )}
-            </div>
-
-            <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeNote")}</p>
-          </div>
-        )}
-      </ConsolePanel>
-
+      {tab === "summary" && (
+        <>
       {runs === null ? (
         <ConsoleNotice>{t("operator.scheduler.unavailable")}</ConsoleNotice>
       ) : runs.length === 0 ? (
@@ -888,6 +775,170 @@ export default async function OperatorSchedulerPage() {
           )}
         </div>
       )}
+        </>
+      )}
+
+      {tab === "queue" && (
+        <>
+      <ConsolePanel title={t("operator.scheduler.queueHeading")}>
+        {queue === null ? (
+          <ConsoleNotice>{t("operator.scheduler.queueUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <StaticTable columns={queueColumns} rows={queue} rowKey={(lane) => lane.lane} />
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.queueNote", {
+                warn: QUEUE_AGE_WARN_SECONDS,
+                late: QUEUE_AGE_LATE_SECONDS,
+              })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
+        </>
+      )}
+
+      {tab === "outbox" && (
+        <>
+      <ConsolePanel title={t("operator.scheduler.outboxHeading")}>
+        {outbox === null ? (
+          <ConsoleNotice>{t("operator.scheduler.outboxUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <div>
+              <Badge variant={OUTBOX_BADGE[outbox.health.status]}>
+                {t(OUTBOX_STATUS_KEY[outbox.health.status] as Parameters<typeof t>[0])}
+              </Badge>
+            </div>
+            {outbox.books.length === 0 ? (
+              <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.outboxEmpty")}</p>
+            ) : (
+              <StaticTable columns={outboxColumns} rows={outbox.books} rowKey={(b) => String(b.companyId)} />
+            )}
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.outboxNote", {
+                warn: OUTBOX_LAG_WARN_SECONDS,
+                late: OUTBOX_LAG_LATE_SECONDS,
+                stale: OUTBOX_RELAY_STALE_SECONDS,
+              })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
+        </>
+      )}
+
+      {tab === "metrics" && (
+        <>
+      <ConsolePanel title={t("operator.scheduler.metricsHeading")}>
+        {metrics === null ? (
+          <ConsoleNotice>{t("operator.scheduler.metricsUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <StaticTable columns={metricsColumns} rows={metrics} rowKey={(m) => m.lane} />
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.metricsNote", { window: METRICS_WINDOW_MINUTES })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
+        </>
+      )}
+
+      {tab === "versions" && (
+        <>
+      <ConsolePanel
+        title={t("operator.scheduler.versionsHeading")}
+        description={
+          builds === null
+            ? undefined
+            : t("operator.scheduler.versionsDescription", {
+                self: `app-operator ${buildLabel(builds.self)}`,
+                hours: SERVICE_BUILD_WINDOW_HOURS,
+              })
+        }
+        actions={
+          builds === null || builds.rows.length === 0 ? undefined : (
+            <Badge variant={tertinggal > 0 ? "warning" : "success"}>
+              {tertinggal > 0
+                ? t("operator.scheduler.versionsSummaryDiffers", { count: tertinggal })
+                : t("operator.scheduler.versionsSummaryOk")}
+            </Badge>
+          )
+        }
+      >
+        {builds === null ? (
+          <ConsoleNotice>{t("operator.scheduler.versionsUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            {builds.rows.length === 0 ? (
+              <p style={{ ...MUTED, margin: 0 }}>
+                {t("operator.scheduler.versionsEmpty", { hours: SERVICE_BUILD_WINDOW_HOURS })}
+              </p>
+            ) : (
+              <StaticTable
+                columns={versionColumns}
+                rows={builds.rows}
+                rowKey={(r) => `${r.service}|${r.role}|${r.build ? buildLabel(r.build) : ""}`}
+              />
+            )}
+            {builds.unseen.length > 0 && (
+              <p style={{ ...MUTED, margin: 0 }}>
+                {t("operator.scheduler.versionsUnseen", {
+                  hours: SERVICE_BUILD_WINDOW_HOURS,
+                  list: builds.unseen.map((u) => `${u.service}/${u.role}`).join(", "),
+                })}
+              </p>
+            )}
+            <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.versionsNote")}</p>
+          </div>
+        )}
+      </ConsolePanel>
+
+      <ConsolePanel
+        title={t("operator.scheduler.runtimeHeading")}
+        description={t("operator.scheduler.runtimeDescription", { days: RUNTIME_EVAL_WINDOW_DAYS })}
+        actions={
+          runtime === null
+            ? undefined
+            : verdictBadge(
+                stage1dTriggered(runtime.loopVerdict, runtime.memoryVerdict)
+                  ? "triggered"
+                  : "not_triggered"
+              )
+        }
+      >
+        {runtime === null ? (
+          <ConsoleNotice>{t("operator.scheduler.runtimeUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin)" }}>
+            <StaticTable columns={triggerColumns} rows={triggerRows} rowKey={(r) => r.key} />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+              <h3 style={SUBHEADING}>{t("operator.scheduler.runtimeLoopHeading")}</h3>
+              {runtime.loop.length === 0 ? (
+                <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeLoopEmpty")}</p>
+              ) : (
+                <StaticTable columns={loopColumns} rows={runtime.loop} rowKey={(l) => l.source} />
+              )}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+              <h3 style={SUBHEADING}>{t("operator.scheduler.runtimeMemoryHeading")}</h3>
+              {runtime.jobs.length === 0 ? (
+                <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeMemoryEmpty")}</p>
+              ) : (
+                <StaticTable columns={memoryColumns} rows={runtime.jobs} rowKey={(m) => m.lane} />
+              )}
+            </div>
+
+            <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeNote")}</p>
+          </div>
+        )}
+      </ConsolePanel>
+        </>
+      )}
+
       </div>
     </div>
   );

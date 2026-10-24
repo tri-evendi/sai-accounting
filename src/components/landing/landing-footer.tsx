@@ -39,6 +39,13 @@ import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { APP_NAME } from "@sai/core/constants";
 import { getLocale, getT } from "@sai/platform/i18n/server";
+import { quoteContactHref } from "@/lib/landing-ask";
+import {
+  resolvePublicPricingVisible,
+  resolveSelfServeSignupOpen,
+} from "@sai/platform/site-settings";
+import { landingSettings } from "@sai/platform/landing-settings";
+import { isSectionVisible } from "@sai/core/landing-settings";
 
 /** Tautan kaki: warna sekunder, penuh + bergaris saat hover. */
 const FOOTER_LINK: React.CSSProperties = {
@@ -74,7 +81,13 @@ export async function LandingFooter() {
      memasang `LocaleProvider`, dan dua daun client di bilah bawah ini
      (`LocaleToggle`, `ThemeToggle`) memang tidak boleh menariknya. */
   const locale = await getLocale();
+  /* Harga disembunyikan (migration platform 0013) → tautan kaki menjadi
+     "Minta penawaran", sama persis dengan bilah atas (`landing-nav.tsx`). */
+  const hargaTampil = await resolvePublicPricingVisible();
+  const kontakPenawaran = hargaTampil ? null : quoteContactHref(await resolveSelfServeSignupOpen());
   const year = new Date().getFullYear();
+  const setelan = await landingSettings();
+  const tampil = (seksi: "modules" | "faq") => isSectionVisible(setelan, seksi);
 
   return (
     <footer
@@ -119,15 +132,28 @@ export async function LandingFooter() {
               dan tautan seksi di bilah atas disembunyikan di layar sempit. */}
           <nav aria-label={t("landing.footerProduct")} style={COLUMN}>
             <p style={COLUMN_TITLE}>{t("landing.footerProduct")}</p>
-            <Link href="/#modul" data-landing-link="" style={FOOTER_LINK}>
-              {t("landing.navModules")}
-            </Link>
-            <Link href="/pricing" data-landing-link="" style={FOOTER_LINK}>
-              {t("landing.navPricing")}
-            </Link>
-            <Link href="/#tanya" data-landing-link="" style={FOOTER_LINK}>
-              {t("landing.navFaq")}
-            </Link>
+            {/* Jangkar ke seksi yang disembunyikan di konsol `/landing` ikut
+                dicabut — tautan ke `#modul` yang tidak ada hanya menggulung
+                ke puncak halaman tanpa penjelasan. */}
+            {tampil("modules") && (
+              <Link href="/#modul" data-landing-link="" style={FOOTER_LINK}>
+                {t("landing.navModules")}
+              </Link>
+            )}
+            {kontakPenawaran === null ? (
+              <Link href="/pricing" data-landing-link="" style={FOOTER_LINK}>
+                {t("landing.navPricing")}
+              </Link>
+            ) : (
+              <Link href={kontakPenawaran} data-landing-link="" style={FOOTER_LINK}>
+                {t("landing.quoteCta")}
+              </Link>
+            )}
+            {tampil("faq") && (
+              <Link href="/#tanya" data-landing-link="" style={FOOTER_LINK}>
+                {t("landing.navFaq")}
+              </Link>
+            )}
           </nav>
 
           <nav aria-label={t("landing.footerResources")} style={COLUMN}>

@@ -88,6 +88,20 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
 - **Saringan & pilihan lewat form GET,** tidak lewat state client: hasilnya URL
   yang bisa disalin ke tiket dukungan, tanpa JS tambahan. Berlaku untuk
   daftar tenant dan pemilih bahasa/bagian di konsol `/content`.
+- **Halaman panjang dibagi TAB di URL** — satu komponen, `ConsoleTabs`
+  (`components/operator/console-tabs.tsx`, server component; aturan alamat di
+  `lib/operator/console-tabs.ts`). Tab aktif = `?tab=<id>` (tab bawaan tanpa
+  parameter; nilai tak dikenal → bawaan), jadi tautan, tombol Kembali, muat
+  ulang, dan baris "perlu perhatian" menunjuk tab yang tepat. Tautan biasa
+  dengan `aria-current="page"`, bukan `Tabs` AntD: server HANYA membaca data
+  tab aktif, bukan merender semua panel lalu menyembunyikannya. Lencana angka
+  per tab dari data yang sudah ada (mis. permintaan aktivasi terbuka). Di layar
+  sempit barisnya bergulir mendatar. Dipakai: `/tenants` (tab status di atas
+  `?status=` yang sudah ada; `status=activation` = Minta aktivasi),
+  `/tenants/[id]` (Ringkasan · Langganan & tagihan · Perusahaan & pengguna ·
+  Jejak audit), `/settings` (Pendaftaran & uji coba · Tagihan & PPN · Harga
+  publik · Kontak · Retensi — tiap tab menyimpan medannya sendiri),
+  `/scheduler` (Ringkasan · Antrean · Outbox · Metrik · Versi & runtime).
 
 ### konsol `/content` — isi halaman depan
 
@@ -107,10 +121,17 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
 - **Tiga tampilan di URL** (`?view=edit|review|history`, `?section=`,
   `?show=`, `?q=`), chip tampilan `secondary`/`ghost`. Satu aksi utama per
   tampilan: "Simpan draf" (Sunting) dan "Terbitkan" (Tinjau).
-- **Ketiga bahasa berdampingan.** Status berteks per isian (Bawaan / Diganti /
-  Draf), penghitung karakter terhadap batas yang diturunkan dari kamus
-  (`contentFieldSpec`), dan peringatan "terjemahan tertinggal" bila sebuah
-  kunci diganti di sebagian bahasa saja.
+- **Bahasa Indonesia saja di alur biasa.** Sunting menampilkan isian `id`
+  (`SITE_CONTENT_PRIMARY_LOCALE`); English & 中文 terlipat per kunci di
+  `<details>` "Bahasa lain (opsional)" yang tertutup bawaannya, dengan catatan
+  bila bahasa itu sudah punya draf, dan terbuka sendiri bila server menolak
+  isiannya. Penyimpanan, draf, terbit, dan riwayat tetap per bahasa; suntingan
+  `id` saja tidak membuat draf `en`/`zh` (nilai yang sama dengan yang tayang
+  bukan draf). Tinjau & Riwayat mendahulukan `id` dan hanya memuat bahasa lain
+  bila memang ada draf/perubahan. Peringatan "terjemahan tertinggal" dicabut
+  dari layar (pemilik tidak mengelola terjemahan di sini). Status berteks per
+  isian (Bawaan / Diganti / Draf) dan penghitung karakter terhadap batas yang
+  diturunkan dari kamus (`contentFieldSpec`) tetap.
 - **Teks biasa.** Tag HTML, karakter kendali, dan penanda `{…}` yang berbeda
   dari bawaan ditolak di editor dan di server dengan aturan yang sama
   (`contentValueProblem`).

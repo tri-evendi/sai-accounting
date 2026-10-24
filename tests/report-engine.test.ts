@@ -401,6 +401,6 @@ describe("gelombang A (23 Okt 2026): Rekap per Pihak, Kas & Bank, Realisasi vs A
       "utf8"
     );
     expect(runner).toContain("func budgetYearMonth(");
-    expect(runner).toMatch(/case contract\.ReportBudgetRealization:\s*\n\s*data, filename, err = anggaran\(/);
+    expect(runner).toMatch(/case contract\.ReportBudgetRealization:\s*\n\s*return anggaran\(/);
   });
 });

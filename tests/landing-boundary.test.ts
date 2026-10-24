@@ -98,6 +98,9 @@ const IMPOR_SAH = [
   "@sai/billing/",
   "@sai/platform/i18n/server",
   "@sai/platform/site-settings",
+  /* Tampilan halaman depan dari konsol `/landing` (seksi, pengumuman, demo,
+     FAQ) — pembaca gagal-lunak yang sama polanya dengan `site-settings`. */
+  "@sai/platform/landing-settings",
 ];
 
 function sourceFiles(dir: string): string[] {

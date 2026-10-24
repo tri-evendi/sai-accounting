@@ -33,6 +33,9 @@ export interface SiteSettingsRow {
    *  yang dibaca sebelum migration itu diterapkan memang tidak memuatnya. */
   trialAutoDeletion?: boolean | null;
   trialRetentionDays?: number | null;
+  /** Harga tampil di situs publik? (migration platform 0013). `null` = tampil.
+   *  Opsional di TIPE dengan alasan yang sama dengan dua medan di atas. */
+  publicPricingVisible?: boolean | null;
   updatedBy: string;
   updatedAt: Date;
 }
@@ -70,6 +73,7 @@ const PILIHAN: Record<keyof SiteSettingsRow, true> = {
   ppnEnabled: true,
   trialAutoDeletion: true,
   trialRetentionDays: true,
+  publicPricingVisible: true,
   updatedBy: true,
   updatedAt: true,
 };
@@ -186,4 +190,23 @@ export function trialRetentionDaysFrom(
   const fromEnv = Number.parseInt(env.TRIAL_RETENTION_DAYS ?? "", 10);
   if (sah(fromEnv)) return fromEnv;
   return TRIAL_RETENTION_DAYS_DEFAULT;
+}
+
+/**
+ * Harga dipajang di situs publik? (alur demo-first, migration platform 0013).
+ *
+ * Harga dikutip per pelanggan, jadi operator boleh menyembunyikan katalog
+ * publik: seksi harga di `/`, tautan "Harga", `/pricing`, peta situs, dan
+ * penawaran JSON-LD ikut hilang bersama-sama.
+ *
+ * ⚠ BAWAANNYA TAMPIL, dan arah itu disengaja — kebalikan dari gerbang
+ * pendaftaran. Tidak ada env (menambah env berarti menambah daftar-izin
+ * compose); kolom `null`, baris tidak ada, atau basis data tak terbaca
+ * (pemanggil mengoper `null`) → TAMPIL, yaitu perilaku sebelum kolom ini ada.
+ * Kehilangan informasi tidak boleh diam-diam mencabut halaman harga.
+ */
+export function publicPricingVisibleFrom(
+  row: Pick<SiteSettingsRow, "publicPricingVisible"> | null
+): boolean {
+  return row?.publicPricingVisible !== false;
 }

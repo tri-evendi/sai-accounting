@@ -12,6 +12,17 @@
  *     tindakan penagihan (lunas/paket/suspensi) ikut MATI di layar: menawarkan
  *     tombol yang pasti gagal adalah kebohongan kecil yang mahal.
  *
+ * ══ EMPAT TAB (`?tab=`) ═══════════════════════════════════════════════════
+ * Ringkasan (paket + kesehatan) · Langganan & tagihan (langganan, tagihan,
+ * profil pajak, permintaan aktivasi, panel tindakan) · Perusahaan (registry
+ * PT + pengguna & undangan) · Jejak audit. Server HANYA membaca data tab
+ * aktif: kesehatan (yang membuka koneksi pendek ke buku untuk tanggal jurnal
+ * termuda) hanya di Ringkasan, pengguna hanya di Perusahaan, jejak hanya di
+ * Jejak audit, katalog paket hanya di Langganan. Yang selalu dibaca: rincian
+ * tenant (kepala halaman) dan permintaan aktivasi (lencana di tab Langganan).
+ * Tautan dari luar menunjuk tab langsung — mis. `?tab=billing` dari daftar
+ * permintaan aktivasi.
+ *
  * Halaman ini TIDAK PERNAH membuka basis data perusahaan tenant: operator
  * melihat metadata langganan, bukan pembukuan pelanggan (batas #154 —
  * membaca buku adalah keputusan terpisah dengan persetujuan & jejaknya
@@ -81,6 +92,8 @@ import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { formatDateMedium as formatDate } from "@sai/core/utils";
+import { ConsoleTabs } from "@op/components/operator/console-tabs";
+import { resolveConsoleTab } from "@op/lib/operator/console-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -165,13 +178,20 @@ const HEALTH_TONE_LABEL: Record<HealthSignal["tone"], DictionaryKey> = {
 /** Cukup untuk "apa yang terakhir terjadi"; selebihnya di halaman jejak. */
 const JEJAK_DI_RINCIAN = 20;
 
+/** Tab rincian tenant — urutan = urutan di layar. */
+const TENANT_DETAIL_TABS = ["summary", "billing", "companies", "audit"] as const;
+type Tab = (typeof TENANT_DETAIL_TABS)[number];
+
 export default async function OperatorTenantDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { operator } = await requireOperatorPage();
   const t = await getT();
+  const tab: Tab = resolveConsoleTab((await searchParams).tab, TENANT_DETAIL_TABS, "summary");
 
   const { id } = await params;
   const tenantId = Number.parseInt(id, 10);
@@ -185,23 +205,29 @@ export default async function OperatorTenantDetailPage({
   /* Jejak SATU tenant, 20 terbaru — bacaan lengkap & saringannya di
      `/audit/tenants?tenant=<slug>`. Sampai panel ini ada, alasan yang
      diwajibkan setiap aksi di bawah tidak pernah terbaca kembali. */
+  /* HANYA data tab aktif yang dibaca (kepala berkas). `null` = tidak dibaca. */
   const [trail, people, health, activation] = await Promise.all([
     /* Per `tenantId`, bukan slug: entri sebelum slug berganti tetap terbaca. */
-    readTenantAuditFeed({ tenantId: tenant.id }, { limit: JEJAK_DI_RINCIAN }),
-    tenantUsersForOperator({ control: controlDb }, tenant.id),
-    tenantHealthForOperator({
-      id: tenant.id,
-      maxCompanies: tenant.maxCompanies,
-      maxUsers: tenant.maxUsers,
-      usage,
-    }),
-    /* Permintaan aktivasi tenant ini (terbuka maupun sudah ditangani). */
+    tab === "audit" ? readTenantAuditFeed({ tenantId: tenant.id }, { limit: JEJAK_DI_RINCIAN }) : null,
+    tab === "companies" ? tenantUsersForOperator({ control: controlDb }, tenant.id) : null,
+    tab === "summary"
+      ? tenantHealthForOperator({
+          id: tenant.id,
+          maxCompanies: tenant.maxCompanies,
+          maxUsers: tenant.maxUsers,
+          usage,
+        })
+      : null,
+    /* Permintaan aktivasi tenant ini (terbuka maupun sudah ditangani) —
+       SELALU dibaca: jumlah yang terbuka menjadi lencana tab Langganan. */
     activationRequestsForOperator({ tenantId: tenant.id, limit: 10 }),
   ]);
+  const openActivation = (activation ?? []).filter((r) => r.status === "open").length;
 
   /* Bahan panel tindakan (#155). Paket hanya dibaca bila penagihan hidup —
-   * tanpanya panel ganti paket memang tidak boleh muncul. */
-  const plans = billing === null ? null : await listPlansForOperator();
+   * tanpanya panel ganti paket memang tidak boleh muncul — dan hanya di tab
+   * Langganan, tempat panelnya dirender. */
+  const plans = billing === null || tab !== "billing" ? null : await listPlansForOperator();
 
   const invoiceColumns: SaiColumns<Invoice> = [
     {
@@ -354,6 +380,26 @@ export default async function OperatorTenantDetailPage({
         }
       />
 
+      <ConsoleTabs
+        label={t("operator.tenant.tabsAria")}
+        basePath={`/tenants/${tenant.id}`}
+        active={tab}
+        defaultId="summary"
+        tabs={[
+          { id: "summary", label: t("operator.tenant.tabSummary") },
+          {
+            id: "billing",
+            label: t("operator.tenant.tabBilling"),
+            count: openActivation,
+            attention: true,
+          },
+          { id: "companies", label: t("operator.tenant.tabCompanies") },
+          { id: "audit", label: t("operator.tenant.tabAudit") },
+        ]}
+      />
+
+      {tab === "summary" && health !== null && (
+        <>
       {/* ── Kendali: paket ter-snapshot, kuota, pemakaian — selalu tampil ── */}
       <ConsolePanel title={t("operator.tenant.planHeading")}>
         <dl style={FACT_GRID}>
@@ -399,7 +445,11 @@ export default async function OperatorTenantDetailPage({
           </ul>
         )}
       </ConsolePanel>
+        </>
+      )}
 
+      {tab === "billing" && (
+        <>
       {/* ── Platform: langganan & tagihan — boleh "mati" dengan tenang ───── */}
       <ConsolePanel title={t("operator.tenant.subscriptionHeading")}>
         {billing === null ? (
@@ -516,86 +566,6 @@ export default async function OperatorTenantDetailPage({
           />
         </ConsolePanel>
       )}
-
-      {/* ── Registry PT — kendali; bukunya TIDAK PERNAH dibuka dari sini ─── */}
-      <ConsolePanel
-        title={t("operator.tenant.companiesHeading")}
-        footnote={t("operator.tenant.booksNote")}
-      >
-        {companies.length === 0 ? (
-          <p style={MUTED}>{t("operator.tenant.noCompanies")}</p>
-        ) : (
-          <StaticTable
-            columns={companyColumns}
-            rows={companies}
-            rowKey={(company) => company.id}
-          />
-        )}
-      </ConsolePanel>
-
-      {/* ── Pengguna & undangan — bantuan masuk tanpa memegang rahasia ───── */}
-      <ConsolePanel title={t("operator.users.heading", { count: people.users.length })}>
-        <TenantUserSupport
-          tenantId={tenant.id}
-          users={people.users.map((u) => ({
-            id: u.id,
-            label: u.name ? `${u.name} (${u.username})` : u.username,
-            email: u.email,
-            mustChangePassword: u.mustChangePassword,
-            activeMemberships: u.activeMemberships,
-          }))}
-          invitations={people.invitations.map((i) => ({
-            id: i.id,
-            email: i.email,
-            companyName: i.companyName,
-            companyRole: i.companyRole,
-            expiresLabel: formatDate(i.expiresAt),
-            expired: i.expired,
-          }))}
-          canAct={operatorCan(operator.role, "tenant.users")}
-          revoke={operatorRevokeUserSessions}
-          reset={operatorSendPasswordReset}
-          resend={operatorResendInvitation}
-        />
-      </ConsolePanel>
-
-      {/* ── Jejak tenant — apa yang SUDAH dilakukan, sebelum tombol untuk
-          melakukan berikutnya. ──────────────────────────────────────────── */}
-      <ConsolePanel
-        title={`${t("operator.tenant.trailHeading")} (${trail.total})`}
-        flush
-        actions={
-          trail.total > 0 ? (
-            <ButtonLink
-              href={`/audit/tenants?tenant=${encodeURIComponent(tenant.slug)}`}
-              variant="outline"
-              size="sm"
-            >
-              {t("operator.tenant.trailAll")}
-            </ButtonLink>
-          ) : undefined
-        }
-      >
-        <AuditTrailTable
-          rows={trail.entries.map((e) => ({
-            id: e.id,
-            createdAt: e.createdAt,
-            actor: e.username,
-            action: e.action,
-            ipAddress: e.ipAddress,
-            details: e.details,
-          }))}
-          labels={{
-            time: t("operator.audit.colTime"),
-            actor: t("operator.tenantAudit.colActor"),
-            action: t("operator.audit.colAction"),
-            ip: t("operator.audit.colIp"),
-            details: t("operator.audit.colDetails"),
-          }}
-          empty={<p style={{ ...MUTED, padding: "var(--ant-padding-lg)" }}>{t("operator.tenantAudit.empty")}</p>}
-        />
-      </ConsolePanel>
-
       {/* ── Tindakan tulis (#155) — SENGAJA paling bawah: fakta dibaca dulu,
           tombolnya belakangan; yang paling merusak paling jauh dari jalur
           baca. Semua nilai sudah diserialkan di sini (tanggal jadi label,
@@ -645,6 +615,96 @@ export default async function OperatorTenantDetailPage({
             : null
         }
       />
+        </>
+      )}
+
+      {tab === "companies" && people !== null && (
+        <>
+      {/* ── Registry PT — kendali; bukunya TIDAK PERNAH dibuka dari sini ─── */}
+      <ConsolePanel
+        title={t("operator.tenant.companiesHeading")}
+        footnote={t("operator.tenant.booksNote")}
+      >
+        {companies.length === 0 ? (
+          <p style={MUTED}>{t("operator.tenant.noCompanies")}</p>
+        ) : (
+          <StaticTable
+            columns={companyColumns}
+            rows={companies}
+            rowKey={(company) => company.id}
+          />
+        )}
+      </ConsolePanel>
+
+      {/* ── Pengguna & undangan — bantuan masuk tanpa memegang rahasia ───── */}
+      <ConsolePanel title={t("operator.users.heading", { count: people.users.length })}>
+        <TenantUserSupport
+          tenantId={tenant.id}
+          users={people.users.map((u) => ({
+            id: u.id,
+            label: u.name ? `${u.name} (${u.username})` : u.username,
+            email: u.email,
+            mustChangePassword: u.mustChangePassword,
+            activeMemberships: u.activeMemberships,
+          }))}
+          invitations={people.invitations.map((i) => ({
+            id: i.id,
+            email: i.email,
+            companyName: i.companyName,
+            companyRole: i.companyRole,
+            expiresLabel: formatDate(i.expiresAt),
+            expired: i.expired,
+          }))}
+          canAct={operatorCan(operator.role, "tenant.users")}
+          revoke={operatorRevokeUserSessions}
+          reset={operatorSendPasswordReset}
+          resend={operatorResendInvitation}
+        />
+      </ConsolePanel>
+        </>
+      )}
+
+      {tab === "audit" && trail !== null && (
+        <>
+      {/* ── Jejak tenant — apa yang SUDAH dilakukan, sebelum tombol untuk
+          melakukan berikutnya. ──────────────────────────────────────────── */}
+      <ConsolePanel
+        title={`${t("operator.tenant.trailHeading")} (${trail.total})`}
+        flush
+        actions={
+          trail.total > 0 ? (
+            <ButtonLink
+              href={`/audit/tenants?tenant=${encodeURIComponent(tenant.slug)}`}
+              variant="outline"
+              size="sm"
+            >
+              {t("operator.tenant.trailAll")}
+            </ButtonLink>
+          ) : undefined
+        }
+      >
+        <AuditTrailTable
+          rows={trail.entries.map((e) => ({
+            id: e.id,
+            createdAt: e.createdAt,
+            actor: e.username,
+            action: e.action,
+            ipAddress: e.ipAddress,
+            details: e.details,
+          }))}
+          labels={{
+            time: t("operator.audit.colTime"),
+            actor: t("operator.tenantAudit.colActor"),
+            action: t("operator.audit.colAction"),
+            ip: t("operator.audit.colIp"),
+            details: t("operator.audit.colDetails"),
+          }}
+          empty={<p style={{ ...MUTED, padding: "var(--ant-padding-lg)" }}>{t("operator.tenantAudit.empty")}</p>}
+        />
+      </ConsolePanel>
+        </>
+      )}
+
     </div>
   );
 }

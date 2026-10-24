@@ -11,7 +11,8 @@
     "./platform-constants": "./src/platform-constants.ts",
     "./platform-revenue": "./src/platform-revenue.ts",
     "./subscription-lifecycle": "./src/subscription-lifecycle.ts",
-    "./trial-notice": "./src/trial-notice.ts"
+    "./trial-notice": "./src/trial-notice.ts",
+    "./trial-retention": "./src/trial-retention.ts"
   },
   "dependencies": {
     "@sai/core": "workspace:*"

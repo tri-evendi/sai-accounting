@@ -42,6 +42,8 @@ export interface LandingAsk {
   heroCta: DictionaryKey;
   /** Label ajakan di KARTU PAKET dan di ajakan penutup. */
   cardCta: DictionaryKey;
+  /** Label tombol utama di BILAH NAVIGASI (menempel sepanjang gulungan). */
+  navCta: DictionaryKey;
   /**
    * Catatan di bawah HARGA. Saat tertutup ia BUKAN null melainkan kalimat
    * lain: ruang itu tetap harus menjelaskan bagaimana orang mendapatkan akun —
@@ -64,12 +66,22 @@ export interface LandingAsk {
   needsDays: boolean;
 }
 
-/** Terbuka = janji uji coba; tertutup = janji PENAWARAN. Tidak ada keadaan ketiga. */
+/**
+ * Terbuka = janji uji coba; tertutup = alur DEMO-FIRST (keputusan pemilik
+ * 24 Okt 2026): "Jadwalkan demo" di hero & bilah navigasi, "Minta penawaran" di
+ * kartu paket & penutup. Tidak ada keadaan ketiga.
+ *
+ * Kedua ajakan tertutup tetap menuju `/register` — halaman yang, saat tertutup,
+ * MENJADI halaman kontak: langkah demo → penawaran → akun uji coba, dan tombol
+ * WhatsApp/surel dari `contactChannels()` (`tests/button-emphasis` mengunci
+ * satu tujuan untuk ajakan yang diulang).
+ */
 export function landingAsk(signupOpen: boolean): LandingAsk {
   if (signupOpen) {
     return {
       heroCta: "landing.heroTrialCta",
       cardCta: "landing.heroPrimary",
+      navCta: "landing.signUp",
       priceNote: "landing.pricingTrialNote",
       ctaNote: "landing.ctaTrialNote",
       faqTrialAnswer: "landing.faqTrialA",
@@ -77,8 +89,12 @@ export function landingAsk(signupOpen: boolean): LandingAsk {
     };
   }
   return {
-    heroCta: "landing.quoteCta",
+    /* Demo dulu: pembeli multi-PT tidak membeli secara swalayan
+       (`docs/KOMERSIALISASI.md` §2), dan tanpa gerbang pembayaran jalan masuk
+       satu-satunya adalah percakapan. */
+    heroCta: "landing.demoCta",
     cardCta: "landing.quoteCta",
+    navCta: "landing.demoCta",
     /* Saat tertutup KEDUANYA memakai kalimat yang sama, dan itu bukan
        kelalaian: yang perlu dikatakan di kedua tempat identik — "akun dibuka
        lewat penawaran". Dua kalimat berbeda untuk satu keadaan hanya akan

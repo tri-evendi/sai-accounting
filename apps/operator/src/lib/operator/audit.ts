@@ -68,6 +68,13 @@ export type OperatorAuditAction =
   | "operator.settings.update"
   | "operator.settings.reset"
   /**
+   * RETENSI UJI COBA BEKU (migration platform 0012, alur demo-first): sakelar
+   * hapus otomatis + jumlah harinya. `details` memuat nilai LAMA dan BARU —
+   * menyalakan sakelar ini membuat penjadwal MENGHAPUS tenant (tidak bisa
+   * dibalik), jadi siapa dan kapan harus terbaca dari jejaknya sendiri.
+   */
+  | "operator.settings.trial_retention"
+  /**
    * AKUN OPERATOR (migration kendali 0004). `details` memuat nama akun
    * sasaran, peran sebelum/sesudah, dan aktif sebelum/sesudah — TIDAK PERNAH
    * kata sandi atau rahasia TOTP yang diterbitkan (keduanya hanya tampil

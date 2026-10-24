@@ -371,4 +371,7 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.nitkuInvalid": "NITKU harus 22 digit",
   // Aktivasi dari penawaran — bukti transfer (alur demo-first, 24 Okt 2026).
   "validation.transferProofRequired": "Referensi bukti transfer wajib diisi (minimal 3 karakter).",
+  // Retensi uji coba beku (alur demo-first, migration platform 0012).
+  "validation.retentionDaysRange": "Masa retensi 30–3650 hari, atau 0 untuk mengikuti pengaturan server.",
+  "validation.retentionConfirmRequired": "Ketik HAPUS untuk menyalakan penghapusan otomatis.",
 };

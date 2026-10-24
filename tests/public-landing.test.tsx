@@ -687,15 +687,18 @@ describe("halaman pendaratan saat pendaftaran mandiri DITUTUP", () => {
     expect(html).not.toContain("{days}");
   });
 
-  it("menjanjikan PENAWARAN — di hero, kartu paket, dan penutup", async () => {
+  it("alur demo-first: DEMO di hero, PENAWARAN di kartu paket dan penutup", async () => {
     const html = await render();
 
+    expect(html).toContain(T("landing.demoCta"));
     expect(html).toContain(T("landing.quoteCta"));
     expect(html).toContain(T("landing.quoteNote"));
-    /* Ajakan hero + kartu + penutup = tiga kemunculan minimal dari satu
-       kalimat ajakan yang sama (jumlah kartu paket bisa berubah). */
+    /* Kartu paket + penutup = dua kemunculan minimal dari ajakan penawaran
+       (jumlah kartu paket bisa berubah). */
     const kemunculan = html.split(T("landing.quoteCta")).length - 1;
-    expect(kemunculan).toBeGreaterThanOrEqual(3);
+    expect(kemunculan).toBeGreaterThanOrEqual(2);
+    /* Tidak ada "Coba gratis" di halaman yang dilihat pengunjung hari ini. */
+    expect(html.toLowerCase()).not.toContain("coba gratis");
   });
 
   it("FAQ menjawab pertanyaan uji coba dengan jawaban yang benar, bukan menghapusnya", async () => {

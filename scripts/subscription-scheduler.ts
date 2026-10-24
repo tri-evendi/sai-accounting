@@ -35,10 +35,16 @@
  * rekonsiliasi (langkah terakhir putaran ini juga) dan sembuh pada putaran
  * berikutnya — bukan tenant yang naik kelas tanpa catatan.
  *
- * ══ TIDAK ADA PENGHAPUSAN DATA ══════════════════════════════════════════════
+ * ══ TIDAK ADA PENGHAPUSAN DATA — SATU PENGECUALIAN BERSAKELAR ══════════════
  * Tidak satu pun langkah menghapus baris — suspensi mengubah STATUS (buku
  * menjadi hanya-baca lewat penjaga), pembatalan mengubah STATUS. Deteksi
  * basis data yatim hanya MELAPOR; drop adalah keputusan orang.
+ *
+ * Pengecualiannya langkah 4b (retensi uji coba beku, alur demo-first): BILA
+ * operator menyalakan sakelarnya di konsol `/settings` (bawaan MATI), tenant
+ * uji coba yang beku melewati masa retensi dieksekusi lewat mesin penghapusan
+ * UU PDP yang sudah ada — anonimisasi + nonaktif, buku besar TETAP utuh sampai
+ * `retention_until`. Skrip ini sendiri tetap tidak memanggil delete/drop apa pun.
  */
 
 import "dotenv/config";
@@ -65,10 +71,29 @@ import {
   trialNoticeSuffix,
   type SubscriptionEvent,
 } from "@sai/billing/subscription-lifecycle";
-import { trialNoticeMail } from "@sai/billing/trial-notice";
+import { retentionNoticeMail, trialNoticeMail } from "@sai/billing/trial-notice";
+import {
+  RETENTION_NOTICE_KIND,
+  planTrialRetention,
+  type RetentionLog,
+} from "@sai/billing/trial-retention";
 import { contactChannels } from "@sai/core/contact-channels";
 import { loadDictionary } from "@sai/core/i18n/load";
-import { effectiveSetting, readSiteSettingsRow } from "@sai/core/site-settings-core";
+import {
+  effectiveSetting,
+  readSiteSettingsRow,
+  trialAutoDeletionFrom,
+  trialRetentionDaysFrom,
+  type SiteSettingsRow,
+} from "@sai/core/site-settings-core";
+/* Mesin penghapusan UU PDP yang SUDAH ADA (#142) — diimpor relatif, pola yang
+   sama dengan `scripts/execute-tenant-deletion.ts`. Retensi uji coba beku tidak
+   punya mesin hapus sendiri: dua jalan penghapusan adalah dua kumpulan aturan
+   anonimisasi yang akan menyimpang. */
+import {
+  executeTenantDeletion,
+  makeLatestJournalDateReader,
+} from "../apps/operator/src/lib/operator/writes";
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
 import { billingModeIsAutomatic } from "@sai/billing/platform-constants";
@@ -362,8 +387,12 @@ async function main() {
    * klien milik skrip ini; gagal baca jatuh ke environment.
    */
   let contact = contactChannels(process.env);
+  /* Baris pengaturan juga memegang sakelar RETENSI uji coba beku (langkah 4b).
+     Tak terbaca = `null` = environment, yang bawaannya MATI (gagal-tertutup). */
+  let settingsRow: SiteSettingsRow | null = null;
   try {
     const row = await readSiteSettingsRow(platform);
+    settingsRow = row;
     contact = contactChannels({
       PLATFORM_CONTACT_WHATSAPP: effectiveSetting(row?.contactWhatsapp, process.env.PLATFORM_CONTACT_WHATSAPP),
       PLATFORM_CONTACT_EMAIL: effectiveSetting(row?.contactEmail, process.env.PLATFORM_CONTACT_EMAIL),
@@ -606,6 +635,159 @@ async function main() {
     }
   } catch (e) {
     errors.push(`pengingat: ${e}`);
+  }
+
+  /* ── 4b. Retensi uji coba BEKU (alur demo-first, migration platform 0012) ──
+   *
+   * Tenant `trial_ended` yang beku lebih dari N hari (bawaan 90) dihapus lewat
+   * mesin penghapusan UU PDP yang sudah ada (`executeTenantDeletion`: tenant
+   * `cancelled`, PT nonaktif, data pribadi dianonimkan; buku besar UTUH sampai
+   * `retention_until`). Pemberitahuan H-14 dan H-3 berisi tautan ekspor adalah
+   * SYARAT (`planTrialRetention`).
+   *
+   * ⚠ SAKELARNYA BAWAAN MATI (`trialAutoDeletionFrom`: hanya `true` di konsol
+   * atau `TRIAL_AUTO_DELETION=on`). Selama mati langkah ini HANYA MELAPOR —
+   * tidak ada surel, tidak ada baris jejak pemberitahuan, tidak ada penghapusan.
+   * Tenant demo (`tenants.is_demo`) dan tenant yang punya permintaan hapus
+   * sendiri tidak pernah menjadi kandidat. */
+  try {
+    const autoDeletion = trialAutoDeletionFrom(settingsRow, process.env);
+    const retentionDays = trialRetentionDaysFrom(settingsRow, process.env);
+    const frozen = await platform.subscription.findMany({
+      where: { status: "trial_ended", trialEndedAt: { not: null } },
+      select: { id: true, tenantId: true, status: true, trialEndedAt: true },
+    });
+    if (frozen.length > 0) {
+      const tenantRows = await control.tenant.findMany({
+        where: { id: { in: frozen.map((f) => f.tenantId) } },
+        select: { id: true, slug: true, status: true, isDemo: true },
+      });
+      const pendingDeletion = new Set(
+        (
+          await control.tenantDeletionRequest.findMany({
+            where: { tenantId: { in: frozen.map((f) => f.tenantId) }, status: "pending" },
+            select: { tenantId: true },
+          })
+        ).map((r) => r.tenantId)
+      );
+      const tenantById = new Map(tenantRows.map((t) => [t.id, t]));
+      const candidates = frozen
+        .filter((f) => {
+          const t = tenantById.get(f.tenantId);
+          return t && !t.isDemo && t.status === "trial_ended" && !pendingDeletion.has(f.tenantId);
+        })
+        .map((f) => ({ subscriptionId: f.id, tenantId: f.tenantId, trialEndedAt: f.trialEndedAt! }));
+
+      const logsBySub = new Map<number, RetentionLog[]>();
+      for (const log of reminderLogs) {
+        if (log.kind !== RETENTION_NOTICE_KIND) continue;
+        const list = logsBySub.get(log.subscriptionId) ?? [];
+        list.push({ dueKey: log.dueKey, sentAt: log.sentAt });
+        logsBySub.set(log.subscriptionId, list);
+      }
+      const plan = planTrialRetention(candidates, logsBySub, now, retentionDays);
+
+      if (!autoDeletion) {
+        /* LAPOR SAJA. Kalimatnya menyebut sakelarnya, supaya pembaca jejak
+           putaran tahu kenapa tidak ada yang terjadi. */
+        for (const row of plan.overview) {
+          if (row.baseDeleteAt.getTime() <= now.getTime()) {
+            const slug = tenantById.get(row.tenantId)?.slug ?? `#${row.tenantId}`;
+            summary.transitions.push(
+              `retensi (sakelar MATI, tidak dihapus): tenant ${slug} beku ≥ ${retentionDays} hari — ` +
+                "akan diberi tahu lalu dihapus bila sakelar dinyalakan"
+            );
+          }
+        }
+      } else {
+        const dictionaries = {
+          id: await loadDictionary("id"),
+          en: await loadDictionary("en"),
+          zh: await loadDictionary("zh"),
+        };
+        const origin = (() => {
+          const raw = process.env.AUTH_URL?.trim().replace(/\/$/, "");
+          if (!raw) return null;
+          try {
+            return new URL(raw).origin;
+          } catch {
+            return null;
+          }
+        })();
+        for (const notice of plan.notices) {
+          try {
+            await platform.reminderLog.createMany({
+              data: notice.markKeys.map((dueKey) => ({
+                subscriptionId: notice.subscriptionId,
+                kind: RETENTION_NOTICE_KIND,
+                dueKey,
+              })),
+            });
+          } catch (e) {
+            if ((e as { code?: string }).code === "P2002") continue;
+            throw e;
+          }
+          const recipients = await ownerEmails(control, notice.tenantId);
+          for (const to of recipients) {
+            await sendMail({
+              to,
+              ...retentionNoticeMail(dictionaries, {
+                deleteDate: businessISODate(notice.deleteAt ?? now),
+                daysLeft: notice.daysLeft,
+                exportUrl: origin ? `${origin}/platform/privacy` : null,
+                contact,
+              }),
+            });
+          }
+          summary.reminders.push(
+            `${RETENTION_NOTICE_KIND} ${notice.sendKey} → sub #${notice.subscriptionId} (${recipients.length} owner)`
+          );
+        }
+
+        const controlUrl = process.env.CONTROL_DATABASE_URL!;
+        for (const del of plan.deletions) {
+          const tenant = tenantById.get(del.tenantId);
+          if (!tenant) continue;
+          try {
+            /* 1 — PLATFORM dulu (#137): langganan beku → `cancelled` lewat mesin. */
+            const sub = frozen.find((f) => f.id === del.subscriptionId)!;
+            await applyEvent(platform, control, sub, "cancel", now);
+            /* 2 — Permintaan penghapusan beratas nama SISTEM, tenggang berakhir
+               sekarang (pemberitahuan H-14/H-3 sudah menjadi tenggangnya), lalu
+               eksekusi lewat inti yang sama dengan tombol konsol. */
+            await control.tenantDeletionRequest.create({
+              data: {
+                tenantId: tenant.id,
+                requestedByUserId: 0,
+                status: "pending",
+                graceEndsAt: now,
+                note: `Retensi uji coba beku: ${retentionDays} hari sejak beku, pemberitahuan H-14/H-3 terkirim.`,
+              },
+            });
+            const result = await executeTenantDeletion(
+              { control, latestJournalDate: makeLatestJournalDateReader(controlUrl) },
+              {
+                tenantSlug: tenant.slug,
+                confirmSlug: tenant.slug,
+                actor: {
+                  operator: "system:retensi-uji-coba",
+                  reason: `Retensi uji coba beku ${retentionDays} hari (sakelar konsol menyala)`,
+                },
+              },
+              now
+            );
+            summary.transitions.push(`retensi: tenant ${tenant.slug} → ${result.outcome}`);
+            if (result.outcome !== "executed") {
+              errors.push(`retensi tenant ${tenant.slug}: ${result.outcome}`);
+            }
+          } catch (e) {
+            errors.push(`retensi tenant ${tenant.slug}: ${e}`);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    errors.push(`retensi-uji-coba: ${e}`);
   }
 
   /* ── 5. Sinkronisasi usage_counters dari jumlah SESUNGGUHNYA di kendali ──

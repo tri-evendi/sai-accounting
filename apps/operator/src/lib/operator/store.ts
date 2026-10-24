@@ -52,6 +52,7 @@ import {
 import { resolveMailConfig, type MailConfigSource } from "@sai/platform/mailer-core";
 import { encryptionKeyAvailable } from "@sai/core/settings-crypto";
 import { summarizeRevenue, type RevenueSummary } from "@sai/billing/platform-revenue";
+import { RETENTION_NOTICE_KIND, planTrialRetention } from "@sai/billing/trial-retention";
 
 export type { ReconciliationReport };
 export type { MailSettingsView };
@@ -1401,4 +1402,90 @@ export async function activationRequestsForOperator(
     handledAt: r.handledAt,
     createdAt: r.createdAt,
   }));
+}
+
+/* ─────────────── Retensi uji coba beku (migration platform 0012) ─────────── */
+
+export interface TrialRetentionRow {
+  tenantId: number;
+  tenantName: string;
+  tenantSlug: string;
+  trialEndedAt: Date;
+  /** Beku + N hari — tanggal hapus PALING CEPAT bila sakelar menyala. */
+  baseDeleteAt: Date;
+  /** Tanggal hapus yang berlaku (sesudah H-14 terkirim); `null` = belum diberi tahu. */
+  deleteAt: Date | null;
+  /** Kunci pemberitahuan yang sudah terkirim (`D-14:…`, `D-3:…`). */
+  noticesSent: string[];
+}
+
+/**
+ * Kandidat retensi uji coba beku — dihitung dengan perencana yang SAMA dengan
+ * penjadwal (`planTrialRetention`), jadi layar dan putaran tidak bisa berbeda
+ * pendapat soal tanggal. Tenant demo dan tenant dengan permintaan hapus sendiri
+ * dikecualikan, persis seperti di penjadwal. `null` = platform tak terjangkau.
+ */
+export async function trialRetentionForOperator(
+  days: number,
+  now: Date = new Date(),
+  deps: { control: ControlClient; platform: PlatformClient } = {
+    control: controlDb,
+    platform: platformDb,
+  }
+): Promise<TrialRetentionRow[] | null> {
+  try {
+    const frozen = await deps.platform.subscription.findMany({
+      where: { status: "trial_ended", trialEndedAt: { not: null } },
+      select: { id: true, tenantId: true, trialEndedAt: true },
+    });
+    if (frozen.length === 0) return [];
+    const ids = frozen.map((f) => f.tenantId);
+    const [tenants, pending, logs] = await Promise.all([
+      deps.control.tenant.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true, slug: true, status: true, isDemo: true },
+      }),
+      deps.control.tenantDeletionRequest.findMany({
+        where: { tenantId: { in: ids }, status: "pending" },
+        select: { tenantId: true },
+      }),
+      deps.platform.reminderLog.findMany({
+        where: { subscriptionId: { in: frozen.map((f) => f.id) }, kind: RETENTION_NOTICE_KIND },
+        select: { subscriptionId: true, dueKey: true, sentAt: true },
+      }),
+    ]);
+    const tenantById = new Map(tenants.map((t) => [t.id, t]));
+    const pendingIds = new Set(pending.map((p) => p.tenantId));
+    const candidates = frozen
+      .filter((f) => {
+        const t = tenantById.get(f.tenantId);
+        return t && !t.isDemo && t.status === "trial_ended" && !pendingIds.has(f.tenantId);
+      })
+      .map((f) => ({ subscriptionId: f.id, tenantId: f.tenantId, trialEndedAt: f.trialEndedAt! }));
+    const logsBySub = new Map<number, { dueKey: string; sentAt: Date }[]>();
+    for (const l of logs) {
+      const list = logsBySub.get(l.subscriptionId) ?? [];
+      list.push({ dueKey: l.dueKey, sentAt: l.sentAt });
+      logsBySub.set(l.subscriptionId, list);
+    }
+    const plan = planTrialRetention(candidates, logsBySub, now, days);
+    return plan.overview
+      .map((row) => {
+        const t = tenantById.get(row.tenantId)!;
+        const c = candidates.find((x) => x.subscriptionId === row.subscriptionId)!;
+        return {
+          tenantId: row.tenantId,
+          tenantName: t.name,
+          tenantSlug: t.slug,
+          trialEndedAt: c.trialEndedAt,
+          baseDeleteAt: row.baseDeleteAt,
+          deleteAt: row.deleteAt,
+          noticesSent: (logsBySub.get(row.subscriptionId) ?? []).map((l) => l.dueKey),
+        };
+      })
+      .sort((a, b) => a.baseDeleteAt.getTime() - b.baseDeleteAt.getTime());
+  } catch (error) {
+    console.error("[operator-store] retensi uji coba tak terbaca:", error);
+    return null;
+  }
 }

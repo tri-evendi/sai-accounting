@@ -229,6 +229,30 @@ export const siteSettingsSchema = z.object({
 });
 export type SiteSettingsFormInput = z.infer<typeof siteSettingsSchema>;
 
+/**
+ * RETENSI UJI COBA BEKU (migration platform 0012, alur demo-first).
+ *
+ * `autoDeletion` tiga keadaan seperti gerbang lain — `env` = ikut
+ * `TRIAL_AUTO_DELETION` (bawaan MATI). `retentionDays` 0 = ikut env / 90; di
+ * luar itu 30–3650 (batas yang sama dengan `trialRetentionDaysFrom`). Ketik
+ * ulang kata `HAPUS` dituntut HANYA saat menyalakan — lihat formulirnya.
+ */
+export const trialRetentionSchema = z
+  .object({
+    autoDeletion: z.enum(["env", "on", "off"]),
+    retentionDays: z.coerce.number().int().min(0).max(3650),
+    confirm: z.string().trim().max(10),
+  })
+  .refine((v) => v.retentionDays === 0 || v.retentionDays >= 30, {
+    path: ["retentionDays"],
+    message: vmsg("validation.retentionDaysRange"),
+  })
+  .refine((v) => v.autoDeletion !== "on" || v.confirm.toUpperCase() === "HAPUS", {
+    path: ["confirm"],
+    message: vmsg("validation.retentionConfirmRequired"),
+  });
+export type TrialRetentionFormInput = z.infer<typeof trialRetentionSchema>;
+
 /* ── 4. Eksekusi penghapusan ───────────────────────────────────────────────── */
 
 export const deletionExecuteSchema = z.object({

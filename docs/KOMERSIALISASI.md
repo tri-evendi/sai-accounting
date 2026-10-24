@@ -344,7 +344,7 @@ yang tidak punya perjanjian komersial.
 | Tandai seluruh akun uji coba & internal sebagai **tidak boleh ditagih** | **sudah ada** — `subscriptions.billing_mode` (bawaan `none`) + `bun run billing:pause` |
 | Tutup `/register` publik (atau jadikan undangan) sampai rel bayar ada | **konsol `/settings` → Gate → Pendaftaran mandiri** (env `SELF_SERVE_SIGNUP` tetap jadi bawaannya) |
 | Matikan PPN di tagihan platform sampai status PKP diputuskan | **konsol `/settings` → Gate → PPN** (env `PLATFORM_PPN_DISABLED=true` tetap jadi bawaannya) |
-| Ubah CTA harga dari "Coba gratis" → **"Minta penawaran"** untuk ≥4 PT | kanal kontak sudah ada (`contactChannels()`) |
+| ~~Ubah CTA harga dari "Coba gratis" → **"Minta penawaran"** untuk ≥4 PT~~ — **dibangun (24 Okt 2026)**: saat pendaftaran tertutup, hero & navigasi "Jadwalkan demo", kartu paket & penutup "Minta penawaran"; `/register` tertutup menjadi halaman kontak demo → uji coba → penawaran | kanal kontak sudah ada (`contactChannels()`), `src/lib/landing-ask.ts` |
 
 **Keluar dari Fase A bila:** secara konstruksi tidak ada akun non-komersial yang
 bisa menerima tagihan.

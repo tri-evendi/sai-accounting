@@ -179,11 +179,12 @@
     "mockDashboardTitle": "Dashboard",
     "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank",
     "quoteCta": "Request a quote",
-    "quoteNote": "Accounts are opened through a quote: company quota, data migration, and payment terms are agreed first. The prices above are the starting point.",
-    "faqTrialAQuote": "Self-serve trials are closed for now. Access is granted through a quote — we agree on the number of companies, the data migration, and payment terms first, including a trial period where one is needed.",
+    "quoteNote": "Start with a demo, then a quote: company quota, data migration, and payment terms are agreed first, and a trial account is set up for your group. The prices above are the starting point.",
+    "faqTrialAQuote": "Yes — but not through self-serve sign-up. After the demo we set up a trial account for your group with the right number of companies. When the trial ends there is no automatic invoice: the account becomes read-only until you decide.",
     "compareHeading": "Upgrading costs less than stacking smaller plans",
     "compareRow": "{count} × {small} {stacked} → {large} {upgrade},",
-    "compareSaving": "saves {amount}/month"
+    "compareSaving": "saves {amount}/month",
+    "demoCta": "Book a demo"
   },
   "common": {
     "skipToContent": "Skip to content",
@@ -553,11 +554,11 @@
       "termsLinkLabel": "terms & conditions",
       "termsAnd": "and the",
       "privacyLinkLabel": "privacy policy",
-      "closedTitle": "Request a quote",
-      "closedBody": "Accounts are opened through a quote rather than self-serve sign-up, so that company quota, data migration, and payment terms are agreed first. Three steps, and the first one is a single message.",
-      "quoteStep1": "You send one message: how many companies, how many users, and which system the data comes from.",
-      "quoteStep2": "We reply with a quote: quota, price, contract term, and payment terms — in writing.",
-      "quoteStep3": "Once approved, we set the account up along with the data migration. You sign in to books that are already filled.",
+      "closedTitle": "Book a demo or request a quote",
+      "closedBody": "Accounts are opened after a short demo rather than through self-serve sign-up, so that company count, data migration, and payment terms are agreed first. The first step is a single message.",
+      "quoteStep1": "You send one message: how many companies, how many users, and which system the data comes from. We schedule a demo.",
+      "quoteStep2": "After the demo we set up a trial account for your group — no card, and no automatic invoice when the trial ends.",
+      "quoteStep3": "Ready to continue? We send a written quote (quota, price, contract term, payment terms), and the account is activated once it is approved.",
       "closedWhatsapp": "Contact us on WhatsApp",
       "closedEmail": "Email us at {email}",
       "closedSignIn": "Already have an account? Sign in"
@@ -4399,7 +4400,9 @@
     "licencePassphraseMismatch": "The two passphrases do not match.",
     "nikInvalid": "NIK must be 16 digits",
     "nitkuInvalid": "NITKU must be 22 digits",
-    "transferProofRequired": "Transfer proof reference is required (at least 3 characters)."
+    "transferProofRequired": "Transfer proof reference is required (at least 3 characters).",
+    "retentionDaysRange": "Retention is 30–3650 days, or 0 to follow the server setting.",
+    "retentionConfirmRequired": "Type HAPUS to turn on automatic deletion."
   },
   "taxSettings": {
     "sectionTitle": "PPN (VAT)",
@@ -4745,6 +4748,13 @@
       "errSave": "The activation request could not be recorded. Please try again shortly.",
       "waText": "Hello, I would like to activate my SAI Accounting account ({account}).",
       "mailSubject": "Activation request for account {account}"
+    },
+    "retentionNotice": {
+      "subject": "Your trial account will be deleted on {date} — download your data — SAI Accounting",
+      "body": "The trial of your SAI Accounting account has ended and its books are frozen read-only. Under our retention policy this account will be DELETED on {date} ({days} days from now): users are anonymised and all companies are deactivated. Deletion cannot be undone.",
+      "export": "Download a complete copy of your data (CSV of every table + documents) before that date: {url}",
+      "exportNoLink": "Download a complete copy of your data before that date via the Privacy & data menu in the app.",
+      "keep": "Want to keep this account? Request activation via the Subscription menu or contact us before the deletion date."
     }
   },
   "operator": {
@@ -5944,6 +5954,33 @@
       "handledDone": "Activation request marked as handled.",
       "errAlreadyHandled": "That request was already handled.",
       "errNotFound": "Activation request not found."
+    },
+    "retention": {
+      "heading": "Frozen trial retention",
+      "descriptionOff": "Automatic deletion is OFF. The scheduler only reports trial tenants frozen for more than {days} days — no emails and no deletion.",
+      "descriptionOn": "Automatic deletion is ON. Trial tenants frozen for more than {days} days receive 14-day and 3-day notices with an export link, then are deleted (anonymised + companies deactivated; ledgers kept per tax law). Irreversible.",
+      "switchLabel": "Automatically delete frozen trial tenants",
+      "optionEnv": "Follow server setting (currently: {state})",
+      "optionOn": "On — delete after notices",
+      "optionOff": "Off — report only",
+      "stateOn": "on",
+      "stateOff": "off",
+      "switchHint": "Default is OFF (env TRIAL_AUTO_DELETION only turns it on when set to exactly on). Demo tenants and tenants with their own deletion request are never included.",
+      "daysLabel": "Retention after freezing (days, 0 = follow server)",
+      "daysHint": "Current server setting: {days} days. Range 30–3650.",
+      "confirmLabel": "Type HAPUS to turn on",
+      "save": "Save retention",
+      "saved": "Trial retention settings saved.",
+      "confirmTitle": "Turn on automatic deletion?",
+      "confirmBody": "From now on the scheduler DELETES trial tenants frozen for more than {days} days (after 14-day and 3-day notices): users are anonymised and companies deactivated. Deletion cannot be undone.",
+      "confirmSubmit": "Yes, turn on",
+      "candidatesHeading": "Trial deletion candidates",
+      "candidatesNote": "Computed with the same rule as the scheduler. The deletion date applies once the 14-day notice is sent; while the switch is off nothing is sent or deleted.",
+      "candidatesEmpty": "No frozen trial tenants.",
+      "colEnded": "Frozen since",
+      "colDelete": "Deleted on",
+      "colNotices": "Notices",
+      "notNotified": "not notified yet (earliest {date})"
     }
   },
   "docs": {

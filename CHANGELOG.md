@@ -20,7 +20,25 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.24.0 — 2026-10-24 — belum digelar
+## 0.25.0 — 2026-10-25 — belum digelar
+
+Undangan pengguna kembali berfungsi di semua perusahaan, dan panduan pemakaian kini bergambar.
+
+### Baru
+
+- Panduan pemakaian dilengkapi tangkapan layar, mulai dari masuk akun, panel akun, sampai pekerjaan di perusahaan.
+
+### Berubah
+
+- Istilah di aplikasi kini berlaku untuk semua bentuk usaha: PT, PT Perorangan, CV, Firma, dan usaha perorangan.
+
+### Perbaikan
+
+- Mengundang pengguna ke perusahaan yang baru dibuat tidak lagi gagal dengan pesan peran tidak dikenal.
+
+---
+
+## 0.24.0 — 2026-10-24 (6c606f4)
 
 Paket laporan: unduh laporan satu periode sekaligus dalam satu berkas.
 

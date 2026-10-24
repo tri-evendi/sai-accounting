@@ -42,7 +42,7 @@ dan batas heap eksplisit di setiap perintah Node.
 | `app-operator` | `sai-app-operator` | Konsol operator | selalu hidup |
 | `pg` | `sai-pg` | PostgreSQL 17 — 17 buku PT + control + platform | selalu hidup |
 | `pgbouncer` | `sai-pgbouncer` | Pool koneksi `transaction` | selalu hidup |
-| `svc-worker` | `sai-svc-worker` | **Empat peran Node** di bawah penyelia `scripts/run-workers.ts`: `scheduler` (8 langkah penagihan & pemeliharaan, tiap jam), `conformance` (sapuan kesesuaian, mingguan), `ledger` (pelari jalur `ledger`), `interactive` (ekspor besar, `report.export`; penyediaan PT baru, `company.provision` — satu-satunya layanan hidup-terus dengan `PROVISION_DATABASE_URL`) | selalu hidup |
+| `svc-worker` | `sai-svc-worker` | **Lima peran Node** di bawah penyelia `scripts/run-workers.ts`: `scheduler` (8 langkah penagihan & pemeliharaan, tiap jam), `conformance` (sapuan kesesuaian, mingguan), `ledger` (pelari jalur `ledger`), `interactive` (ekspor besar, `report.export`; penyediaan PT baru, `company.provision` — satu-satunya layanan hidup-terus dengan `PROVISION_DATABASE_URL`; kirim faktur saat diposting, `document.invoice_send`), `outbox` (relay outbox transaksional buku PT → `jobs`, 09 §4) | selalu hidup |
 | `svc-integrator` | `sai-svc-integrator` | **Dua jalur Go** dalam satu proses: `tenant` (cadangan **per basis data**) dan `interactive` sisi Go (lembar sebar ber-`engine: go`, `report.export_go`; hari ini Neraca Saldo) | selalu hidup |
 | `job-backup` | `sai-job-backup` | **Perkakas saja** sejak tahap 1b (profil `perkakas`) — pembukti pemulihan & jalur lama bertangan | tidak dijadwalkan |
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
@@ -253,13 +253,13 @@ menghentikan yang lain. Image-nya dibangun dari `bunbase`, bukan `builder`.
 ### `svc-worker` — empat peran Node, satu container
 
 Sejak 22 Okt 2026 (09 §3.2) penjadwal, pemeriksa kesesuaian, dan kedua pelari
-jalur Node adalah empat PROSES di satu container, di bawah penyelia
+jalur Node adalah empat PROSES di satu container (lima sejak relay outbox, 23 Okt 2026), di bawah penyelia
 `scripts/run-workers.ts`: `command` compose berisi pasangan `<peran>` +
 `<skrip sh>`, dan skrip tiap peran tetap satu salinan di compose.
 
 | Janji penyelia | Kenapa |
 |---|---|
-| Satu peran berakhir (kode apa pun) → peran lain dihentikan → container keluar **bukan-nol** | container "Up" dengan satu peran mati adalah kegagalan paling senyap; `restart: unless-stopped` menghidupkan keempatnya utuh, dan hitungan restart mencatatnya |
+| Satu peran berakhir (kode apa pun) → peran lain dihentikan → container keluar **bukan-nol** | container "Up" dengan satu peran mati adalah kegagalan paling senyap; `restart: unless-stopped` menghidupkan semuanya utuh, dan hitungan restart mencatatnya |
 | SIGTERM diteruskan ke **grup proses** tiap peran | `timeout`, `bun run`, dan `sleep 3600` di bawah `sh` ikut berhenti; pelari jalur menyelesaikan pekerjaan yang sedang jalan |
 | Setiap baris berawalan nama perannya | `docker compose logs svc-worker \| grep ' ledger *\|'` |
 | `WORKER_LEADER_ROLES` (HA saja) membungkus peran dengan `run-as-leader` | peran tunggal di replika kedua menunggu sebagai kandidat |
@@ -330,7 +330,7 @@ pun yang mencatat sampai mana ia sempat. Sekarang langkah ini menulis satu baris
 Compose dasar menjalankan putaran ini tanpa kunci, dan itu benar selama ia satu
 replika. Dua replika di dua host akan menerbitkan setiap langkah dua kali;
 `dedupe_key` menyelamatkan buku, tapi tidak menyelamatkan surel ganda ke
-pelanggan. Profil HA menyetel `WORKER_LEADER_ROLES=scheduler,ledger,conformance`
+pelanggan. Profil HA menyetel `WORKER_LEADER_ROLES=scheduler,ledger,conformance,outbox`
 saja, dan penyelia membungkus peran-peran itu dengan `scripts/run-as-leader.ts`:
 proses yang memegang `pg_try_advisory_lock` di koneksi LANGSUNG
 (`CONTROL_DATABASE_DIRECT_URL`) menjalankan putaran ini; yang lain menunggu
@@ -364,6 +364,23 @@ tanpa satu galat pun, dan yang menyimpang adalah buku.
 umur tertua nol, dan setiap ambang hijau sementara dokumen berulang berhenti
 sama sekali. Yang membantahnya hanya denyut penjadwal, yang diukur dari stempel
 waktu putaran. Itu sebabnya keduanya dibaca di **satu halaman**.
+
+#### Peran `outbox` — relay outbox transaksional (23 Okt 2026)
+
+`bun run outbox:relay` (`workers/outbox-relay.ts`), berjalan terus tanpa
+`timeout`, instans tunggal lewat pagar `sai.outbox.relay` di koneksi langsung
+(mekanisme yang sama dengan pagar jalur `ledger`). Tiap putaran mengitari
+setiap buku di registry kendali dengan `OUTBOX_RELAY_CONCURRENCY` (bawaan 3,
+plafon 8): dalam satu transaksi buku ia mengunci baris `outbox` yang belum
+terbit (`FOR UPDATE SKIP LOCKED`, paling banyak `relay_batch_size`),
+menerbitkan satu pekerjaan per (baris, kind konsumen) dengan kunci dedupe
+`outbox:<companyId>:<outboxId>:<kind>`, lalu menandai `published_at`. Jeda
+`relay_poll_ms` (2 detik) bila tidak ada yang dipindahkan; registry dibaca
+ulang tiap menit; baris terbit dibuang sesudah 14 hari. Jejak per buku ditulis
+ke `outbox_relay_books` (kendali) — sumber `/api/health` → `outbox`,
+`watch:health`, dan panel Outbox di konsol `/scheduler`. Buku yang gagal
+dicatat di jejaknya sendiri dan tidak menghentikan buku lain. Rancangannya
+[09 §4](./09-RANCANGAN-LAYANAN.md).
 
 #### Peran `conformance` — mingguan
 
